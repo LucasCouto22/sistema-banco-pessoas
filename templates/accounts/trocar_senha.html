@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Trocar senha · Qualy Vortice{% endblock %}
+{% block crumbs %}Minha conta / <b>Trocar senha</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Trocar senha</h2></div></div>
+<div class="panel" style="padding:20px 24px;max-width:480px">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="hint">{{ field.help_text|safe }}</p>{% endif %}
+      {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" type="submit">Salvar nova senha</button>
+      <a class="btn btn-ghost" href="{% url 'accounts:meu_perfil' %}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

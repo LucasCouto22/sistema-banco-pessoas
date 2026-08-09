@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}Pipeline · Qualy Vortice{% endblock %}
+{% block crumbs %}Participações / <b>Pipeline (kanban)</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Pipeline de captação</h2><p class="sub">Funil de etapas por participação</p></div></div>
+<div class="board">
+{% for col in colunas %}
+  <div class="col">
+    <div class="col-head"><h4>{{ col.label }}</h4><span class="count">{{ col.itens|length }}</span></div>
+    {% for item in col.itens %}
+    <div class="pcard">
+      <div class="nm">{{ item.participante.nome }}</div>
+      <div class="cod">{{ item.participante.codigo }}</div>
+      <div class="proj-tag">{{ item.projeto.nome }}</div>
+      {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
+      <div class="pcard-foot">
+        <form method="post" action="{% url 'participacoes:avancar' item.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="proximo" value="{% url 'participacoes:kanban' %}">
+          <button class="adv" type="submit">Avançar ›</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p class="empty" style="padding:14px 4px">Vazio</p>
+    {% endfor %}
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

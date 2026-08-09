@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}{{ projeto.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Projetos / <b>{{ projeto.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>{{ projeto.nome }}</h2><p class="sub">{{ projeto.cliente }}{% if projeto.metodologia %} · {{ projeto.metodologia }}{% endif %}{% if projeto.segmento %} · {{ projeto.get_segmento_display }}{% endif %}</p></div>
+  <div style="display:flex;gap:8px">
+    {% if pode_editar %}
+    <a class="btn btn-ghost" href="{% url 'projetos:gerar_link' projeto.pk %}">Link de cadastro</a>
+    <a class="btn btn-ghost" href="{% url 'projetos:editar' projeto.pk %}">Editar</a>
+    {% endif %}
+    {% if pode_excluir %}
+    <a class="btn btn-ghost" style="border-color:#F7C9C0;color:#B03225" href="{% url 'projetos:excluir' projeto.pk %}">Excluir</a>
+    {% endif %}
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top">Status</div><div class="v" style="font-size:1.1rem">{{ projeto.get_status_display }}</div></div>
+  <div class="kpi"><div class="kpi-top">Vagas ocupadas</div><div class="v">{{ projeto.ocupadas }}/{{ projeto.vagas }}</div></div>
+  <div class="kpi"><div class="kpi-top">Incentivo</div><div class="v">R$ {{ projeto.incentivo }}</div></div>
+</div>
+{% if projeto.descricao %}
+<div class="panel" style="padding:16px 20px;margin-bottom:16px">{{ projeto.descricao|linebreaksbr }}</div>
+{% endif %}
+<div class="panel">
+  <div class="panel-head"><h3 style="font-size:.95rem">Participantes vinculados</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Participante</th><th>Etapa</th><th>Status</th><th>Responsável</th></tr></thead>
+    <tbody>
+    {% for part in participacoes %}
+      <tr>
+        <td class="cell-main">{{ part.participante.nome }}</td>
+        <td>{{ part.get_etapa_display }}</td>
+        <td>{{ part.get_status_display|default:"—" }}</td>
+        <td>{{ part.responsavel|nome_usuario }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="empty">Nenhum participante associado ainda.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

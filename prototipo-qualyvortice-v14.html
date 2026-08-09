@@ -1,0 +1,2782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Qualy Vortice · Captação de participantes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8F4F5; --side:#0B0B0D; --side-2:#1B1B20; --card:#FFFFFF;
+  --violet:#F2295B; --violet-deep:#C4143F; --violet-ink:#750A26;
+  --violet-soft:#FDE8EE; --violet-tab:#F9C9D6; --violet-line:#F7D8E0;
+  --ink:#251A1E; --text:#4A3A40; --mut:#9A8790; --line:#F1E4E8;
+  --green:#149A5B; --green-soft:#E2F6EC;
+  --amber:#D98A0F; --amber-soft:#FCF0DA;
+  --red:#C21807;   --red-soft:#FBE3E0;
+  --blue:#3B6FD4;  --blue-soft:#E3ECFB;
+  --pink:#E8590C;  --pink-soft:#FBE8DC;
+  --r:14px; --shadow:0 1px 2px rgba(37,26,30,.05),0 10px 30px rgba(220,40,90,.08);
+  --disp:"Plus Jakarta Sans",system-ui,sans-serif;
+  --body:"Inter",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{font-family:var(--body);background:var(--bg);color:var(--text)}
+h1,h2,h3,h4{font-family:var(--disp);color:var(--ink);letter-spacing:-.015em}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink)}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ============ botões, campos, badges ============ */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:12px;
+  padding:9px 16px;font-size:.87rem;font-weight:600;transition:.15s}
+.btn-primary{background:var(--violet);color:#fff;box-shadow:0 6px 16px rgba(242,41,91,.35)}
+.btn-primary:hover{background:var(--violet-deep)}
+.btn-ghost{background:#fff;color:var(--violet-deep);border:1px solid var(--violet-line)}
+.btn-ghost:hover{background:var(--violet-soft)}
+.btn-soft{background:var(--violet-soft);color:var(--violet-deep)}
+.btn-soft:hover{background:var(--violet-tab)}
+.btn-block{width:100%;justify-content:center}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);
+  border-radius:10px;background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--violet);outline:none;
+  box-shadow:0 0 0 3px var(--violet-soft)}
+.field .hint{font-size:.73rem;color:var(--mut);margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:.71rem;font-weight:600;
+  padding:3.5px 10px;border-radius:99px;white-space:nowrap}
+.b-violet{background:var(--violet-soft);color:var(--violet-deep)}
+.b-green{background:var(--green-soft);color:var(--green)}
+.b-amber{background:var(--amber-soft);color:#9A6408}
+.b-red{background:var(--red-soft);color:#B03225}
+.b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-pink{background:var(--pink-soft);color:var(--pink)}
+.b-gray{background:#EDEBF4;color:#6C6584}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.up{color:var(--green);font-weight:600}.down{color:var(--red);font-weight:600}
+
+/* avatares */
+.av{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;
+  font-size:.66rem;font-weight:700;color:#fff;border:2px solid #fff;flex:none}
+.av.g0{background:linear-gradient(135deg,#F2295B,#FF7A9C)}
+.av.g1{background:linear-gradient(135deg,#FF6B2C,#FFB36B)}
+.av.g2{background:linear-gradient(135deg,#3B6FD4,#7FB0F5)}
+.av.g3{background:linear-gradient(135deg,#149A5B,#5ED49E)}
+.av.g4{background:linear-gradient(135deg,#D98A0F,#F3BF63)}
+.av-stack{display:inline-flex}.av-stack .av{margin-left:-9px}.av-stack .av:first-child{margin-left:0}
+.av-stack .more{background:#EDEBF4;color:#6C6584;font-size:.62rem}
+
+/* ============ LOGIN ============ */
+#viewLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(90deg,#000000 50%,#f2295b 100%)}
+.login-card{width:100%;max-width:410px;background:#fff;border-radius:22px;padding:36px 32px 26px;
+  box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.brand{display:flex;align-items:center;gap:11px}
+.brand-mark{width:40px;height:40px;border-radius:50%;flex:none;display:block;
+  box-shadow:0 8px 20px rgba(242,41,91,.5),0 0 0 1px rgba(255,255,255,.06)}
+.brand h1{font-size:1.28rem;font-weight:800}
+.login-sub{color:var(--mut);font-size:.86rem;margin:6px 0 24px}
+.login-lgpd{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:.72rem;color:var(--mut);display:flex;gap:8px}
+.login-lgpd svg{flex:none;margin-top:1px;color:var(--violet)}
+
+/* ============ SHELL ============ */
+#app{display:none;min-height:100vh}
+#app.on{display:grid;grid-template-columns:250px 1fr}
+.sidebar{background:var(--side);color:#C9BEC2;padding:22px 16px 16px;position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;overflow:auto}
+.sidebar .brand{margin-bottom:20px;padding:0 6px}
+.sidebar .brand h1{color:#fff;font-size:1rem}
+.side-search{display:flex;align-items:center;gap:8px;background:var(--side-2);border-radius:11px;
+  padding:8px 12px;font-size:.83rem;color:#9C8C93;margin-bottom:18px}
+.nav-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:#8A7078;padding:0 10px;margin:14px 0 7px}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:none;
+  color:#C9BEC2;padding:9.5px 12px;border-radius:11px;font-size:.88rem;margin-bottom:2px;font-weight:500}
+.nav-item svg{flex:none;opacity:.8}
+.nav-item:hover{background:var(--side-2);color:#fff}
+.nav-item.active{background:linear-gradient(90deg,var(--violet),#FF5C7A);color:#fff;font-weight:600;
+  box-shadow:0 8px 20px rgba(242,41,91,.35)}
+.nav-item[hidden]{display:none}
+.alerts{margin-top:auto}
+.alerts .nav-label{display:flex;align-items:center;gap:8px}
+.alerts .nav-label b{background:var(--violet);color:#fff;border-radius:99px;font-size:.62rem;padding:1px 7px}
+.alert-card{background:var(--side-2);border-radius:13px;padding:11px 13px;margin-bottom:8px;position:relative}
+.alert-card h4{color:#fff;font-size:.8rem;font-weight:600;margin-bottom:3px}
+.alert-card p{font-size:.72rem;color:#9C8C93;line-height:1.4}
+.alert-card::after{content:"";position:absolute;top:11px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--violet)}
+.side-foot{border-top:1px solid rgba(255,255,255,.09);margin-top:14px;padding-top:12px;display:flex;align-items:center;gap:10px}
+.side-foot .av{width:34px;height:34px;font-size:.74rem}
+.side-foot .u-name{color:#fff;font-size:.84rem;font-weight:600;line-height:1.2}
+.side-foot .u-role{font-size:.7rem;color:#9C8C93}
+.btn-logout{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.16);color:#C9BEC2;
+  border-radius:9px;padding:6px 10px;font-size:.75rem}
+.btn-logout:hover{background:var(--side-2);color:#fff}
+
+/* topbar */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:14px 30px;display:flex;
+  align-items:center;gap:18px;position:sticky;top:0;z-index:20}
+.goal{display:flex;align-items:center;gap:12px}
+.goal-icon{width:34px;height:34px;border-radius:50%;border:2px solid var(--violet-tab);display:grid;
+  place-items:center;color:var(--violet)}
+.goal b{font-family:var(--disp);font-size:.9rem;color:var(--ink)}
+.goal .mono{font-size:.8rem;color:var(--mut)}
+.goal-bar{width:150px;height:6px;background:var(--violet-soft);border-radius:99px;overflow:hidden;margin-top:4px}
+.goal-bar i{display:block;height:100%;width:71%;background:linear-gradient(90deg,var(--violet),#FF6E8C);border-radius:99px}
+.crumbs{font-size:.83rem;color:var(--mut);margin-left:10px}
+.crumbs b{color:var(--ink);font-weight:600}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+
+.content{padding:26px 30px 90px;width:100%}
+.view{display:none}
+.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:4px 0 14px;flex-wrap:wrap}
+.sec-head h2{font-size:1.06rem;font-weight:700}
+.sec-head .sub{font-size:.8rem;color:var(--mut);margin-top:2px}
+.view-title{margin-bottom:18px}
+.view-title h2{font-size:1.45rem;font-weight:800}
+.view-title .sub{color:var(--mut);font-size:.85rem;margin-top:3px}
+
+/* ============ KPI CARDS ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin-bottom:26px}
+.kpi{background:var(--card);border-radius:var(--r);padding:16px 18px 12px;box-shadow:var(--shadow)}
+.kpi-top{display:flex;align-items:center;gap:9px;font-size:.82rem;font-weight:600;color:var(--ink)}
+.chip{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;flex:none}
+.kpi .v{font-family:var(--disp);font-weight:800;font-size:1.9rem;color:var(--ink);margin:8px 0 2px}
+.kpi .v small{font-family:var(--body);font-size:.76rem;font-weight:500;color:var(--mut);margin-left:6px}
+.kpi .trend{font-size:.74rem;margin-bottom:9px}
+.kpi .foot{border-top:1px solid var(--line);padding-top:8px;font-size:.74rem;color:var(--mut)}
+
+/* ============ FOLDER CARDS (projetos) ============ */
+.folders{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:16px;margin-bottom:26px}
+.folder{position:relative;background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:8px;margin-top:12px;cursor:pointer;transition:transform .15s}
+.folder:hover{transform:translateY(-2px)}
+.folder::before{content:"";position:absolute;top:-9px;left:12px;width:58%;height:26px;
+  background:var(--violet-tab);border-radius:10px 14px 0 0;transform:skewX(-14deg);z-index:-1;opacity:.85}
+.folder .f-icon{width:36px;height:36px;border-radius:11px;background:var(--violet-soft);color:var(--violet-deep);
+  display:grid;place-items:center}
+.folder h4{font-size:.9rem;font-weight:700}
+.folder .f-sub{font-size:.75rem;color:var(--mut)}
+.folder .f-row{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.folder.dark{background:linear-gradient(150deg,#2A0E18,#0B0B0D);color:#CFC8E2}
+.folder.dark h4{color:#fff}
+.folder.dark .f-sub{color:#9C8C93}
+.folder.dark .f-icon{background:rgba(255,255,255,.1);color:#FFB3C4}
+.mini-bar{height:5px;background:var(--violet-soft);border-radius:99px;overflow:hidden;flex:1;margin-right:10px}
+.mini-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),#FF6E8C)}
+.folder.dark .mini-bar{background:rgba(255,255,255,.12)}
+
+/* ============ PANEL / TABELA ============ */
+.panel{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.panel + .panel{margin-top:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;flex-wrap:wrap}
+.tabs{display:inline-flex;background:#EFEDF7;border-radius:12px;padding:4px}
+.tab{border:none;background:none;padding:7px 14px;border-radius:9px;font-size:.82rem;font-weight:600;color:var(--mut)}
+.tab.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(36,30,51,.12)}
+.search{position:relative}
+.search input{padding:8px 12px 8px 32px;border:1px solid var(--line);border-radius:11px;width:220px;background:#fff}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);text-align:left;
+  padding:10px 16px;background:#F6F4FC;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#FAF9FE}
+tbody tr.sel{background:var(--violet-soft)}
+.cell-main{font-weight:600;color:var(--ink)}
+.cell-sub{font-size:.74rem;color:var(--mut);margin-top:1px}
+.mono{font-family:ui-monospace,monospace;font-size:.8rem}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--violet);cursor:pointer}
+.empty{padding:30px;text-align:center;color:var(--mut);font-size:.85rem}
+
+/* pii sigilo */
+.pii{display:inline-flex;align-items:center;gap:6px}
+.pii .val{font-family:ui-monospace,monospace;font-size:.79rem}
+.pii .eye{background:none;border:none;color:var(--mut);padding:2px;border-radius:6px;line-height:0}
+.pii .eye:hover{color:var(--violet);background:var(--violet-soft)}
+.pii.open .val{color:var(--violet-deep);font-weight:600}
+.lock-note{display:flex;gap:9px;background:#fff;border:1px dashed var(--violet-line);border-radius:12px;
+  padding:11px 14px;font-size:.75rem;color:var(--mut);margin-top:12px}
+.lock-note svg{flex:none;margin-top:1px;color:var(--violet)}
+
+/* barra inferior fixa (resumo) */
+.bottom-bar{position:fixed;left:250px;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);
+  padding:11px 30px;display:none;align-items:center;gap:14px;font-size:.83rem;z-index:25;
+  box-shadow:0 -8px 24px rgba(36,30,51,.06)}
+.bottom-bar.on{display:flex}
+.bottom-bar b{color:var(--ink)}
+.bottom-bar .sep{color:#CFC9E0}
+.bottom-bar .bar{width:120px;height:6px;background:var(--violet-soft);border-radius:99px;overflow:hidden}
+.bottom-bar .bar i{display:block;height:100%;background:var(--violet)}
+
+/* ============ PIPELINE (kanban) ============ */
+.pipe-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(212px,1fr));gap:14px;overflow-x:auto;
+  align-items:start;padding-bottom:8px}
+.col{background:#EFEDF7;border-radius:16px;padding:12px;min-height:120px}
+.col-head{display:flex;align-items:center;gap:8px;padding:2px 4px 10px}
+.col-head .cdot{width:9px;height:9px;border-radius:50%}
+.col-head h4{font-size:.8rem;font-weight:700}
+.col-head .count{margin-left:auto;background:#fff;border-radius:99px;font-size:.7rem;font-weight:700;
+  color:var(--mut);padding:2px 9px}
+.pcard{background:#fff;border-radius:13px;padding:12px 13px;margin-bottom:10px;box-shadow:0 2px 8px rgba(36,30,51,.07);
+  border:1px solid transparent}
+.pcard:hover{border-color:var(--violet-line)}
+.pcard-top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.pcard-top .who{min-width:0}
+.pcard-top .cod{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--mut)}
+.pcard-top .nm{font-size:.83rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .proj-tag{font-size:.72rem;color:var(--violet-deep);background:var(--violet-soft);border-radius:8px;
+  padding:3px 8px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steps{display:flex;gap:4px;margin:9px 0 8px}
+.steps i{height:4px;border-radius:99px;flex:1;background:#E7E4F1}
+.steps i.f{background:var(--violet)}
+.pcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pcard-foot .dias{font-size:.7rem;color:var(--mut)}
+.adv{border:none;background:var(--violet-soft);color:var(--violet-deep);border-radius:8px;
+  padding:5px 9px;font-size:.72rem;font-weight:700}
+.adv:hover{background:var(--violet-tab)}
+.adv.pay{background:var(--green-soft);color:var(--green)}
+.aval-link{border:none;background:none;color:var(--pink);font-size:.72rem;font-weight:700;padding:0}
+.aval-link:hover{text-decoration:underline}
+.stars{display:inline-flex;gap:2px;vertical-align:middle}
+.stars i{width:8px;height:8px;border-radius:50%;background:#E4E0EF;display:inline-block}
+.stars i.f{background:var(--amber)}
+
+/* formulários / fieldsets */
+fieldset{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+legend{font-family:var(--disp);font-weight:700;font-size:.9rem;color:var(--ink);padding:0 8px}
+legend .tag{font-family:var(--body);vertical-align:2px;margin-left:6px}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}
+.form-row .field{margin-bottom:0}
+.form-row + .form-row{margin-top:12px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.83rem;line-height:1.5}
+.check input{margin-top:3px}
+
+/* modais */
+.overlay{position:fixed;inset:0;background:rgba(23,18,33,.55);backdrop-filter:blur(2px);display:none;
+  align-items:flex-start;justify-content:center;padding:42px 16px;overflow:auto;z-index:60}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:640px;box-shadow:0 30px 80px rgba(0,0,0,.4);animation:fade .2s ease}
+.modal.slim{max-width:480px}
+.modal.wide{max-width:820px}
+
+/* ============ ASSISTENTE DE NOVO CADASTRO (WIZARD) ============ */
+.wiz-steps{display:flex;align-items:flex-start;justify-content:center;gap:0;margin-bottom:22px;flex-wrap:wrap}
+.wiz-step{display:flex;flex-direction:column;align-items:center;gap:6px;width:92px}
+.wiz-step .circ{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:.8rem;
+  background:#EFEDF7;color:var(--mut);border:2px solid #EFEDF7;transition:.15s}
+.wiz-step.done .circ{background:var(--violet);color:#fff;border-color:var(--violet)}
+.wiz-step.active .circ{background:#fff;color:var(--violet);border-color:var(--violet);box-shadow:0 0 0 4px var(--violet-soft)}
+.wiz-step .lb{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);text-align:center;line-height:1.3}
+.wiz-step.active .lb,.wiz-step.done .lb{color:var(--violet-deep)}
+.wiz-line{width:32px;height:2px;background:#EFEDF7;margin:14px 2px 0}
+.wiz-line.done{background:var(--violet)}
+.wiz-modo-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.wiz-modo-card{border:1.5px solid var(--line);border-radius:14px;padding:22px 16px;text-align:center;background:#fff;
+  cursor:pointer;transition:.12s;display:flex;flex-direction:column;align-items:center;gap:8px}
+.wiz-modo-card:hover{border-color:var(--violet-line);background:var(--violet-soft)}
+.wiz-modo-card.sel{border-color:var(--violet);background:var(--violet-soft)}
+.wiz-modo-card .ic{width:42px;height:42px;border-radius:50%;background:var(--violet-soft);color:var(--violet-deep);display:grid;place-items:center}
+.wiz-modo-card.sel .ic{background:var(--violet);color:#fff}
+.wiz-modo-card b{font-family:var(--disp);font-size:.92rem;color:var(--ink)}
+.wiz-modo-card small{font-size:.76rem;color:var(--mut);line-height:1.4}
+.wiz-import-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.wiz-card{border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:10px;background:#FAF9FE}
+.wiz-card-top{display:flex;align-items:center;gap:10px}
+.wiz-card-fields{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.wiz-del{background:none;border:none;color:var(--mut);padding:6px;border-radius:8px;flex:none}
+.wiz-del:hover{background:var(--red-soft);color:var(--red)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:1.08rem;font-weight:800}
+.modal-x{background:#F2F0F9;border:none;font-size:1.15rem;color:var(--mut);line-height:1;
+  width:30px;height:30px;border-radius:9px}
+.modal-x:hover{background:var(--violet-soft);color:var(--violet-deep)}
+.modal-body{padding:20px 24px;max-height:64vh;overflow:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--line);
+  background:#FAF9FE;border-radius:0 0 20px 20px}
+
+/* rating */
+.rating-group{display:flex;gap:6px}
+.rating-group label{flex:1;text-align:center;border:1px solid var(--line);border-radius:9px;
+  padding:7px 0;font-size:.84rem;font-weight:700;color:var(--mut);cursor:pointer;user-select:none}
+.rating-group label.sel{background:var(--violet);border-color:var(--violet);color:#fff}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:99px;font-size:.83rem;
+  display:flex;gap:9px;align-items:center;opacity:0;pointer-events:none;transition:.25s;z-index:99;
+  box-shadow:0 12px 34px rgba(0,0,0,.35)}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast svg{color:#FF6E8C}
+
+/* ============ SUBMENU ============ */
+.nav-group .chev{margin-left:auto;transition:transform .15s;opacity:.7}
+.nav-group:not(.open) .chev{transform:rotate(-90deg)}
+.nav-sub{margin:2px 0 6px 21px;padding-left:9px;border-left:1px solid rgba(255,255,255,.14);display:none}
+.nav-sub.open{display:block}
+.nav-sub .nav-item{font-size:.84rem;padding:8px 11px}
+
+/* ============ DASH PARTICIPANTES ============ */
+.filters-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 16px;min-height:30px}
+.filters-bar .lbl{font-size:.76rem;color:var(--mut);font-weight:600}
+.fchip{display:inline-flex;align-items:center;gap:7px;background:var(--violet);color:#fff;
+  border:none;border-radius:99px;padding:5px 12px;font-size:.74rem;font-weight:600}
+.fchip:hover{background:var(--violet-deep)}
+.fchip small{opacity:.75;font-weight:500}
+.fclear{background:none;border:none;color:var(--violet-deep);font-size:.76rem;font-weight:700;text-decoration:underline}
+.dp-grid{display:grid;grid-template-columns:1.08fr 1fr;gap:16px;align-items:start}
+.dp-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.chart-body{padding:14px 18px 18px}
+.chart-note{font-size:.72rem;color:var(--mut)}
+.map{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;max-width:430px;margin:4px auto 0}
+.tile{aspect-ratio:1;border-radius:8px;background:#EFEDF7;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;border:2px solid transparent;transition:transform .12s;line-height:1.15}
+.tile b{font-size:.62rem;font-weight:800}
+.tile span{font-size:.56rem;font-weight:600;opacity:.9}
+.tile:hover{transform:scale(1.07)}
+.tile.sel{border-color:var(--ink)}
+.hbar-row{display:grid;grid-template-columns:108px 1fr 62px;align-items:center;gap:10px;margin-bottom:10px;
+  cursor:pointer;border:none;background:none;width:100%;text-align:left;padding:0}
+.hbar-row .lb{font-size:.78rem;font-weight:600;color:var(--ink)}
+.hbar{height:12px;background:#EFEDF7;border-radius:99px;overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FF6E8C,var(--violet));transition:width .25s}
+.hbar-row .ct{font-size:.71rem;color:var(--mut);text-align:right;font-weight:600;white-space:nowrap}
+.hbar-row.sel .lb{color:var(--violet-deep)}
+.hbar-row.sel .hbar i{background:linear-gradient(90deg,var(--violet-deep),var(--violet))}
+.vbars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:4px}
+.vbar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px;
+  cursor:pointer;border:none;background:none;padding:0}
+.vbar .ct{font-size:.7rem;font-weight:700;color:var(--ink)}
+.vbar b{width:100%;max-width:46px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#FF6E8C,var(--violet));
+  min-height:4px;transition:height .25s}
+.vbar span{font-size:.66rem;color:var(--mut);font-weight:600;text-align:center}
+.vbar.sel b{background:linear-gradient(180deg,var(--violet-deep),var(--violet-ink))}
+.vbar.sel span{color:var(--violet-deep)}
+.stackbar{display:flex;height:16px;border-radius:99px;overflow:hidden;margin-bottom:12px;background:#EFEDF7}
+.stackbar i{display:block;height:100%;transition:width .25s}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.lg{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;
+  padding:5px 11px;font-size:.74rem;font-weight:600;color:var(--text);background:#fff;cursor:pointer}
+.lg .sw{width:9px;height:9px;border-radius:3px;flex:none}
+.lg .ct{color:var(--mut);font-weight:600}
+.lg.sel{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
+
+/* ============ RESPONSIVIDADE DE TABELAS ============ */
+.panel .tbl-wrap{overflow-x:auto}
+.panel table{min-width:640px}
+
+/* ============ TERMOS E CONTRATOS ============ */
+.termo-grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;align-items:start}
+.ver-list{display:flex;flex-direction:column;gap:9px;padding:14px}
+.ver-item{display:block;width:100%;text-align:left;background:#FAF9FE;border:1.5px solid var(--line);
+  border-radius:12px;padding:11px 13px;cursor:pointer;transition:.12s}
+.ver-item:hover{border-color:var(--violet-line)}
+.ver-item.sel{border-color:var(--violet);background:var(--violet-soft)}
+.ver-item .vh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.ver-item .vh b{font-family:var(--disp);font-size:.86rem;color:var(--ink)}
+.ver-item .vm{font-size:.72rem;color:var(--mut)}
+.loglist{padding:6px 16px 14px}
+.logline{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.76rem}
+.logline:last-child{border-bottom:none}
+.logline .lq{font-family:ui-monospace,monospace;font-size:.68rem;color:var(--mut);white-space:nowrap;padding-top:2px}
+.logline b{color:var(--ink)}
+.doc-meta{display:flex;flex-wrap:wrap;gap:16px;font-size:.78rem;color:var(--mut);margin-bottom:12px}
+.doc-meta b{color:var(--ink);font-weight:600}
+.doc-text{white-space:pre-wrap;font-size:.84rem;line-height:1.7;background:#FAF9FE;border:1px solid var(--line);
+  border-radius:12px;padding:18px 20px;max-height:430px;overflow:auto;color:var(--text)}
+.imutavel{display:flex;gap:9px;align-items:flex-start;background:var(--violet-soft);border-radius:11px;
+  padding:10px 13px;font-size:.74rem;color:var(--violet-ink);margin-top:12px}
+.imutavel svg{flex:none;margin-top:1px}
+
+/* ============ PÁGINA PÚBLICA DE CADASTRO ============ */
+#viewPublico{position:fixed;inset:0;z-index:40;overflow:auto;display:none;
+  background:linear-gradient(90deg,#000000 50%,#f2295b 100%)}
+#viewPublico.on{display:block}
+.pub-url{position:sticky;top:0;z-index:5;background:rgba(23,18,33,.92);backdrop-filter:blur(6px);
+  color:#C9BEC2;font-size:.76rem;padding:9px 18px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.1)}
+.pub-url .mono{color:#FFB3C4}
+.pub-url .badge{margin-left:auto}
+.pub-shell{max-width:760px;margin:0 auto;padding:34px 18px 60px}
+.pub-hero{color:#fff;margin-bottom:20px}
+.pub-hero .brand{margin-bottom:14px}
+.pub-hero h1{color:#fff;font-size:1.6rem;font-weight:800}
+.pub-hero p{color:#C9BEC2;font-size:.88rem;margin-top:5px}
+.pub-proj{background:linear-gradient(150deg,#2A0E18,#160A0F);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:16px 18px;margin-bottom:18px;color:#CFC8E2}
+.pub-proj h3{color:#fff;font-size:1.02rem;margin-bottom:4px}
+.pub-proj .pm{font-size:.78rem;color:#9C8C93}
+.pub-proj .perfil{margin-top:10px;background:rgba(242,41,91,.16);border-radius:10px;padding:9px 12px;
+  font-size:.78rem;color:#F9C9D6}
+.pub-proj .inc{font-family:var(--disp);font-weight:800;color:#fff;font-size:1.05rem}
+.pub-card{background:#fff;border-radius:18px;padding:24px 24px 20px;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.rec-chip{display:inline-flex;align-items:center;gap:8px;background:var(--violet-soft);color:var(--violet-ink);
+  border-radius:99px;padding:6px 13px;font-size:.77rem;font-weight:600;margin-bottom:16px}
+.rec-chip .mono{font-weight:700}
+.ferr{display:none;font-size:.72rem;color:var(--red);font-weight:600;margin-top:4px}
+.field.invalid input,.field.invalid select{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+.field.invalid .ferr{display:block}
+.pub-consent{max-height:180px;overflow:auto;margin-top:10px}
+.pub-ok{text-align:center;padding:26px 10px 14px}
+.pub-ok .ok-ic{width:60px;height:60px;border-radius:50%;background:var(--green-soft);color:var(--green);
+  display:grid;place-items:center;margin:0 auto 16px}
+.pub-ok h3{font-size:1.25rem;margin-bottom:8px}
+.pub-ok .cod{font-family:ui-monospace,monospace;font-weight:700;font-size:1.05rem;color:var(--violet-deep);
+  background:var(--violet-soft);border-radius:10px;padding:8px 16px;display:inline-block;margin:10px 0 14px}
+.pub-ok p{font-size:.85rem;color:var(--mut);max-width:420px;margin:0 auto 6px}
+.link-box{display:flex;gap:8px;align-items:center}
+.link-box input{flex:1;font-family:ui-monospace,monospace;font-size:.78rem;background:#FAF9FE}
+
+/* ============ DETALHE DO PARTICIPANTE / TRIAGEM ============ */
+.det-head{display:flex;align-items:center;gap:13px;margin-bottom:16px}
+.det-head .av{width:46px;height:46px;font-size:.95rem}
+.det-head h4{font-family:var(--disp);font-size:1.05rem;color:var(--ink)}
+.det-head .mono{font-size:.76rem;color:var(--mut)}
+.det-sec{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:12px}
+.det-sec h5{font-family:var(--disp);font-size:.8rem;color:var(--ink);margin-bottom:9px;
+  text-transform:uppercase;letter-spacing:.05em}
+.det-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:.82rem;flex-wrap:wrap}
+.det-row .k{color:var(--mut)}
+.det-row .v{font-weight:600;color:var(--ink);text-align:right}
+.det-part{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 0;border-bottom:1px solid var(--line);font-size:.8rem;flex-wrap:wrap}
+.det-part:last-child{border-bottom:none}
+.tri-actions{display:flex;flex-direction:column;gap:9px}
+.tri-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border-radius:12px;
+  padding:12px 14px;border:1.5px solid var(--line);background:#fff;cursor:pointer;transition:.12s}
+.tri-btn:hover{border-color:var(--violet);background:var(--violet-soft)}
+.tri-btn .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
+.tri-btn b{display:block;font-family:var(--disp);font-size:.86rem;color:var(--ink)}
+.tri-btn small{font-size:.73rem;color:var(--mut);line-height:1.35;display:block;margin-top:1px}
+.tri-btn.ok .ic{background:var(--green-soft);color:var(--green)}
+.tri-btn.mid .ic{background:var(--blue-soft);color:var(--blue)}
+.tri-btn.bad:hover{border-color:var(--red);background:var(--red-soft)}
+.tri-btn.bad .ic{background:var(--red-soft);color:var(--red)}
+.tri-btn[disabled]{opacity:.45;cursor:not-allowed}
+.tri-btn[disabled]:hover{border-color:var(--line);background:#fff}
+tr.descartado td{opacity:.55}
+
+/* ============ ROSCA (capitais) e SEGMENTOS ============ */
+.donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+.donut{width:180px;height:180px;border-radius:50%;position:relative;flex:none}
+.donut::after{content:attr(data-center);position:absolute;inset:26%;background:var(--card);border-radius:50%;
+  display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:1.05rem;color:var(--ink);
+  text-align:center;white-space:pre-line;line-height:1.25}
+.donut.pie::after{display:none}
+.donut-legend{display:flex;flex-direction:column;gap:7px;min-width:180px}
+.seg-tabs{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:18px}
+.seg-tab{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;
+  border-radius:12px;padding:9px 15px;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer;transition:.12s}
+.seg-tab .sw{width:10px;height:10px;border-radius:4px;flex:none}
+.seg-tab .ct{font-weight:600;color:var(--mut);font-size:.75rem}
+.seg-tab:hover{border-color:var(--violet-line);background:var(--violet-soft)}
+.seg-tab.sel{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-ink)}
+
+@media (max-width:1180px){ .termo-grid{grid-template-columns:1fr} }
+@media (max-width:960px){
+  .dp-grid{grid-template-columns:1fr}
+  #app.on{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .alerts{display:none}
+  .bottom-bar{left:0}
+  .board{grid-template-columns:repeat(5,240px)}
+  .content{padding:18px 16px 90px}
+  .topbar{padding:12px 16px;flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<section id="viewLogin">
+  <div class="login-card">
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="vx1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb15c"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="vx2" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a3d"/><stop offset="1" stop-color="#f2295b"/></linearGradient><linearGradient id="vx3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f2295b"/><stop offset="1" stop-color="#9b1030"/></linearGradient></defs><circle cx="24" cy="24" r="23" fill="#121216"/><g transform="rotate(-18 24 24)"><path d="M24 5.5 A18.5 18.5 0 0 1 42.5 24" fill="none" stroke="url(#vx1)" stroke-width="5.6" stroke-linecap="round"/><path d="M24 10 A14 14 0 0 1 38 24" fill="none" stroke="url(#vx2)" stroke-width="5" stroke-linecap="round" transform="rotate(115 24 24)"/><path d="M24 14.5 A9.5 9.5 0 0 1 33.5 24" fill="none" stroke="url(#vx2)" stroke-width="4.4" stroke-linecap="round" transform="rotate(230 24 24)"/><path d="M24 18.5 A5.5 5.5 0 0 1 29.5 24" fill="none" stroke="url(#vx3)" stroke-width="3.8" stroke-linecap="round" transform="rotate(345 24 24)"/><circle cx="24" cy="24" r="2.6" fill="#f2295b"/></g></svg><h1>Qualy Vortice</h1></div>
+    <p class="login-sub">Captação e gestão de participantes de pesquisa</p>
+    <div class="field"><label for="lEmail">E-mail corporativo</label>
+      <input id="lEmail" type="email" value="andrea.lopes@qualyvortice.com.br" autocomplete="username"></div>
+    <div class="field"><label for="lSenha">Senha</label>
+      <input id="lSenha" type="password" value="••••••••••" autocomplete="current-password"></div>
+    <div class="field"><label for="lPapel">Entrar como (demonstração de níveis de acesso)</label>
+      <select id="lPapel">
+        <option value="ADMIN">Administradora — acesso total</option>
+        <option value="RECRUTADOR">Recrutador — sem usuários e sem pagamento</option>
+        <option value="AVALIADOR">Avaliadora — pipeline e avaliações</option>
+      </select>
+      <p class="hint">O papel escolhido controla menus, botões e dados visíveis.</p></div>
+    <button class="btn btn-primary btn-block" onclick="login()">Entrar no painel</button>
+    <div class="login-lgpd">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <span>Sistema em conformidade com a LGPD (Lei 13.709/2018). Acessos a dados identificadores são registrados em trilha de auditoria.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="vx1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb15c"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="vx2" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a3d"/><stop offset="1" stop-color="#f2295b"/></linearGradient><linearGradient id="vx3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f2295b"/><stop offset="1" stop-color="#9b1030"/></linearGradient></defs><circle cx="24" cy="24" r="23" fill="#121216"/><g transform="rotate(-18 24 24)"><path d="M24 5.5 A18.5 18.5 0 0 1 42.5 24" fill="none" stroke="url(#vx1)" stroke-width="5.6" stroke-linecap="round"/><path d="M24 10 A14 14 0 0 1 38 24" fill="none" stroke="url(#vx2)" stroke-width="5" stroke-linecap="round" transform="rotate(115 24 24)"/><path d="M24 14.5 A9.5 9.5 0 0 1 33.5 24" fill="none" stroke="url(#vx2)" stroke-width="4.4" stroke-linecap="round" transform="rotate(230 24 24)"/><path d="M24 18.5 A5.5 5.5 0 0 1 29.5 24" fill="none" stroke="url(#vx3)" stroke-width="3.8" stroke-linecap="round" transform="rotate(345 24 24)"/><circle cx="24" cy="24" r="2.6" fill="#f2295b"/></g></svg><h1>Qualy Vortice</h1></div>
+    <div class="side-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      Buscar
+    </div>
+    <p class="nav-label">Operação</p>
+    <button class="nav-item nav-group open" id="grpDash" onclick="toggleGrp('grpDash','subDash')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+      Dashboards
+      <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="nav-sub open" id="subDash">
+      <button class="nav-item active" data-nav="dashpart" onclick="go('dashpart')">Visão participantes</button>
+      <button class="nav-item" data-nav="dashseg" onclick="go('dashseg')">Visão por segmento</button>
+    </div>
+    <button class="nav-item nav-group" id="grpPessoas" onclick="toggleGrp('grpPessoas','subPessoas')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M15.5 14.6c2.8.2 5 1.6 5.7 4.4"/></svg>
+      Banco de Pessoas
+      <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="nav-sub" id="subPessoas">
+      <button class="nav-item" data-nav="participantes" onclick="go('participantes')">Pessoas</button>
+      <button class="nav-item" data-nav="projetos" onclick="go('projetos')">Projetos</button>
+      <button class="nav-item" data-nav="participacoes" onclick="go('participacoes')">Participações</button>
+      <button class="nav-item nav-action" data-nav="participantes" onclick="go('participantes');abrirWizard()">Novos participantes</button>
+    </div>
+    <p class="nav-label" id="navAdminLabel">Administração</p>
+    <button class="nav-item" data-nav="usuarios" onclick="go('usuarios')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.9-3.6 3.7-5.4 7-5.4s6.1 1.8 7 5.4"/></svg>
+      Usuários</button>
+    <button class="nav-item" data-nav="termos" onclick="go('termos')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+      Termos e Contratos</button>
+    <button class="nav-item" data-nav="auditoria" onclick="go('auditoria')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 4.5 3.2 7.6 8 9 4.8-1.4 8-4.5 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+      Auditoria LGPD</button>
+
+    <div class="alerts">
+      <p class="nav-label">Alertas <b id="alertCount">2</b></p>
+      <div class="alert-card"><h4>Hábitos Bancários Digitais</h4><p>Faltam 7 vagas e o campo começa em 12 dias.</p></div>
+      <div class="alert-card"><h4>Consentimentos</h4><p>3 termos precisam de renovação para a v2026.1.</p></div>
+    </div>
+    <div class="side-foot">
+      <span class="av g0" id="uAvatar">AD</span>
+      <div><div class="u-name" id="uName">—</div><div class="u-role" id="uRole">—</div></div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="goal">
+        <div class="goal-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        <div>
+          <b>Recrutamento do mês</b> <span class="mono">34 / 48</span>
+          <div class="goal-bar"><i></i></div>
+        </div>
+      </div>
+      <div class="crumbs" id="crumbs">Painel / <b>Visão participantes</b></div>
+      <div class="top-right">
+        <button class="btn btn-primary" style="padding:8px 14px" onclick="abrirModal('mAssociar')">＋ Associar a projeto</button>
+        <span class="av g1" id="topAvatar">AD</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+    <!-- ========== DASHBOARD (retirado da navegação — código preservado) ========== -->
+    <section class="view" id="view-dashboard">
+      <div class="sec-head"><h2>Resumo da operação</h2><span class="badge b-gray">julho de 2026</span></div>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--violet-soft);color:var(--violet-deep)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg></span>
+            Participantes ativos</div>
+          <div class="v" id="kPart">143<small>na base</small></div>
+          <div class="trend"><span class="up">▲ +12</span> vs mês anterior</div>
+          <div class="foot">9 novos com consentimento v2026.1</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--blue-soft);color:var(--blue)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
+            No pipeline</div>
+          <div class="v" id="kPipe">—<small>em captação</small></div>
+          <div class="trend"><span class="up">▲ +5</span> entradas na semana</div>
+          <div class="foot" id="kPipeFoot">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--pink-soft);color:var(--pink)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></span>
+            Entrevistas na semana</div>
+          <div class="v">9<small>agendadas</small></div>
+          <div class="trend"><span class="up">▲ +2</span> vs semana anterior</div>
+          <div class="foot">Comparecimento médio de 91%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--amber-soft);color:var(--amber)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+            Pendências LGPD</div>
+          <div class="v">3<small>a resolver</small></div>
+          <div class="trend"><span class="down">▼ -1</span> vs mês anterior</div>
+          <div class="foot">1 anonimização agendada</div>
+        </div>
+      </div>
+
+      <div class="sec-head"><h2>Projetos em andamento</h2>
+        <button class="btn btn-ghost" style="padding:7px 13px" onclick="go('projetos')">Ver todos ›</button></div>
+      <div class="folders" id="dashFolders"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="tabs">
+            <button class="tab on" onclick="tabMov(this,'todos')">Movimentações</button>
+            <button class="tab" onclick="tabMov(this,'Entrevista')">Entrevistas</button>
+            <button class="tab" onclick="tabMov(this,'Pago')">Pagos</button>
+          </div>
+          <div class="search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="Buscar no pipeline…" oninput="renderMov(movTab,this.value)">
+          </div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:34px"></th><th>Participante</th><th>Projeto</th><th>Etapa</th><th>Na etapa desde</th><th>Responsável</th></tr></thead>
+          <tbody id="tbMov"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ========== DASH: VISÃO PARTICIPANTES ========== -->
+    <section class="view on" id="view-dashpart">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Visão participantes</h2>
+        <p class="sub">Base analítica de 1.000 participantes — clique em qualquer estado, barra ou legenda para filtrar</p></div>
+        <button class="btn btn-ghost" onclick="limparFiltros()">Limpar filtros</button>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--violet-soft);color:var(--violet-deep)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg></span>
+            Amostra total do banco</div>
+          <div class="v" id="dpTotal">—</div>
+          <div class="foot" id="dpTotalFoot">de 1.000 na base</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><span class="chip" style="background:var(--blue-soft);color:var(--blue)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+            Nas 5 principais capitais</div>
+          <div class="v" id="dpCaps">—</div>
+          <div class="foot" id="dpCapsFoot">RJ · SP · Brasília · Fortaleza · Salvador</div>
+        </div>
+      </div>
+      <div class="filters-bar" id="fchips"></div>
+      <div class="dp-grid">
+        <div class="dp-col">
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Participantes por estado</h3>
+              <span class="chart-note">intensidade = quantidade</span></div>
+            <div class="chart-body"><div class="map" id="mapBR"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">5 principais capitais</h3>
+              <span class="chart-note">clique para filtrar</span></div>
+            <div class="chart-body"><div class="donut-wrap" id="chCaps"></div></div>
+          </div>
+        </div>
+        <div class="dp-col">
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Gênero</h3></div>
+            <div class="chart-body" id="chGen"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Classe social</h3></div>
+            <div class="chart-body"><div class="vbars" id="chCls"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Faixa etária</h3></div>
+            <div class="chart-body"><div class="vbars" id="chFx"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Sobreposição entre segmentos</h3>
+          <span class="chart-note">selecione de 2 a 3 segmentos para ver quem participa em mais de um</span></div>
+        <div class="chart-body">
+          <div class="seg-tabs" id="vennPills"></div>
+          <div id="vennBox"></div>
+          <p class="hint" id="vennFoot" style="text-align:center;margin-top:12px"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== DASH: VISÃO POR SEGMENTO ========== -->
+    <section class="view" id="view-dashseg">
+      <div class="view-title"><h2>Visão por segmento</h2>
+        <p class="sub">Histórico da base por segmento de pesquisa — selecione um segmento para detalhar</p></div>
+      <div class="seg-tabs" id="segTabs"></div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-top"><span class="chip" style="background:var(--violet-soft);color:var(--violet-deep)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg></span>
+          Participantes no segmento</div>
+          <div class="v" id="sgTotal">—</div><div class="foot" id="sgPct">—</div></div>
+        <div class="kpi"><div class="kpi-top"><span class="chip" style="background:var(--blue-soft);color:var(--blue)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+          Capital líder</div>
+          <div class="v" id="sgCap" style="font-size:1.3rem">—</div><div class="foot" id="sgCapFoot">—</div></div>
+        <div class="kpi"><div class="kpi-top"><span class="chip" style="background:var(--pink-soft);color:var(--pink)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.2-6 8-6s7 2 8 6"/></svg></span>
+          Gênero predominante</div>
+          <div class="v" id="sgGen" style="font-size:1.3rem">—</div><div class="foot" id="sgGenFoot">—</div></div>
+        <div class="kpi"><div class="kpi-top"><span class="chip" style="background:var(--amber-soft);color:var(--amber)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3M20 16V6"/></svg></span>
+          Classe predominante</div>
+          <div class="v" id="sgCls" style="font-size:1.3rem">—</div><div class="foot" id="sgClsFoot">—</div></div>
+      </div>
+      <div class="dp-grid">
+        <div class="dp-col">
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Comparativo entre segmentos</h3>
+              <span class="chart-note">clique para trocar o segmento</span></div>
+            <div class="chart-body"><div class="vbars" id="sgComp" style="height:170px"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Top estados do segmento</h3></div>
+            <div class="chart-body" id="sgUfs"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Profissão</h3></div>
+            <div class="chart-body"><div class="donut-wrap" id="sgProf"></div></div>
+          </div>
+        </div>
+        <div class="dp-col">
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Gênero</h3></div>
+            <div class="chart-body" id="sgGenCh"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Classe social</h3></div>
+            <div class="chart-body"><div class="vbars" id="sgClsCh"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Faixa etária</h3></div>
+            <div class="chart-body"><div class="vbars" id="sgFxCh"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PIPELINE (retirado da navegação — código preservado) ========== -->
+    <section class="view" id="view-pipeline">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Pipeline de captação</h2>
+        <p class="sub">Acompanhe cada participante da análise de perfil até o pagamento</p></div>
+        <button class="btn btn-primary" onclick="abrirModal('mAssociar')">＋ Associar participante a projeto</button>
+      </div>
+      <div class="pipe-filters">
+        <div class="field" style="margin:0"><select id="fltProj" onchange="renderBoard()" style="min-width:230px"></select></div>
+        <span class="badge b-violet" id="pipeTotal"></span>
+      </div>
+      <div class="board" id="board"></div>
+    </section>
+
+    <!-- ========== PARTICIPAÇÕES ========== -->
+    <section class="view" id="view-participacoes">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Participações</h2>
+        <p class="sub">Histórico de participantes por projeto, com etapa atual e avaliação do avaliador</p></div>
+        <button class="btn btn-primary" onclick="abrirModal('mAssociar')">＋ Associar participante a projeto</button>
+      </div>
+      <div class="pipe-filters">
+        <div class="field" style="margin:0"><select id="fltPPProj" onchange="renderParticipacoesTab()" style="min-width:220px"></select></div>
+        <div class="field" style="margin:0">
+          <select id="fltPPEtapa" onchange="renderParticipacoesTab()">
+            <option value="todas">Todas as etapas</option>
+            <option>Análise de Perfil</option><option>Preenchimento de Dados</option>
+            <option>Captação de Material</option><option>Entrevista</option><option>Pago</option>
+          </select></div>
+        <div class="field" style="margin:0">
+          <select id="fltPPNota" onchange="renderParticipacoesTab()">
+            <option value="todas">Todas as notas</option>
+            <option value="5">★ 5 — excelentes</option>
+            <option value="4+">★ 4 ou mais</option>
+            <option value="3-">★ 3 ou menos</option>
+            <option value="sem">Sem avaliação</option>
+          </select></div>
+        <span class="badge b-violet" id="ppTotal"></span>
+        <button class="fclear" id="ppLimpar" onclick="limparFiltrosPP()" style="display:none">limpar filtros</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Participante</th><th>Projeto</th><th>Perfil</th><th>Status</th><th>Comunicação</th><th>Pontualidade</th><th>Repertório</th><th>Geral</th><th></th></tr></thead>
+          <tbody id="tbParticipacoes"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ========== PARTICIPANTES ========== -->
+    <section class="view" id="view-participantes">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Banco de Pessoas</h2><p class="sub">Base de titulares — identificadores sob sigilo por padrão</p></div>
+        <div style="display:flex;gap:10px">
+          <div class="search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="Buscar por nome, CPF, e-mail ou telefone…" oninput="renderParticipantes(this.value)" style="width:280px">
+          </div>
+          <button class="btn btn-primary" onclick="abrirWizard()">＋ Novo participante</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:34px"></th><th>Código</th><th>Nome</th><th>CPF</th><th>Contato</th><th>Idade</th><th>Classe social</th><th>Situação</th><th>Data da última participação</th><th>Consentimento</th><th></th></tr></thead>
+          <tbody id="tbParticipantes"></tbody>
+        </table></div>
+      </div>
+      <div class="lock-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span><strong>Sigilo por padrão:</strong> revelar um dado exige a permissão <em>ver_dados_sensiveis</em> e gera registro na Auditoria LGPD. Dados de pagamento ficam restritos ao papel Financeiro.</span>
+      </div>
+    </section>
+
+    <!-- ========== PROJETOS ========== -->
+    <section class="view" id="view-projetos">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Projetos</h2><p class="sub">Pesquisas em recrutamento e em campo</p></div>
+        <button class="btn btn-primary" id="btnNovoProjeto" onclick="go('projetoForm')">＋ Novo projeto</button>
+      </div>
+      <div class="folders" id="gridProjetos" style="grid-template-columns:repeat(auto-fill,minmax(255px,1fr))"></div>
+    </section>
+
+    <!-- ========== PROJETO: FORM ========== -->
+    <section class="view" id="view-projetoForm">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Novo projeto</h2><p class="sub">Defina a pesquisa e o perfil de participantes desejado</p></div>
+        <button class="btn btn-ghost" onclick="go('projetos')">‹ Voltar</button>
+      </div>
+      <div class="panel"><div style="padding:20px 22px">
+        <fieldset><legend>Dados da pesquisa</legend>
+          <div class="form-row">
+            <div class="field"><label>Nome do projeto</label><input id="pjNome" placeholder="Ex.: Hábitos Bancários Digitais"></div>
+            <div class="field"><label>Cliente</label><input id="pjCliente" placeholder="Ex.: Banco Horizonte"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Metodologia</label>
+              <select id="pjMetodo"><option>Entrevista em profundidade</option><option>Grupo focal</option><option>Teste de produto</option><option>Diário de uso</option><option>Pesquisa domiciliar</option></select></div>
+            <div class="field"><label>Início do campo</label><input id="pjInicio" type="date" value="2026-08-03"></div>
+            <div class="field"><label>Fim do campo</label><input id="pjFim" type="date" value="2026-08-21"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Incentivo por participante (R$)</label><input id="pjIncentivo" type="number" placeholder="180,00"></div>
+            <div class="field"><label>Vagas</label><input id="pjVagas" type="number" placeholder="24"></div>
+          </div>
+          <div class="form-row"><div class="field"><label>Descrição / briefing</label>
+            <textarea id="pjDesc" rows="3" placeholder="Objetivo da pesquisa, formato das sessões, local…"></textarea></div></div>
+        </fieldset>
+        <fieldset><legend>Perfil desejado <span class="badge b-blue tag">segmentação</span></legend>
+          <div class="form-row">
+            <div class="field"><label>Idade mínima</label><input id="pfIdadeMin" type="number" placeholder="25"></div>
+            <div class="field"><label>Idade máxima</label><input id="pfIdadeMax" type="number" placeholder="45"></div>
+            <div class="field"><label>Gênero</label>
+              <select id="pfGenero"><option>Indiferente</option><option>Feminino</option><option>Masculino</option><option>Cotas equilibradas</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Regiões / UF</label><input id="pfRegiao" placeholder="Ex.: RJ — Niterói e São Gonçalo"></div>
+            <div class="field"><label>Faixa de renda</label>
+              <select id="pfRenda"><option>Indiferente</option><option>Classes A/B</option><option>Classe C</option><option>Classes D/E</option></select></div>
+          </div>
+          <div class="form-row"><div class="field"><label>Critérios livres</label>
+            <textarea id="pfLivre" rows="2" placeholder="Ex.: usa app de banco digital há 6+ meses; sem pesquisa nos últimos 90 dias."></textarea>
+            <p class="hint">Gravado como JSON no projeto — futura entrada do modelo de recomendação.</p></div></div>
+        </fieldset>
+        <div style="display:flex;justify-content:flex-end;gap:10px">
+          <button class="btn btn-ghost" onclick="go('projetos')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarProjeto()">Salvar projeto</button>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ========== PROJETO: RESUMO (Acessar) ========== -->
+    <section class="view" id="view-projetoDetalhe">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2 id="pdNome">—</h2><p class="sub" id="pdSub">—</p></div>
+        <button class="btn btn-ghost" onclick="go('projetos')">‹ Voltar</button>
+      </div>
+      <div class="sec-head"><h2>Resumo do projeto</h2><span class="badge b-gray" id="pdMes">julho de 2026</span></div>
+      <div class="kpis" id="pdKpis"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Participantes do projeto</h3></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Participante</th><th>Perfil</th><th>Situação</th><th>Consentimento</th><th>Recrutador</th></tr></thead>
+          <tbody id="tbProjParts"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ========== USUÁRIOS ========== -->
+    <section class="view" id="view-usuarios">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Usuários do sistema</h2><p class="sub">Contas internas e níveis de permissão (RBAC)</p></div>
+        <button class="btn btn-primary" onclick="abrirModal('mUsuario')">＋ Novo usuário</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Acessos-chave</th><th>Status</th></tr></thead>
+          <tbody id="tbUsuarios"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ========== TERMOS E CONTRATOS (lista) ========== -->
+    <section class="view" id="view-termos">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2>Termos e Contratos</h2>
+        <p class="sub">Documentos aceitos pelos participantes ao entrar em um projeto — versionamento imutável</p></div>
+        <button class="btn btn-primary" onclick="abrirModal('mNovoTermo')">＋ Novo termo ou contrato</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Documento</th><th>Tipo</th><th>Versão vigente</th><th>Vigência</th><th>Aceites</th><th>Última alteração</th><th></th></tr></thead>
+          <tbody id="tbTermos"></tbody>
+        </table></div>
+      </div>
+      <div class="imutavel" style="max-width:820px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span><strong>Versões são imutáveis:</strong> editar um documento sempre gera uma nova versão. As versões anteriores permanecem arquivadas com o texto exato que foi aceito, preservando a validade jurídica dos aceites já registrados (LGPD, art. 8º §2º — prova do consentimento).</span>
+      </div>
+    </section>
+
+    <!-- ========== TERMO: DETALHE / HISTÓRICO ========== -->
+    <section class="view" id="view-termoDetail">
+      <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div><h2 id="tdNome">—</h2><p class="sub" id="tdSub">—</p></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="go('termos')">‹ Voltar</button>
+          <button class="btn btn-primary" id="btnNovaVersao" onclick="novaVersaoUI()">＋ Criar nova versão</button>
+        </div>
+      </div>
+      <div class="termo-grid">
+        <div class="dp-col">
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Histórico de versões</h3>
+              <span class="badge b-gray" id="tdVerCount">—</span></div>
+            <div class="ver-list" id="tdVersoes"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 style="font-size:.95rem">Log de alterações</h3></div>
+            <div class="loglist" id="tdLogs"></div>
+          </div>
+        </div>
+        <div class="dp-col">
+          <!-- modo leitura -->
+          <div class="panel" id="tdLeitura">
+            <div class="panel-head"><h3 style="font-size:.95rem" id="tdVerTitulo">—</h3>
+              <span id="tdVerStatus"></span></div>
+            <div class="chart-body">
+              <div class="doc-meta" id="tdMeta"></div>
+              <div class="doc-text" id="tdTexto"></div>
+              <div class="imutavel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                <span>Esta versão é imutável. Para alterar o texto ou a vigência, crie uma nova versão — o registro desta permanece intacto junto aos aceites já coletados.</span>
+              </div>
+            </div>
+          </div>
+          <!-- modo edição (nova versão) -->
+          <div class="panel" id="tdEditor" style="display:none">
+            <div class="panel-head"><h3 style="font-size:.95rem" id="tdEditorTitulo">Nova versão</h3>
+              <span class="badge b-amber">rascunho</span></div>
+            <div class="chart-body">
+              <div class="form-row">
+                <div class="field"><label>Início da vigência</label><input id="nvInicio" type="date"></div>
+                <div class="field"><label>Fim da vigência</label><input id="nvFim" type="date"></div>
+              </div>
+              <div class="field" style="margin-top:12px"><label>Texto do documento</label>
+                <textarea id="nvTexto" rows="14" style="font-size:.84rem;line-height:1.65"></textarea>
+                <p class="hint">Ao publicar, a versão vigente atual será marcada como substituída e um registro será gravado no log com autor, data e hora.</p></div>
+              <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px">
+                <button class="btn btn-ghost" onclick="cancelarNovaVersao()">Cancelar</button>
+                <button class="btn btn-primary" onclick="publicarNovaVersao()">Publicar nova versão</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== AUDITORIA ========== -->
+    <section class="view" id="view-auditoria">
+      <div class="view-title"><h2>Auditoria LGPD</h2>
+        <p class="sub">Trilha de acessos a dados pessoais — quem viu o quê, e quando</p></div>
+      <div class="panel">
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Quando</th><th>Usuário</th><th>Titular</th><th>Ação</th><th>Detalhe</th></tr></thead>
+          <tbody id="tbAuditoria"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    </div><!-- /content -->
+
+    <div class="bottom-bar" id="bottomBar"></div>
+  </div>
+</div>
+
+<!-- ================= MODAL: ASSOCIAR PARTICIPANTE A PROJETO ================= -->
+<div class="overlay" id="mAssociar">
+  <div class="modal slim">
+    <div class="modal-head"><h3>Associar participante a projeto</h3><button class="modal-x" onclick="fecharModal('mAssociar')">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Participante</label><select id="asPart"></select>
+        <p class="hint">Apenas participantes com consentimento vigente aparecem aqui.</p></div>
+      <div class="field"><label>Projeto</label><select id="asProj"></select></div>
+      <div class="field"><label>Etapa inicial</label>
+        <select id="asEtapa">
+          <option selected>Análise de Perfil</option><option>Preenchimento de Dados</option>
+          <option>Captação de Material</option><option>Entrevista</option><option>Pago</option>
+        </select></div>
+      <div class="field"><label>Observação (opcional)</label>
+        <textarea id="asObs" rows="2" placeholder="Ex.: indicada pela cota de Niterói; priorizar contato por WhatsApp."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mAssociar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="associar()">Adicionar ao pipeline</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: PARTICIPANTE ================= -->
+<div class="overlay" id="mParticipante">
+  <div class="modal">
+    <div class="modal-head"><h3>Novo participante</h3><button class="modal-x" onclick="fecharModal('mParticipante')">×</button></div>
+    <div class="modal-body">
+      <fieldset><legend>Dados pessoais <span class="badge b-green tag">criptografado em repouso</span></legend>
+        <div class="form-row">
+          <div class="field"><label>Nome completo</label><input id="npNome"></div>
+          <div class="field"><label>CPF</label><input id="npCpf" placeholder="000.000.000-00"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Data de nascimento</label><input id="npNasc" type="date"></div>
+          <div class="field"><label>Gênero</label>
+            <select id="npGenero"><option>Feminino</option><option>Masculino</option><option>Outro</option><option>Prefere não informar</option></select></div>
+        </div>
+      </fieldset>
+      <fieldset><legend>Contato e endereço</legend>
+        <div class="form-row">
+          <div class="field"><label>E-mail</label><input id="npEmail" type="email"></div>
+          <div class="field"><label>Telefone / WhatsApp</label><input id="npFone" placeholder="(21) 90000-0000"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Cidade</label><input id="npCidade" value="Niterói"></div>
+          <div class="field"><label>UF</label><input id="npUf" value="RJ" maxlength="2"></div>
+          <div class="field"><label>CEP</label><input id="npCep" placeholder="24000-000"></div>
+        </div>
+      </fieldset>
+      <fieldset><legend>Perfil para segmentação</legend>
+        <div class="form-row">
+          <div class="field"><label>Escolaridade</label>
+            <select id="npEsc"><option>Fundamental</option><option>Médio</option><option selected>Superior</option><option>Pós-graduação</option></select></div>
+          <div class="field"><label>Profissão</label><input id="npProf"></div>
+          <div class="field"><label>Faixa de renda</label>
+            <select id="npRenda"><option>Classes A/B</option><option selected>Classe C</option><option>Classes D/E</option></select></div>
+        </div>
+      </fieldset>
+      <fieldset id="fsPagamento"><legend>Pagamento do incentivo <span class="badge b-amber tag">restrito — Financeiro</span></legend>
+        <div class="form-row">
+          <div class="field"><label>Forma</label><select id="npPagTipo"><option>PIX</option><option>Transferência</option></select></div>
+          <div class="field"><label>Chave PIX</label><input id="npPix" placeholder="CPF, e-mail ou celular"></div>
+        </div>
+      </fieldset>
+      <fieldset><legend>Consentimento LGPD <span class="badge b-green tag">obrigatório</span></legend>
+        <label class="check"><input type="checkbox" id="npConsent">
+          <span>O participante leu e aceitou o <strong>Termo de Consentimento v2026.1</strong> para tratamento de dados pessoais com finalidade de recrutamento para pesquisas, contato e pagamento de incentivo. O aceite será registrado com data, canal e IP.</span></label>
+      </fieldset>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mParticipante')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarParticipante()">Salvar participante</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: ASSISTENTE DE NOVO CADASTRO (WIZARD) ================= -->
+<div class="overlay" id="mWizard">
+  <div class="modal wide">
+    <div class="modal-head">
+      <div><h3>Novo cadastro de participantes</h3>
+        <p class="hint" style="margin-top:2px">Adicione um ou vários participantes ao banco de dados.</p></div>
+      <button class="modal-x" onclick="fecharWizard()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="wiz-steps" id="wizSteps"></div>
+      <div id="wizBody"></div>
+    </div>
+    <div class="modal-foot" id="wizFoot"></div>
+  </div>
+</div>
+
+<!-- ================= MODAL: USUÁRIO ================= -->
+<div class="overlay" id="mUsuario">
+  <div class="modal slim">
+    <div class="modal-head"><h3>Novo usuário do sistema</h3><button class="modal-x" onclick="fecharModal('mUsuario')">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nome completo</label><input id="nuNome"></div>
+      <div class="field"><label>E-mail corporativo</label><input id="nuEmail" type="email"></div>
+      <div class="field"><label>Papel (nível de permissão)</label>
+        <select id="nuPapel">
+          <option value="ADMIN">Administrador — acesso total + auditoria</option>
+          <option value="GESTOR">Gestor — projetos e relatórios</option>
+          <option value="RECRUTADOR" selected>Recrutador — participantes e pipeline</option>
+          <option value="AVALIADOR">Avaliador — pipeline e avaliações</option>
+          <option value="FINANCEIRO">Financeiro — dados de pagamento</option>
+        </select></div>
+      <div class="field"><label>Senha provisória</label><input id="nuSenha" type="text" value="Troca@Primeiro1">
+        <p class="hint">Redefinição obrigatória no primeiro acesso.</p></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mUsuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">Criar usuário</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: AVALIAÇÃO ================= -->
+<div class="overlay" id="mAvaliar">
+  <div class="modal slim">
+    <div class="modal-head"><h3>Avaliar participação</h3><button class="modal-x" onclick="fecharModal('mAvaliar')">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:.84rem;margin-bottom:14px" id="avTitulo"></p>
+      <div class="form-row">
+        <div class="field"><label>Comunicação</label><div class="rating-group" data-r="com"></div></div>
+        <div class="field"><label>Pontualidade</label><div class="rating-group" data-r="pon"></div></div>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="field"><label>Repertório</label><div class="rating-group" data-r="dad"></div></div>
+        <div class="field"><label>Nota geral</label><div class="rating-group" data-r="ger"></div></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Relato sucinto do avaliador</label>
+        <textarea id="avComent" rows="2" placeholder="Ex.: respostas ricas em detalhes; chegou 10 min antes."></textarea>
+        <p class="hint">Evite registrar dados sensíveis (saúde, religião, opinião política) — LGPD art. 11.</p></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mAvaliar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar avaliação</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: NOVO TERMO/CONTRATO ================= -->
+<div class="overlay" id="mNovoTermo">
+  <div class="modal">
+    <div class="modal-head"><h3>Novo termo ou contrato</h3><button class="modal-x" onclick="fecharModal('mNovoTermo')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field"><label>Nome do documento</label><input id="ntNome" placeholder="Ex.: Termo de Cessão de Imagem"></div>
+        <div class="field"><label>Tipo</label>
+          <select id="ntTipo"><option>Termo de consentimento</option><option>Contrato</option><option>Termo de confidencialidade</option><option>Cessão de imagem e voz</option></select></div>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="field"><label>Início da vigência</label><input id="ntInicio" type="date" value="2026-08-01"></div>
+        <div class="field"><label>Fim da vigência</label><input id="ntFim" type="date" value="2027-07-31"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Texto do documento</label>
+        <textarea id="ntTexto" rows="12" style="font-size:.84rem;line-height:1.65" placeholder="Cole ou escreva aqui o texto integral que o participante irá aceitar…"></textarea>
+        <p class="hint">Este texto será gravado como a versão 1.0 do documento. Alterações futuras sempre criarão novas versões, preservando o registro do que foi aceito.</p></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mNovoTermo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="criarTermo()">Criar documento (v1.0)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: LINK DE CADASTRO ================= -->
+<div class="overlay" id="mLink">
+  <div class="modal slim">
+    <div class="modal-head"><h3>Link de cadastro do projeto</h3><button class="modal-x" onclick="fecharModal('mLink')">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:.84rem;margin-bottom:14px">Projeto: <b id="lkProjNome">—</b></p>
+      <div class="field"><label>Recrutador vinculado (para comissão)</label>
+        <select id="lkRec" onchange="atualizarLink()"></select>
+        <p class="hint">O código do recrutador vai embutido no link. Todo participante cadastrado por ele fica vinculado para tratativa e comissão.</p></div>
+      <div class="field"><label>Link a enviar ao participante</label>
+        <div class="link-box"><input id="lkUrl" readonly>
+          <button class="btn btn-ghost" style="padding:8px 12px" onclick="copiarLink()">Copiar</button></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mLink')">Fechar</button>
+      <button class="btn btn-primary" onclick="abrirCadastroPublico()">Abrir formulário (simular participante) ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PÁGINA PÚBLICA DE CADASTRO ================= -->
+<section id="viewPublico">
+  <div class="pub-url">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+    <span class="mono" id="pubUrl">qualyvortice.com.br/c/…</span>
+    <span class="badge b-violet">simulação de página pública</span>
+  </div>
+  <div class="pub-shell">
+    <div class="pub-hero">
+      <div class="brand"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="vx1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb15c"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="vx2" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a3d"/><stop offset="1" stop-color="#f2295b"/></linearGradient><linearGradient id="vx3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f2295b"/><stop offset="1" stop-color="#9b1030"/></linearGradient></defs><circle cx="24" cy="24" r="23" fill="#121216"/><g transform="rotate(-18 24 24)"><path d="M24 5.5 A18.5 18.5 0 0 1 42.5 24" fill="none" stroke="url(#vx1)" stroke-width="5.6" stroke-linecap="round"/><path d="M24 10 A14 14 0 0 1 38 24" fill="none" stroke="url(#vx2)" stroke-width="5" stroke-linecap="round" transform="rotate(115 24 24)"/><path d="M24 14.5 A9.5 9.5 0 0 1 33.5 24" fill="none" stroke="url(#vx2)" stroke-width="4.4" stroke-linecap="round" transform="rotate(230 24 24)"/><path d="M24 18.5 A5.5 5.5 0 0 1 29.5 24" fill="none" stroke="url(#vx3)" stroke-width="3.8" stroke-linecap="round" transform="rotate(345 24 24)"/><circle cx="24" cy="24" r="2.6" fill="#f2295b"/></g></svg><h1 style="font-size:1.15rem">Qualy Vortice</h1></div>
+      <h1>Cadastro de participante</h1>
+      <p>Você foi convidado(a) a participar de uma pesquisa remunerada. Preencha seus dados abaixo — leva menos de 3 minutos.</p>
+    </div>
+    <div class="pub-proj" id="pubProj"></div>
+    <div class="pub-card">
+      <div id="pubForm">
+        <span class="rec-chip" id="pubRecChip"></span>
+        <fieldset><legend>Seus dados</legend>
+          <div class="form-row">
+            <div class="field" id="f-pbNome"><label>Nome completo *</label><input id="pbNome">
+              <p class="ferr">Informe seu nome completo (nome e sobrenome).</p></div>
+            <div class="field" id="f-pbCpf"><label>CPF *</label><input id="pbCpf" placeholder="000.000.000-00" maxlength="14">
+              <p class="ferr">CPF inválido — confira os dígitos.</p></div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="field" id="f-pbNasc"><label>Data de nascimento *</label><input id="pbNasc" type="date">
+              <p class="ferr">É necessário ter 18 anos ou mais para participar.</p></div>
+            <div class="field"><label>Gênero</label>
+              <select id="pbGenero"><option>Feminino</option><option>Masculino</option><option>Outro</option><option>Prefere não informar</option></select></div>
+          </div>
+        </fieldset>
+        <fieldset><legend>Contato</legend>
+          <div class="form-row">
+            <div class="field" id="f-pbEmail"><label>E-mail *</label><input id="pbEmail" type="email">
+              <p class="ferr">Informe um e-mail válido.</p></div>
+            <div class="field" id="f-pbFone"><label>Telefone / WhatsApp *</label><input id="pbFone" placeholder="(21) 90000-0000">
+              <p class="ferr">Informe um telefone com DDD (mínimo 10 dígitos).</p></div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="field" id="f-pbCidade"><label>Cidade *</label><input id="pbCidade">
+              <p class="ferr">Informe sua cidade.</p></div>
+            <div class="field" id="f-pbUf"><label>UF *</label><input id="pbUf" maxlength="2" placeholder="RJ">
+              <p class="ferr">Use a sigla do estado (2 letras).</p></div>
+            <div class="field"><label>CEP</label><input id="pbCep" placeholder="24000-000"></div>
+          </div>
+        </fieldset>
+        <fieldset><legend>Seu perfil</legend>
+          <div class="form-row">
+            <div class="field"><label>Escolaridade</label>
+              <select id="pbEsc"><option>Fundamental</option><option selected>Médio</option><option>Superior</option><option>Pós-graduação</option></select></div>
+            <div class="field"><label>Profissão</label><input id="pbProf"></div>
+            <div class="field"><label>Faixa de renda familiar</label>
+              <select id="pbRenda"><option>Classes A/B</option><option selected>Classe C</option><option>Classes D/E</option></select></div>
+          </div>
+        </fieldset>
+        <fieldset><legend>Consentimento LGPD *</legend>
+          <label class="check" id="f-pbConsent">
+            <input type="checkbox" id="pbConsent">
+            <span>Li e aceito o <b id="pubTermoNome">Termo de Consentimento</b> para tratamento dos meus dados pessoais com finalidade de recrutamento para pesquisas de mercado. <span class="ferr" style="display:inline-block">É necessário aceitar o termo para concluir o cadastro.</span></span>
+          </label>
+          <div class="doc-text pub-consent" id="pubTermoTexto"></div>
+        </fieldset>
+        <button class="btn btn-primary btn-block" onclick="enviarCadastroPublico()">Enviar cadastro</button>
+        <p class="hint" style="text-align:center;margin-top:10px">Seus dados identificadores são criptografados e o aceite do termo é registrado com data, hora e versão.</p>
+      </div>
+      <div class="pub-ok" id="pubOk" style="display:none">
+        <div class="ok-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h3>Cadastro recebido!</h3>
+        <div class="cod" id="pubOkCod">—</div>
+        <p id="pubOkMsg">—</p>
+        <p>Guarde seu código. Nossa equipe entrará em contato pelo WhatsApp informado para os próximos passos.</p>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="voltarPainel()">Voltar ao painel (simulação)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODAL: DETALHES DO PARTICIPANTE ================= -->
+<div class="overlay" id="mDetalhe">
+  <div class="modal">
+    <div class="modal-head"><h3>Detalhes do participante</h3><button class="modal-x" onclick="fecharModal('mDetalhe')">×</button></div>
+    <div class="modal-body">
+      <div class="det-head" id="dtHead"></div>
+      <div class="det-sec"><h5>Dados cadastrais</h5><div id="dtDados"></div></div>
+      <div class="det-sec"><h5>Origem e consentimento</h5><div id="dtOrigem"></div></div>
+      <div class="det-sec"><h5>Projetos que já participou</h5><div id="dtParts"></div></div>
+      <div class="det-sec" id="dtTriagem"><h5>Triagem</h5>
+        <div class="tri-actions">
+          <button class="tri-btn ok" id="triAssociar" onclick="triagem('associar')">
+            <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <span><b>Aprovar e associar ao projeto de entrada</b>
+            <small id="triAssociarSub">Confirma o participante e avança a candidatura no pipeline do projeto pelo qual ele se cadastrou.</small></span></button>
+          <button class="tri-btn mid" onclick="triagem('futuro')">
+            <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><path d="M17 8h5M19.5 5.5v5"/></svg></span>
+            <span><b>Aprovar apenas para projetos futuros</b>
+            <small>Entra no banco de participantes aprovados, sem seguir no projeto de entrada — a candidatura atual é encerrada.</small></span></button>
+          <button class="tri-btn bad" onclick="triagem('descartar')">
+            <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+            <span><b>Descartar participante</b>
+            <small>Encerra todas as candidaturas em aberto. O cadastro fica marcado como descartado — pela LGPD, os dados podem ser anonimizados após o prazo de retenção.</small></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('mDetalhe')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg><span id="toastMsg"></span></div>
+
+<script>
+/* ================= ESTADO ================= */
+const ETAPAS = ["Análise de Perfil","Preenchimento de Dados","Captação de Material","Entrevista","Pago"];
+const ETAPA_COR = {"Análise de Perfil":"blue","Preenchimento de Dados":"violet","Captação de Material":"amber","Entrevista":"pink","Pago":"green"};
+const CORHEX = {blue:"var(--blue)",violet:"var(--violet)",amber:"var(--amber)",pink:"var(--pink)",green:"var(--green)"};
+const STATUS_LIST=["Aprovação","Backup","Desistência","Não compareceu","Não aprovado","Fora do perfil"];
+const STATUS_COR={"Aprovação":"green","Backup":"blue","Desistência":"gray","Não compareceu":"red","Não aprovado":"red","Fora do perfil":"amber"};
+const statusBadge=s=>`<span class="badge b-${STATUS_COR[s]||"gray"}"><span class="dot"></span>${s||"—"}</span>`;
+
+const state = {
+  user:null, movSel:null,
+  participantes:[
+    {cod:"P-2026-0153",nome:"Larissa Campos Moreira",cpf:"390.533.447-05",fone:"(21) 98765-0192",email:"lari.campos@gmail.com",cidade:"Niterói",uf:"RJ",idade:29,renda:"Classe C",consent:"v2026.1",media:0,sit:"Pendente",rec:"Carla Mendes (CM-2166)",ultimaPart:null},
+    {cod:"P-2026-0152",nome:"Mariana Lopes Ferreira",cpf:"128.554.907-45",fone:"(21) 98877-2314",email:"mariana.lf@gmail.com",cidade:"Niterói",uf:"RJ",idade:31,renda:"Classe C",consent:"v2026.1",media:4.7,sit:"Aprovado",ultimaPart:"21/07/2026"},
+    {cod:"P-2026-0148",nome:"Carlos Eduardo Nunes",cpf:"094.312.665-08",fone:"(21) 97654-8090",email:"cadu.nunes@outlook.com",cidade:"São Gonçalo",uf:"RJ",idade:42,renda:"Classe C",consent:"v2026.1",media:4.2,sit:"Aprovado",ultimaPart:"18/07/2026"},
+    {cod:"P-2025-0087",nome:"Juliana Ribeiro dos Santos",cpf:"157.998.234-11",fone:"(21) 99120-4455",email:"ju.ribeiro@yahoo.com.br",cidade:"Rio de Janeiro",uf:"RJ",idade:27,renda:"Classes A/B",consent:"v2026.1",media:4.9,sit:"Aprovado",ultimaPart:"20/02/2025"},
+    {cod:"P-2025-0064",nome:"Roberto Almeida Pinto",cpf:"073.441.882-30",fone:"(21) 96633-7788",email:"roberto.ap@gmail.com",cidade:"Niterói",uf:"RJ",idade:55,renda:"Classes A/B",consent:"renovar",media:3.8,sit:"Aprovado",ultimaPart:"05/11/2025"},
+    {cod:"P-2024-0311",nome:"Fernanda Souza Lima",cpf:"201.774.590-62",fone:"(21) 98002-1936",email:"fe.slima@gmail.com",cidade:"Maricá",uf:"RJ",idade:36,renda:"Classe C",consent:"v2026.1",media:4.5,sit:"Aprovado",ultimaPart:"12/12/2024"},
+    {cod:"P-2026-0139",nome:"Paulo Henrique Braga",cpf:"312.887.410-77",fone:"(21) 99444-1029",email:"ph.braga@gmail.com",cidade:"Niterói",uf:"RJ",idade:24,renda:"Classes D/E",consent:"v2026.1",media:4.0,sit:"Aprovado",ultimaPart:"22/07/2026"},
+  ],
+  projetos:[
+    {nome:"Hábitos Bancários Digitais",cliente:"Banco Horizonte",contratante:"Banco Horizonte",metodo:"Entrevista em profundidade",status:"Recrutando",vagas:24,ocupadas:17,incentivo:180,valorPerfil:350,termosTotais:17,termosPendentes:2,termosData:"22/07/2026",perfil:"25–45 anos · RJ · usa app bancário há 6+ meses"},
+    {nome:"Delivery na Baixada",cliente:"FoodJá",contratante:"FoodJá",metodo:"Grupo focal",status:"Em campo",vagas:32,ocupadas:32,incentivo:120,valorPerfil:250,termosTotais:32,termosPendentes:0,termosData:"15/07/2026",perfil:"18–34 anos · classes C/D · pede delivery 2+/semana"},
+    {nome:"Streaming e Família",cliente:"PlayMax",contratante:"PlayMax",metodo:"Diário de uso",status:"Recrutando",vagas:16,ocupadas:6,incentivo:250,valorPerfil:480,termosTotais:6,termosPendentes:1,termosData:"23/07/2026",perfil:"30–50 anos · com filhos · 2+ plataformas"},
+    {nome:"Farmácias de Bairro",cliente:"Rede BemViver",contratante:"Rede BemViver",metodo:"Pesquisa domiciliar",status:"Concluído",vagas:40,ocupadas:40,incentivo:90,valorPerfil:200,termosTotais:40,termosPendentes:0,termosData:"28/02/2025",perfil:"40+ anos · classes B/C · compras da casa"},
+  ],
+  pipeline:[
+    {id:9,part:"P-2026-0153",proj:"Streaming e Família",etapa:"Análise de Perfil",dias:0,resp:"Carla Mendes",aval:null,status:"Aprovação"},
+    {id:1,part:"P-2026-0152",proj:"Hábitos Bancários Digitais",etapa:"Entrevista",dias:2,resp:"Bruno Sales",aval:null,status:"Aprovação"},
+    {id:2,part:"P-2026-0148",proj:"Hábitos Bancários Digitais",etapa:"Captação de Material",dias:4,resp:"Carla Mendes",aval:null,status:"Aprovação"},
+    {id:3,part:"P-2025-0087",proj:"Streaming e Família",etapa:"Análise de Perfil",dias:1,resp:"Carla Mendes",aval:null,status:"Backup"},
+    {id:4,part:"P-2025-0064",proj:"Hábitos Bancários Digitais",etapa:"Preenchimento de Dados",dias:6,resp:"Carla Mendes",aval:null,status:"Aprovação"},
+    {id:5,part:"P-2024-0311",proj:"Delivery na Baixada",etapa:"Pago",dias:0,resp:"Diego Farias",aval:{ger:5,com:5,pon:4,dad:4,coment:"Muito colaborativa; perfil raro na cota de Maricá."},status:"Aprovação"},
+    {id:6,part:"P-2026-0139",proj:"Delivery na Baixada",etapa:"Entrevista",dias:1,resp:"Bruno Sales",aval:null,status:"Aprovação"},
+    {id:7,part:"P-2025-0087",proj:"Farmácias de Bairro",etapa:"Pago",dias:0,resp:"Diego Farias",aval:{ger:5,com:5,pon:5,dad:4,coment:"Respostas ricas e bem articuladas; excelente para grupos."},status:"Aprovação"},
+    {id:8,part:"P-2026-0139",proj:"Streaming e Família",etapa:"Análise de Perfil",dias:3,resp:"Carla Mendes",aval:null,status:"Fora do perfil"},
+  ],
+  usuarios:[
+    {nome:"Andrea Lopes",email:"andrea.lopes@qualyvortice.com.br",papel:"ADMIN",status:"Ativo"},
+    {nome:"Bruno Sales",email:"bruno.sales@qualyvortice.com.br",papel:"AVALIADOR",status:"Ativo"},
+    {nome:"Carla Mendes",email:"carla.mendes@qualyvortice.com.br",papel:"RECRUTADOR",status:"Ativo"},
+    {nome:"Diego Farias",email:"diego.farias@qualyvortice.com.br",papel:"FINANCEIRO",status:"Inativo"},
+  ],
+  auditoria:[
+    {q:"22/07 09:14",u:"Andrea Lopes",t:"P-2026-0148",a:"Visualização",d:"Revelou telefone na listagem de participantes"},
+    {q:"21/07 16:40",u:"Diego Farias",t:"P-2025-0087",a:"Pagamento",d:"Consultou chave PIX para liquidação de incentivo"},
+    {q:"21/07 11:02",u:"Carla Mendes",t:"P-2024-0311",a:"Alteração",d:"Renovou consentimento para a versão v2026.1"},
+  ],
+};
+let nextId = 10, movTab = "todos", avalAlvo = null;
+const notas = {com:null,pon:null,dad:null,ger:null};
+
+const PAPEIS = {ADMIN:"Administradora",GESTOR:"Gestor",RECRUTADOR:"Recrutador",AVALIADOR:"Avaliadora",FINANCEIRO:"Financeiro"};
+const PERMS = {
+  ADMIN:{nav:["dashpart","dashseg","participacoes","participantes","projetos","usuarios","termos","auditoria"],revelar:true,pagamento:true,novoProjeto:true,nomeDemo:"Andrea Lopes"},
+  RECRUTADOR:{nav:["dashpart","dashseg","participacoes","participantes","projetos"],revelar:true,pagamento:false,novoProjeto:false,nomeDemo:"Carla Mendes"},
+  AVALIADOR:{nav:["dashpart","participacoes","projetos"],revelar:false,pagamento:false,novoProjeto:false,nomeDemo:"Bianca Torres"},
+};
+
+/* ================= UTIL ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+function toast(msg){ $("#toastMsg").textContent=msg; const t=$("#toast");
+  t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),3200); }
+const maskCpf = c => "•••.•••."+c.slice(8);
+const maskFone = f => f.slice(0,5)+"•••••-"+f.slice(-4);
+const maskMail = e => e[0]+"•••"+e.slice(e.indexOf("@"));
+const iniciais = n => n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const gcor = s => "g"+([...s].reduce((a,c)=>a+c.charCodeAt(0),0)%5);
+const nomeDe = cod => (state.participantes.find(p=>p.cod===cod)||{}).nome||cod;
+function primeiroNome(cod){ const n=nomeDe(cod); return n.split(" ")[0]+" "+(n.split(" ")[1]?.[0]??"")+"."; }
+function stars(n){ if(n==null) return "<span style='color:var(--mut)'>—</span>";
+  let h='<span class="stars">'; for(let i=1;i<=5;i++) h+=`<i class="${i<=n?'f':''}"></i>`; return h+"</span>"; }
+
+/* ================= LOGIN ================= */
+function login(){
+  const papel=$("#lPapel").value, p=PERMS[papel];
+  state.user={nome:p.nomeDemo,papel};
+  $("#uName").textContent=p.nomeDemo; $("#uRole").textContent=PAPEIS[papel];
+  $("#uAvatar").textContent=iniciais(p.nomeDemo); $("#topAvatar").textContent=iniciais(p.nomeDemo);
+  $$(".nav-item").forEach(b=>{ if(b.dataset.nav) b.hidden=!p.nav.includes(b.dataset.nav); });
+  $("#grpDash").hidden=!(p.nav.includes("dashpart")||p.nav.includes("dashseg"));
+  $("#navAdminLabel").hidden=!p.nav.includes("usuarios");
+  $("#btnNovoProjeto").style.display=p.novoProjeto?"":"none";
+  $("#fsPagamento").style.display=p.pagamento?"":"none";
+  $("#viewLogin").style.display="none"; $("#app").classList.add("on");
+  renderTudo(); go("dashpart");
+  toast(`Sessão iniciada como ${PAPEIS[papel]} — interface ajustada ao papel.`);
+}
+function logout(){ $("#app").classList.remove("on"); $("#viewLogin").style.display="flex"; $("#bottomBar").classList.remove("on"); }
+
+const CRUMB = {dashboard:"Dashboards / Visão geral",dashpart:"Dashboards / Visão participantes",dashseg:"Dashboards / Visão por segmento",
+  pipeline:"Pipeline de captação",participacoes:"Participações",participantes:"Banco de Pessoas",
+  projetos:"Projetos",projetoForm:"Projetos / Novo",projetoDetalhe:"Projetos / Resumo do projeto",usuarios:"Usuários",auditoria:"Auditoria LGPD",
+  termos:"Termos e Contratos",termoDetail:"Termos e Contratos / Detalhe"};
+function toggleGrp(grpId,subId){
+  $("#"+grpId).classList.toggle("open");
+  $("#"+subId).classList.toggle("open");
+}
+function go(view){
+  $$(".view").forEach(v=>v.classList.remove("on"));
+  $("#view-"+view).classList.add("on");
+  $$(".nav-item").forEach(b=>{
+    if(b.classList.contains("nav-action")) return;
+    b.classList.toggle("active",b.dataset.nav===view||(view==="projetoForm"&&b.dataset.nav==="projetos")||(view==="projetoDetalhe"&&b.dataset.nav==="projetos")||(view==="termoDetail"&&b.dataset.nav==="termos"));
+  });
+  $("#crumbs").innerHTML=`Painel / <b>${CRUMB[view]}</b>`;
+  $("#bottomBar").classList.toggle("on", view==="dashboard" && !!state.movSel);
+  window.scrollTo({top:0});
+}
+
+/* ================= RENDER GERAL ================= */
+function renderTudo(){
+  renderKpis(); renderFolders(); renderMov(); renderBoard(); renderParticipantes();
+  renderProjetos(); renderUsuarios(); renderAuditoria(); preencherSelects(); montarRatings();
+  renderParticipacoesTab(); renderDashPart(); renderDashSeg(); renderTermos();
+}
+
+function renderKpis(){
+  const ativos=state.pipeline.filter(x=>x.etapa!=="Pago").length;
+  $("#kPipe").innerHTML=`${ativos}<small>em captação</small>`;
+  const ent=state.pipeline.filter(x=>x.etapa==="Entrevista").length;
+  $("#kPipeFoot").textContent=`${ent} na etapa de Entrevista agora`;
+}
+
+function renderFolders(){
+  const icons=["▤","◫","▦","▧","▨"];
+  $("#dashFolders").innerHTML=state.projetos.slice(0,5).map((p,i)=>{
+    const pct=p.vagas?Math.round(p.ocupadas/p.vagas*100):0;
+    const parts=state.pipeline.filter(x=>x.proj===p.nome);
+    const avs=parts.slice(0,3).map(x=>`<span class="av ${gcor(x.part)}">${iniciais(nomeDe(x.part))}</span>`).join("")
+      +(parts.length>3?`<span class="av more">+${parts.length-3}</span>`:"");
+    return `<div class="folder ${i===0?"dark":""}" onclick="go('pipeline');selecionarProjeto('${p.nome}')">
+      <div class="f-icon">${icons[i%5]}</div>
+      <h4>${p.nome}</h4>
+      <div class="f-sub">${p.ocupadas}/${p.vagas} vagas · ${pct}% preenchido</div>
+      <div class="f-row"><div class="mini-bar"><i style="width:${pct}%"></i></div>
+      <span class="av-stack">${avs||""}</span></div>
+    </div>`;
+  }).join("");
+}
+
+function tabMov(btn,f){ $$(".tab").forEach(t=>t.classList.remove("on")); btn.classList.add("on"); movTab=f; renderMov(f); }
+function renderMov(f=movTab,busca=""){
+  const b=busca.toLowerCase();
+  const rows=state.pipeline
+    .filter(x=>f==="todos"||x.etapa===f)
+    .filter(x=>!b||x.part.toLowerCase().includes(b)||x.proj.toLowerCase().includes(b))
+    .slice(0,8);
+  $("#tbMov").innerHTML=rows.map(x=>`
+    <tr class="${state.movSel===x.id?"sel":""}" >
+      <td><input type="checkbox" ${state.movSel===x.id?"checked":""} onchange="selMov(${x.id},this.checked)"></td>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <span class="av ${gcor(x.part)}">${iniciais(nomeDe(x.part))}</span>
+        <div><div class="cell-main">${primeiroNome(x.part)}</div><div class="cell-sub mono">${x.part}</div></div></div></td>
+      <td>${x.proj}</td>
+      <td><span class="badge b-${ETAPA_COR[x.etapa]}"><span class="dot"></span>${x.etapa}</span></td>
+      <td class="cell-sub" style="font-size:.8rem">${x.dias===0?"hoje":"há "+x.dias+" dia"+(x.dias>1?"s":"")}</td>
+      <td><span class="av ${gcor(x.resp)}" title="${x.resp}">${iniciais(x.resp)}</span></td>
+    </tr>`).join("")||'<tr><td colspan="6" class="empty">Nada por aqui nesta etapa.</td></tr>';
+}
+function selMov(id,checked){
+  state.movSel=checked?id:null; renderMov();
+  const bar=$("#bottomBar");
+  if(!checked){ bar.classList.remove("on"); return; }
+  const x=state.pipeline.find(i=>i.id===id);
+  const idx=ETAPAS.indexOf(x.etapa), pct=Math.round((idx+1)/5*100);
+  bar.innerHTML=`<b>${primeiroNome(x.part)}</b><span class="mono" style="color:var(--mut)">${x.part}</span>
+    <span class="sep">•</span>${x.proj}<span class="sep">•</span>
+    <span class="badge b-${ETAPA_COR[x.etapa]}">${x.etapa}</span>
+    <span class="sep">•</span>etapa ${idx+1} de 5
+    <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span class="mono" style="color:var(--mut)">${pct}%</span>
+      <span class="bar"><i style="width:${pct}%"></i></span>
+      ${x.etapa!=="Pago"?`<button class="btn btn-soft" style="padding:6px 12px" onclick="avancar(${x.id});selMov(${x.id},true)">Avançar etapa ›</button>`:""}
+    </span>`;
+  bar.classList.add("on");
+}
+
+/* ================= PIPELINE ================= */
+function selecionarProjeto(nome){ $("#fltProj").value=nome; renderBoard(); }
+function renderBoard(){
+  const flt=$("#fltProj").value;
+  const itens=state.pipeline.filter(x=>flt==="todos"||x.proj===flt);
+  $("#pipeTotal").textContent=`${itens.length} participante${itens.length!==1?"s":""} no fluxo`;
+  $("#board").innerHTML=ETAPAS.map(et=>{
+    const cor=ETAPA_COR[et];
+    const cards=itens.filter(x=>x.etapa===et).map(x=>{
+      const idx=ETAPAS.indexOf(x.etapa);
+      const steps=ETAPAS.map((_,i)=>`<i class="${i<=idx?'f':''}"></i>`).join("");
+      const pode=x.etapa!=="Pago";
+      const prox=pode?ETAPAS[idx+1]:null;
+      return `<div class="pcard">
+        <div class="pcard-top">
+          <span class="av ${gcor(x.part)}">${iniciais(nomeDe(x.part))}</span>
+          <div class="who"><div class="cod">${x.part}</div><div class="nm">${primeiroNome(x.part)}</div></div>
+        </div>
+        <span class="proj-tag">${x.proj}</span>
+        <div class="steps">${steps}</div>
+        <div class="pcard-foot">
+          <span class="dias">${x.dias===0?"hoje":"há "+x.dias+"d"} · ${x.resp.split(" ")[0]}</span>
+          ${pode
+            ?`<button class="adv ${prox==="Pago"?"pay":""}" onclick="avancar(${x.id})">${prox==="Pago"?"Marcar pago ✓":"Avançar ›"}</button>`
+            :(x.aval
+               ?`<span>${stars(x.aval.ger)}</span>`
+               :`<button class="aval-link" onclick="abrirAvaliar(${x.id})">★ Avaliar</button>`)}
+        </div>
+        ${x.etapa==="Entrevista"?`<div style="margin-top:8px;text-align:right"><button class="aval-link" onclick="abrirAvaliar(${x.id})">★ Avaliar participação</button></div>`:""}
+      </div>`;
+    }).join("");
+    return `<div class="col">
+      <div class="col-head"><span class="cdot" style="background:${CORHEX[cor]}"></span>
+        <h4>${et}</h4><span class="count">${itens.filter(x=>x.etapa===et).length}</span></div>
+      ${cards||'<div class="empty" style="padding:16px;font-size:.76rem">Sem participantes</div>'}
+    </div>`;
+  }).join("");
+}
+
+function avancar(id){
+  const x=state.pipeline.find(i=>i.id===id);
+  const idx=ETAPAS.indexOf(x.etapa);
+  if(idx>=ETAPAS.length-1) return;
+  x.etapa=ETAPAS[idx+1]; x.dias=0;
+  renderBoard(); renderMov(); renderKpis(); renderParticipacoesTab();
+  if(x.etapa==="Pago"){ toast(`${x.part} marcado como Pago — incentivo liberado para o Financeiro.`); if(!x.aval) abrirAvaliar(id); }
+  else toast(`${x.part} avançou para ${x.etapa}.`);
+}
+
+function abrirAvaliar(id){
+  avalAlvo=id;
+  const x=state.pipeline.find(i=>i.id===id);
+  $("#avTitulo").innerHTML=`<b>${primeiroNome(x.part)}</b> <span class="mono" style="color:var(--mut)">${x.part}</span> · ${x.proj}`;
+  Object.keys(notas).forEach(k=>notas[k]=null);
+  $$("#mAvaliar .rating-group label").forEach(l=>l.classList.remove("sel"));
+  $("#avComent").value=x.aval?x.aval.coment:"";
+  abrirModal("mAvaliar");
+}
+function salvarAvaliacao(){
+  const x=state.pipeline.find(i=>i.id===avalAlvo);
+  x.aval={com:notas.com||3,pon:notas.pon||3,dad:notas.dad||3,ger:notas.ger||3,coment:$("#avComent").value.trim()};
+  const p=state.participantes.find(p=>p.cod===x.part);
+  if(p) p.media=Math.round(((p.media||x.aval.ger)+x.aval.ger)/2*10)/10;
+  renderBoard(); renderParticipantes(); renderParticipacoesTab(); fecharModal("mAvaliar");
+  toast("Avaliação registrada no histórico do participante.");
+}
+
+/* ================= PARTICIPANTES ================= */
+function consentBadge(c){
+  if(c==="revogado") return '<span class="badge b-red"><span class="dot"></span>Revogado</span>';
+  if(c==="renovar") return '<span class="badge b-amber"><span class="dot"></span>Renovar</span>';
+  return `<span class="badge b-green"><span class="dot"></span>${c}</span>`;
+}
+function piiCell(masked,full,tipo,cod){
+  return `<span class="pii" data-full="${full}" data-mask="${masked}" data-tipo="${tipo}" data-cod="${cod}">
+    <span class="val">${masked}</span>
+    <button class="eye" title="Revelar (acesso auditado)" onclick="revelar(this)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button></span>`;
+}
+function renderParticipantes(filtro=""){
+  const f=filtro.toLowerCase().trim();
+  const fd=f.replace(/\D/g,"");
+  $("#tbParticipantes").innerHTML=state.participantes
+    .filter(p=>{
+      if(!f) return true;
+      const porDigitos=fd.length>=3&&(p.cpf.replace(/\D/g,"").includes(fd)||p.fone.replace(/\D/g,"").includes(fd));
+      return p.nome.toLowerCase().includes(f)||p.email.toLowerCase().includes(f)
+        ||p.cod.toLowerCase().includes(f)||p.cidade.toLowerCase().includes(f)||porDigitos;
+    })
+    .map(p=>`<tr class="${p.sit==="Descartado"?"descartado":""}">
+      <td><input type="checkbox"></td>
+      <td class="mono">${p.cod}${p.rec?`<div class="cell-sub" style="font-family:var(--body)">via ${p.rec}</div>`:""}</td>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <span class="av ${gcor(p.cod)}">${iniciais(p.nome)}</span>
+        <div>${piiCell(p.nome.split(" ")[0]+" •••••",p.nome,"nome",p.cod)}
+        <div class="cell-sub">${p.cidade} / ${p.uf}</div></div></div></td>
+      <td>${piiCell(maskCpf(p.cpf),p.cpf,"CPF",p.cod)}</td>
+      <td>${piiCell(maskFone(p.fone),p.fone,"telefone",p.cod)}<div class="cell-sub">${maskMail(p.email)}</div></td>
+      <td style="font-size:.82rem">${p.idade} anos</td>
+      <td style="font-size:.82rem">${p.renda}</td>
+      <td>${sitBadge(p.sit)}</td>
+      <td style="font-size:.82rem">${p.ultimaPart?p.ultimaPart:'<span style="color:var(--mut)">—</span>'}</td>
+      <td>${consentBadge(p.consent)}</td>
+      <td><button class="btn btn-soft" style="padding:6px 11px;font-size:.75rem" onclick="abrirDetalhe('${p.cod}')">Detalhes ›</button></td>
+    </tr>`).join("")||'<tr><td colspan="11" class="empty">Nenhum participante encontrado.</td></tr>';
+}
+function revelar(btn){
+  const el=btn.closest(".pii"), perm=PERMS[state.user.papel];
+  if(!perm.revelar){ toast("Seu papel não tem a permissão ver_dados_sensiveis."); return; }
+  const aberto=el.classList.toggle("open");
+  el.querySelector(".val").textContent=aberto?el.dataset.full:el.dataset.mask;
+  if(aberto){
+    state.auditoria.unshift({q:"agora",u:state.user.nome,t:el.dataset.cod,a:"Visualização",d:`Revelou ${el.dataset.tipo} na listagem de participantes`});
+    renderAuditoria();
+    toast("Dado revelado — acesso registrado na Auditoria LGPD.");
+  }
+}
+
+/* ================= PROJETOS ================= */
+function renderProjetos(){
+  $("#gridProjetos").innerHTML=state.projetos.map(p=>{
+    const pct=p.vagas?Math.round(p.ocupadas/p.vagas*100):0;
+    return `<div class="folder">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="f-icon">▤</div><span class="badge b-violet">${p.contratante}</span></div>
+      <h4>${p.nome}</h4>
+      <div class="f-sub">${p.cliente} · ${p.metodo}</div>
+      <div class="f-sub" style="background:var(--violet-soft);border-radius:9px;padding:8px 10px;color:var(--violet-ink)">
+        <b>Perfil:</b> ${p.perfil}</div>
+      <div class="f-row"><div class="mini-bar"><i style="width:${pct}%"></i></div>
+        <span class="mono" style="font-size:.74rem;color:var(--mut)">${p.ocupadas}/${p.vagas}</span></div>
+      <div class="f-row" style="margin-top:2px">
+        <span class="mono" style="font-size:.78rem;font-weight:600;color:var(--ink)">R$ ${p.valorPerfil} <span style="font-weight:500;color:var(--mut);font-family:var(--body)">/ perfil</span></span>
+        <span style="display:flex;gap:6px">
+          <button class="btn btn-soft" style="padding:6px 10px;font-size:.74rem" onclick="abrirProjetoDetalhe('${p.nome.replace(/'/g,"\\'")}')">Acessar ›</button>
+        </span>
+      </div>
+    </div>`;
+  }).join("");
+}
+function salvarProjeto(){
+  const nome=$("#pjNome").value.trim()||"Projeto sem nome";
+  const perfil=[
+    ($("#pfIdadeMin").value||$("#pfIdadeMax").value)?`${$("#pfIdadeMin").value||"18"}–${$("#pfIdadeMax").value||"99"} anos`:null,
+    $("#pfGenero").value!=="Indiferente"?$("#pfGenero").value:null,
+    $("#pfRegiao").value||null,
+    $("#pfRenda").value!=="Indiferente"?$("#pfRenda").value:null,
+    $("#pfLivre").value||null,
+  ].filter(Boolean).join(" · ")||"Perfil aberto";
+  const cliente=$("#pjCliente").value||"Cliente";
+  const incentivo=+$("#pjIncentivo").value||0;
+  state.projetos.unshift({nome,cliente,contratante:cliente,metodo:$("#pjMetodo").value,
+    status:"Recrutando",vagas:+$("#pjVagas").value||0,ocupadas:0,incentivo,
+    valorPerfil:Math.round(incentivo*2),termosTotais:0,termosPendentes:0,termosData:"—",perfil});
+  renderProjetos(); renderFolders(); preencherSelects(); go("projetos");
+  toast("Projeto salvo e aberto para recrutamento.");
+}
+
+/* ================= PROJETO: RESUMO (Acessar) ================= */
+let projAtual=null;
+function abrirProjetoDetalhe(nome){
+  projAtual=state.projetos.find(p=>p.nome===nome);
+  if(!projAtual) return;
+  renderProjetoDetalhe();
+  go("projetoDetalhe");
+}
+function renderProjetoDetalhe(){
+  const p=projAtual; if(!p) return;
+  $("#pdNome").textContent=p.nome;
+  $("#pdSub").textContent=`${p.metodo} · ${p.perfil}`;
+  const itens=state.pipeline.filter(x=>x.proj===p.nome);
+  const pct=p.vagas?Math.round(p.ocupadas/p.vagas*100):0;
+  const aprovados=itens.filter(x=>x.status==="Aprovação").length;
+  $("#pdKpis").innerHTML=`
+    <div class="kpi">
+      <div class="kpi-top"><span class="chip" style="background:var(--violet-soft);color:var(--violet-deep)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg></span>
+        Participantes ativos</div>
+      <div class="v">${p.ocupadas}<small>de ${p.vagas} vagas</small></div>
+      <div class="trend"><span class="up">▲ ${pct}%</span> preenchido</div>
+      <div class="foot">${aprovados} de ${itens.length} participaç${itens.length!==1?"ões":"ão"} em Aprovação</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="chip" style="background:var(--blue-soft);color:var(--blue)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
+        Metodologia</div>
+      <div class="v" style="font-size:1.15rem">${p.metodo}</div>
+      <div class="foot">Formato de coleta definido para este projeto</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="chip" style="background:var(--pink-soft);color:var(--pink)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span>
+        Cliente contratante</div>
+      <div class="v" style="font-size:1.05rem">${p.contratante}</div>
+      <div class="foot">Cliente final: <b style="color:var(--ink)">${p.cliente}</b></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="chip" style="background:var(--amber-soft);color:var(--amber)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>
+        Termos assinados</div>
+      <div class="v">${p.termosTotais||0}<small>totais</small></div>
+      <div class="trend">${p.termosPendentes?`<span class="down">▼ ${p.termosPendentes}</span> a resolver`:'<span class="up">▲ tudo em dia</span>'}</div>
+      <div class="foot">Atualizado em ${p.termosData||"—"}</div>
+    </div>`;
+  $("#tbProjParts").innerHTML=itens.map(x=>{
+    const pp=state.participantes.find(pp=>pp.cod===x.part);
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <span class="av ${gcor(x.part)}">${iniciais(nomeDe(x.part))}</span>
+        <div><div class="cell-main">${primeiroNome(x.part)}</div><div class="cell-sub mono">${x.part}</div></div></div></td>
+      <td style="font-size:.82rem">${pp?`${pp.idade} anos · ${pp.renda}`:"—"}</td>
+      <td>${statusBadge(x.status)}</td>
+      <td>${pp?consentBadge(pp.consent):"—"}</td>
+      <td>${x.resp}</td>
+    </tr>`;
+  }).join("")||'<tr><td colspan="5" class="empty">Nenhum participante associado a este projeto ainda.</td></tr>';
+}
+
+/* ================= ASSOCIAR / CADASTROS ================= */
+function preencherSelects(){
+  $("#asPart").innerHTML=state.participantes.filter(p=>p.consent!=="revogado"&&p.sit!=="Descartado")
+    .map(p=>`<option value="${p.cod}">${p.cod} — ${p.nome.split(" ")[0]} · ${p.cidade}/${p.uf} · ${p.idade} anos</option>`).join("");
+  const projs=state.projetos.filter(p=>p.status!=="Concluído");
+  $("#asProj").innerHTML=projs.map(p=>`<option>${p.nome}</option>`).join("");
+  $("#fltProj").innerHTML='<option value="todos">Todos os projetos</option>'+
+    state.projetos.map(p=>`<option>${p.nome}</option>`).join("");
+  const fpp=$("#fltPPProj");
+  if(fpp){ const atual=fpp.value||"todos";
+    fpp.innerHTML='<option value="todos">Todos os projetos</option>'+
+      state.projetos.map(p=>`<option>${p.nome}</option>`).join("");
+    fpp.value=[...fpp.options].some(o=>o.value===atual||o.text===atual)?atual:"todos"; }
+}
+function associar(){
+  const part=$("#asPart").value, proj=$("#asProj").value, etapa=$("#asEtapa").value;
+  if(state.pipeline.some(x=>x.part===part&&x.proj===proj)){
+    toast("Este participante já está no pipeline deste projeto."); return; }
+  state.pipeline.unshift({id:nextId++,part,proj,etapa,dias:0,resp:state.user.nome,aval:null,status:"Aprovação"});
+  const p=state.projetos.find(p=>p.nome===proj); if(p&&p.ocupadas<p.vagas) p.ocupadas++;
+  renderBoard(); renderMov(); renderKpis(); renderFolders(); renderProjetos(); renderParticipacoesTab();
+  fecharModal("mAssociar"); go("participacoes"); selecionarProjetoPP(proj);
+  toast(`${part} adicionado ao pipeline em "${etapa}".`);
+}
+
+function salvarParticipante(){
+  if(!$("#npConsent").checked){ toast("O consentimento LGPD é obrigatório para concluir o cadastro."); return; }
+  const nome=$("#npNome").value.trim()||"Participante Sem Nome";
+  const seq=String(153+state.participantes.length).padStart(4,"0");
+  state.participantes.unshift({
+    cod:`P-2026-${seq}`,nome,cpf:$("#npCpf").value||"000.000.000-00",
+    fone:$("#npFone").value||"(21) 90000-0000",email:$("#npEmail").value||"sem@email.com",
+    cidade:$("#npCidade").value||"Niterói",uf:($("#npUf").value||"RJ").toUpperCase(),
+    idade:$("#npNasc").value?Math.max(18,2026-new Date($("#npNasc").value).getFullYear()):30,
+    renda:$("#npRenda").value,consent:"v2026.1",media:0,sit:"Aprovado",
+  });
+  renderParticipantes(); preencherSelects(); fecharModal("mParticipante");
+  toast("Participante cadastrado com consentimento v2026.1 registrado.");
+}
+
+/* ================= ASSISTENTE DE NOVO CADASTRO (WIZARD) ================= */
+const WIZ_STEPS=["Banco de dados","Novos participantes","Dados","Revisão"];
+let wizStep=1, wizProjeto="", wizModo=null, wizParticipantes=[], wizNextTempId=1;
+
+function abrirWizard(){
+  wizStep=1; wizProjeto=""; wizModo=null; wizParticipantes=[]; wizNextTempId=1;
+  renderWiz();
+  abrirModal("mWizard");
+}
+function fecharWizard(){ fecharModal("mWizard"); }
+function wizVoltar(){ if(wizStep>1){ wizStep--; renderWiz(); } }
+function wizAvancar(){
+  if(wizStep===3&&!wizParticipantes.length){ toast("Adicione pelo menos um participante antes de continuar."); return; }
+  if(wizStep<4){ wizStep++; renderWiz(); }
+}
+function wizEscolherModo(modo){
+  wizModo=modo; wizStep=3;
+  if(modo==="manual"&&!wizParticipantes.length) wizAdicionarManual();
+  renderWiz();
+}
+
+function renderWiz(){
+  $("#wizSteps").innerHTML=WIZ_STEPS.map((lb,i)=>{
+    const n=i+1, done=n<wizStep, active=n===wizStep;
+    return `${i>0?`<div class="wiz-line ${n<=wizStep?"done":""}"></div>`:""}
+      <div class="wiz-step ${done?"done":""} ${active?"active":""}">
+        <span class="circ">${done?"✓":n}</span><span class="lb">${lb}</span>
+      </div>`;
+  }).join("");
+
+  let body="",foot="";
+  if(wizStep===1){
+    const projs=state.projetos.filter(p=>p.status!=="Concluído");
+    body=`<div class="field"><label>Projeto (opcional)</label>
+        <select id="wzProjeto" onchange="wizProjeto=this.value">
+          <option value="">Apenas para o Banco de Pessoas (sem projeto)</option>
+          ${projs.map(p=>`<option value="${p.nome}" ${wizProjeto===p.nome?"selected":""}>${p.nome}</option>`).join("")}
+        </select>
+        <p class="hint">Se você escolher um projeto, cada participante já entra na etapa "Análise de Perfil" dele. Sem projeto, eles só ficam registrados no Banco de Pessoas.</p></div>`;
+    foot=`<button class="btn btn-ghost" onclick="fecharWizard()">Cancelar</button>
+      <button class="btn btn-primary" onclick="wizAvancar()">Continuar ›</button>`;
+  }else if(wizStep===2){
+    body=`<div class="wiz-modo-grid">
+      <button class="wiz-modo-card ${wizModo==='import'?'sel':''}" onclick="wizEscolherModo('import')">
+        <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0-12 4 4m-4-4-4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+        <b>Importar planilha</b>
+        <small>Baixe o modelo, preencha e importe uma planilha com vários participantes de uma vez.</small></button>
+      <button class="wiz-modo-card ${wizModo==='manual'?'sel':''}" onclick="wizEscolherModo('manual')">
+        <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <b>Cadastro manual</b>
+        <small>Preencha os dados de cada participante direto no formulário, um por um.</small></button>
+    </div>
+    <p class="hint" style="text-align:center;margin-top:14px">Não se preocupe em decidir agora — as duas opções ficam disponíveis na próxima etapa.</p>`;
+    foot=`<button class="btn btn-ghost" onclick="wizVoltar()">‹ Voltar</button>`;
+  }else if(wizStep===3){
+    body=`<div class="wiz-import-bar">
+        <button class="btn btn-ghost" style="padding:8px 12px" onclick="wizBaixarModelo()">⭳ Baixar modelo (.csv)</button>
+        <label class="btn btn-ghost" style="padding:8px 12px;cursor:pointer">⭱ Importar planilha (.csv)
+          <input type="file" accept=".csv" style="display:none" onchange="wizImportarPlanilha(this)"></label>
+        <span class="hint" id="wizCount" style="margin-left:auto"></span>
+      </div>
+      <div id="wizLista"></div>
+      <button class="btn btn-soft btn-block" style="margin-top:4px" onclick="wizAdicionarManual()">＋ Adicionar participante manualmente</button>`;
+    foot=`<button class="btn btn-ghost" onclick="wizVoltar()">‹ Voltar</button>
+      <button class="btn btn-primary" onclick="wizAvancar()">Processar e revisar ›</button>`;
+  }else if(wizStep===4){
+    body=`<div id="wizRevisao"></div>`;
+    foot=`<button class="btn btn-ghost" onclick="wizVoltar()">‹ Voltar</button>
+      <button class="btn btn-primary" onclick="wizConcluir()">Concluir cadastro</button>`;
+  }
+  $("#wizBody").innerHTML=body;
+  $("#wizFoot").innerHTML=foot;
+  if(wizStep===3) renderWizLista();
+  if(wizStep===4) renderWizRevisao();
+}
+
+function wizBaixarModelo(){
+  const header="Nome completo,CPF,Data de nascimento (AAAA-MM-DD),Gênero,E-mail,Telefone,Cidade,UF,CEP,Escolaridade,Profissão,Faixa de renda";
+  const exemplo="Maria da Silva,123.456.789-00,1990-05-20,Feminino,maria@email.com,(21) 90000-0000,Niterói,RJ,24000-000,Superior,Analista,Classe C";
+  const csv="\uFEFF"+header+"\n"+exemplo+"\n";
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="modelo-participantes.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Modelo baixado — preencha e use \u201cImportar planilha\u201d para trazer os dados de volta.");
+}
+function wizImportarPlanilha(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const linhas=String(e.target.result).replace(/^\uFEFF/,"").split(/\r?\n/).filter(l=>l.trim());
+    if(linhas.length<2){ toast("Planilha vazia ou sem linhas de dados após o cabeçalho."); input.value=""; return; }
+    let importados=0;
+    for(let i=1;i<linhas.length;i++){
+      const c=linhas[i].split(",").map(x=>x.trim());
+      if(!c[0]) continue;
+      wizParticipantes.push({tempId:wizNextTempId++,nome:c[0]||"",cpf:c[1]||"",nasc:c[2]||"",
+        genero:c[3]||"Feminino",email:c[4]||"",fone:c[5]||"",cidade:c[6]||"",uf:(c[7]||"").toUpperCase(),
+        cep:c[8]||"",esc:c[9]||"Médio",prof:c[10]||"",renda:c[11]||"Classe C",consent:true,expanded:false});
+      importados++;
+    }
+    input.value="";
+    renderWizLista();
+    toast(`${importados} participante${importados!==1?"s":""} importado${importados!==1?"s":""} da planilha.`);
+  };
+  reader.readAsText(file,"UTF-8");
+}
+function wizAdicionarManual(){
+  wizParticipantes.push({tempId:wizNextTempId++,nome:"",cpf:"",nasc:"",genero:"Feminino",email:"",fone:"",
+    cidade:"Niterói",uf:"RJ",cep:"",esc:"Médio",prof:"",renda:"Classe C",consent:false,expanded:true});
+  renderWizLista();
+}
+function wizRemover(id){
+  wizParticipantes=wizParticipantes.filter(x=>x.tempId!==id);
+  renderWizLista();
+}
+function wizToggleExpand(id){
+  const w=wizParticipantes.find(x=>x.tempId===id); if(!w) return;
+  w.expanded=!w.expanded; renderWizLista();
+}
+function wizSetField(id,key,val){
+  const w=wizParticipantes.find(x=>x.tempId===id); if(!w) return;
+  w[key]=val;
+  if(["nome","cpf","cidade","uf"].includes(key)){
+    const card=document.querySelector(`.wiz-card[data-id="${id}"]`);
+    if(card){
+      card.querySelector(".cell-main").textContent=w.nome||"Novo participante";
+      card.querySelector(".cell-sub").textContent=`${w.cpf||"CPF não informado"}${w.cidade?` · ${w.cidade}/${w.uf}`:""}`;
+      card.querySelector(".av").textContent=w.nome?iniciais(w.nome):"?";
+    }
+  }
+}
+function wizCardFields(w){
+  const GEN=["Feminino","Masculino","Outro","Prefere não informar"];
+  const ESC=["Fundamental","Médio","Superior","Pós-graduação"];
+  const REN=["Classes A/B","Classe C","Classes D/E"];
+  return `<div class="wiz-card-fields">
+    <div class="form-row">
+      <div class="field"><label>Nome completo</label><input value="${w.nome}" oninput="wizSetField(${w.tempId},'nome',this.value)"></div>
+      <div class="field"><label>CPF</label><input value="${w.cpf}" placeholder="000.000.000-00" oninput="wizSetField(${w.tempId},'cpf',this.value)"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Data de nascimento</label><input type="date" value="${w.nasc}" oninput="wizSetField(${w.tempId},'nasc',this.value)"></div>
+      <div class="field"><label>Gênero</label><select onchange="wizSetField(${w.tempId},'genero',this.value)">
+        ${GEN.map(g=>`<option ${w.genero===g?"selected":""}>${g}</option>`).join("")}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>E-mail</label><input type="email" value="${w.email}" oninput="wizSetField(${w.tempId},'email',this.value)"></div>
+      <div class="field"><label>Telefone / WhatsApp</label><input value="${w.fone}" placeholder="(21) 90000-0000" oninput="wizSetField(${w.tempId},'fone',this.value)"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Cidade</label><input value="${w.cidade}" oninput="wizSetField(${w.tempId},'cidade',this.value)"></div>
+      <div class="field"><label>UF</label><input value="${w.uf}" maxlength="2" oninput="wizSetField(${w.tempId},'uf',this.value.toUpperCase())"></div>
+      <div class="field"><label>CEP</label><input value="${w.cep}" placeholder="24000-000" oninput="wizSetField(${w.tempId},'cep',this.value)"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Escolaridade</label><select onchange="wizSetField(${w.tempId},'esc',this.value)">
+        ${ESC.map(e=>`<option ${w.esc===e?"selected":""}>${e}</option>`).join("")}</select></div>
+      <div class="field"><label>Profissão</label><input value="${w.prof}" oninput="wizSetField(${w.tempId},'prof',this.value)"></div>
+      <div class="field"><label>Faixa de renda</label><select onchange="wizSetField(${w.tempId},'renda',this.value)">
+        ${REN.map(r=>`<option ${w.renda===r?"selected":""}>${r}</option>`).join("")}</select></div>
+    </div>
+    <label class="check" style="margin-top:4px">
+      <input type="checkbox" ${w.consent?"checked":""} onchange="wizSetField(${w.tempId},'consent',this.checked)">
+      <span>Consentimento LGPD confirmado para este participante.</span></label>
+  </div>`;
+}
+function renderWizLista(){
+  const box=$("#wizLista"); if(!box) return;
+  const ct=$("#wizCount");
+  if(ct) ct.textContent=wizParticipantes.length?`${wizParticipantes.length} participante${wizParticipantes.length!==1?"s":""} nesta leva`:"";
+  box.innerHTML=wizParticipantes.map(w=>`
+    <div class="wiz-card" data-id="${w.tempId}">
+      <div class="wiz-card-top">
+        <span class="av ${gcor(String(w.tempId))}">${w.nome?iniciais(w.nome):"?"}</span>
+        <div style="flex:1;min-width:0">
+          <div class="cell-main">${w.nome||"Novo participante"}</div>
+          <div class="cell-sub mono">${w.cpf||"CPF não informado"}${w.cidade?` · ${w.cidade}/${w.uf}`:""}</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:.74rem" onclick="wizToggleExpand(${w.tempId})">${w.expanded?"Recolher":"Editar"}</button>
+        <button class="wiz-del" onclick="wizRemover(${w.tempId})" title="Remover">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-7 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>
+      </div>
+      ${w.expanded?wizCardFields(w):""}
+    </div>`).join("")||'<div class="empty" style="padding:26px">Nenhum participante adicionado ainda — importe uma planilha ou adicione manualmente abaixo.</div>';
+}
+function renderWizRevisao(){
+  const box=$("#wizRevisao"); if(!box) return;
+  const projTxt=wizProjeto?`Projeto: <b style="color:var(--ink)">${wizProjeto}</b>`:"Sem projeto associado — os participantes só entram no Banco de Pessoas.";
+  box.innerHTML=`<p class="hint" style="margin-bottom:12px">${projTxt}</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>CPF</th><th>Cidade/UF</th><th>Consentimento</th></tr></thead>
+    <tbody>${wizParticipantes.map(w=>`<tr>
+      <td class="cell-main">${w.nome||'<span style="color:var(--red)">sem nome</span>'}</td>
+      <td class="mono">${w.cpf||'<span style="color:var(--red)">sem CPF</span>'}</td>
+      <td>${w.cidade}/${w.uf}</td>
+      <td>${w.consent?'<span class="badge b-green">Confirmado</span>':'<span class="badge b-red">Pendente</span>'}</td>
+    </tr>`).join("")}</tbody></table></div>
+    <p class="hint" style="margin-top:10px">${wizParticipantes.length} participante${wizParticipantes.length!==1?"s":""} ${wizParticipantes.length!==1?"serão":"será"} adicionado${wizParticipantes.length!==1?"s":""} ao banco de dados.</p>`;
+}
+function wizConcluir(){
+  const cpfsExistentes=new Set(state.participantes.map(p=>p.cpf.replace(/\D/g,"")));
+  const vistos=new Set();
+  const invalidos=wizParticipantes.filter(w=>{
+    const d=w.cpf.replace(/\D/g,"");
+    if(!w.nome.trim()||!cpfValido(w.cpf)||!w.consent) return true;
+    if(cpfsExistentes.has(d)||vistos.has(d)) return true;
+    vistos.add(d); return false;
+  });
+  if(invalidos.length){
+    toast(`${invalidos.length} participante(s) com nome, CPF ou consentimento pendente/duplicado — corrija na etapa Dados.`);
+    return;
+  }
+  const proj=wizProjeto?state.projetos.find(p=>p.nome===wizProjeto):null;
+  wizParticipantes.forEach(w=>{
+    const seq=String(153+state.participantes.length).padStart(4,"0");
+    const cod=`P-2026-${seq}`;
+    const idade=w.nasc?Math.max(18,2026-new Date(w.nasc).getFullYear()):30;
+    state.participantes.unshift({cod,nome:w.nome.trim(),cpf:w.cpf,fone:w.fone||"(21) 90000-0000",
+      email:w.email||"sem@email.com",cidade:w.cidade||"Niterói",uf:(w.uf||"RJ").toUpperCase(),
+      idade,renda:w.renda,consent:"v2026.1",media:0,sit:proj?"Pendente":"Aprovado"});
+    if(proj){
+      state.pipeline.unshift({id:nextId++,part:cod,proj:proj.nome,etapa:"Análise de Perfil",dias:0,resp:state.user.nome,aval:null,status:"Aprovação"});
+      if(proj.ocupadas<proj.vagas) proj.ocupadas++;
+    }
+  });
+  const n=wizParticipantes.length;
+  fecharWizard();
+  renderParticipantes(); renderProjetos(); renderParticipacoesTab(); renderFolders(); preencherSelects();
+  if(proj){ projAtual=proj; renderProjetoDetalhe(); }
+  toast(`${n} participante${n!==1?"s":""} cadastrado${n!==1?"s":""} com sucesso${proj?` em "${proj.nome}"`:""}.`);
+}
+function salvarUsuario(){
+  state.usuarios.push({nome:$("#nuNome").value.trim()||"Novo Usuário",
+    email:$("#nuEmail").value||"novo@qualyvortice.com.br",papel:$("#nuPapel").value,status:"Ativo"});
+  renderUsuarios(); fecharModal("mUsuario");
+  toast("Usuário criado — redefinição de senha exigida no primeiro acesso.");
+}
+
+function renderUsuarios(){
+  const acessos={ADMIN:"Tudo + auditoria LGPD",GESTOR:"Projetos e relatórios",RECRUTADOR:"Participantes e pipeline",AVALIADOR:"Pipeline e avaliações",FINANCEIRO:"Dados de pagamento"};
+  const cor={ADMIN:"b-red",GESTOR:"b-blue",RECRUTADOR:"b-green",AVALIADOR:"b-pink",FINANCEIRO:"b-gray"};
+  $("#tbUsuarios").innerHTML=state.usuarios.map(u=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:9px">
+      <span class="av ${gcor(u.nome)}">${iniciais(u.nome)}</span><span class="cell-main">${u.nome}</span></div></td>
+    <td class="mono" style="font-size:.79rem">${u.email}</td>
+    <td><span class="badge ${cor[u.papel]}">${PAPEIS[u.papel]??u.papel}</span></td>
+    <td style="font-size:.8rem">${acessos[u.papel]}</td>
+    <td><span class="badge ${u.status==="Ativo"?"b-green":"b-gray"}"><span class="dot"></span>${u.status}</span></td>
+  </tr>`).join("");
+}
+function renderAuditoria(){
+  $("#tbAuditoria").innerHTML=state.auditoria.map(l=>`<tr>
+    <td class="mono" style="font-size:.76rem;white-space:nowrap">${l.q}</td>
+    <td>${l.u}</td><td class="mono">${l.t}</td>
+    <td><span class="badge b-violet">${l.a}</span></td>
+    <td style="font-size:.8rem">${l.d}</td>
+  </tr>`).join("");
+}
+
+/* ================= PARTICIPAÇÕES (tabela) ================= */
+function limparFiltrosPP(){
+  $("#fltPPProj").value="todos"; $("#fltPPEtapa").value="todas"; $("#fltPPNota").value="todas";
+  renderParticipacoesTab();
+}
+function selecionarProjetoPP(nome){
+  const s=$("#fltPPProj"); if(!s) return;
+  s.value=nome; renderParticipacoesTab();
+}
+function renderParticipacoesTab(){
+  const tb=$("#tbParticipacoes"); if(!tb) return;
+  const fProj=$("#fltPPProj")?.value||"todos";
+  const fEtapa=$("#fltPPEtapa")?.value||"todas";
+  const fNota=$("#fltPPNota")?.value||"todas";
+  const rows=state.pipeline.filter(x=>{
+    if(fProj!=="todos"&&x.proj!==fProj) return false;
+    if(fEtapa!=="todas"&&x.etapa!==fEtapa) return false;
+    const g=x.aval?x.aval.ger:null;
+    if(fNota==="5") return g===5;
+    if(fNota==="4+") return g!=null&&g>=4;
+    if(fNota==="3-") return g!=null&&g<=3;
+    if(fNota==="sem") return g==null;
+    return true;
+  });
+  const temFiltro=fProj!=="todos"||fEtapa!=="todas"||fNota!=="todas";
+  const tot=$("#ppTotal");
+  if(tot) tot.textContent=`${rows.length} de ${state.pipeline.length} participaç${rows.length===1?"ão":"ões"}`;
+  const lim=$("#ppLimpar"); if(lim) lim.style.display=temFiltro?"":"none";
+  tb.innerHTML=rows.map(x=>{
+    const a=x.aval;
+    const pp=state.participantes.find(pp=>pp.cod===x.part);
+    const podeAvaliar=(x.etapa==="Entrevista"||x.etapa==="Pago");
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <span class="av ${gcor(x.part)}">${iniciais(nomeDe(x.part))}</span>
+        <div><div class="cell-main">${primeiroNome(x.part)}</div><div class="cell-sub mono">${x.part}</div></div></div></td>
+      <td>${x.proj}</td>
+      <td style="font-size:.8rem">${pp?`${pp.idade} anos · ${pp.renda}`:"—"}</td>
+      <td>${statusBadge(x.status)}</td>
+      <td>${stars(a?a.com:null)}</td><td>${stars(a?a.pon:null)}</td><td>${stars(a?a.dad:null)}</td>
+      <td>${a?stars(a.ger)+`<span class="mono" style="margin-left:5px;font-size:.74rem">${a.ger.toFixed(1)}</span>`:stars(null)}</td>
+      <td>${!a&&podeAvaliar?`<button class="aval-link" onclick="abrirAvaliar(${x.id})">★ Avaliar</button>`:""}</td>
+    </tr>`;
+  }).join("")||`<tr><td colspan="9" class="empty">${temFiltro?"Nenhuma participação corresponde aos filtros selecionados.":"Nenhuma participação registrada — use \u201cAssociar participante a projeto\u201d."}</td></tr>`;
+}
+
+/* ================= BASE ANALÍTICA (1.000 participantes) ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=mulberry32(2026);
+function pick(pairs){const tot=pairs.reduce((s,p)=>s+p[1],0);let r=rnd()*tot,acc=0;
+  for(const p of pairs){acc+=p[1];if(r<acc)return p[0]}return pairs[0][0]}
+
+const UF_W=[["RJ",21],["SP",15],["MG",9],["BA",7],["RS",5],["PR",5],["PE",4.5],["CE",4],["SC",3],["GO",3],
+  ["PA",3],["ES",2.6],["DF",2.2],["AM",2],["MA",2],["RN",1.6],["PB",1.6],["MT",1.6],["MS",1.3],["AL",1.3],
+  ["PI",1.3],["SE",1],["RO",0.9],["TO",0.9],["AC",0.5],["AP",0.5],["RR",0.4]];
+const GEN_W=[["Feminino",52],["Masculino",44],["Outro",2.5],["Não informa",1.5]];
+const CLS_W=[["A",7],["B",22],["C",42],["D",20],["E",9]];
+const ESC_W=[["Fundamental",18],["Médio",41],["Superior",31],["Pós-graduação",10]];
+const FX_W=[["18–24",17],["25–34",28],["35–44",24],["45–54",17],["55+",14]];
+
+const CAPITAIS=["Rio de Janeiro","São Paulo","Brasília","Fortaleza","Salvador"];
+const CAP_UF={RJ:["Rio de Janeiro",0.62],SP:["São Paulo",0.55],DF:["Brasília",0.95],CE:["Fortaleza",0.72],BA:["Salvador",0.66]};
+const SEGMENTOS=["Saúde","Cosméticos","Alimentação","Banco","Tecnologia"];
+const SEG_W=[["Saúde",18],["Cosméticos",16],["Alimentação",24],["Banco",22],["Tecnologia",20]];
+const SEG_COR={"Saúde":"#149A5B","Cosméticos":"#F2295B","Alimentação":"#D98A0F","Banco":"#3B6FD4","Tecnologia":"#0F8B8D"};
+
+const base1000=Array.from({length:1000},()=>{
+  const uf=pick(UF_W);
+  const cap=CAP_UF[uf]&&rnd()<CAP_UF[uf][1]?CAP_UF[uf][0]:null;
+  return {uf,cid:cap,gen:pick(GEN_W),cls:pick(CLS_W),esc:pick(ESC_W),fx:pick(FX_W),
+    seg:pick(SEG_W),ok:rnd()<0.95,nota:rnd()<0.6?Math.round((3+rnd()*2)*10)/10:null};
+});
+
+/* Sobreposição entre segmentos (para o diagrama de Venn) — usa um gerador aleatório
+   independente para não alterar nenhum número já exibido nos outros gráficos. */
+const rndOverlap=mulberry32(4242);
+function pickCustom(rndFn,pairs){
+  const tot=pairs.reduce((s,p)=>s+p[1],0); let r=rndFn()*tot,acc=0;
+  for(const p of pairs){ acc+=p[1]; if(r<acc) return p[0]; } return pairs[0][0];
+}
+base1000.forEach(p=>{
+  const set=new Set([p.seg]);
+  if(rndOverlap()<0.30){
+    let s2=pickCustom(rndOverlap,SEG_W),tries=0;
+    while(set.has(s2)&&tries<5){ s2=pickCustom(rndOverlap,SEG_W); tries++; }
+    set.add(s2);
+    if(rndOverlap()<0.25){
+      let s3=pickCustom(rndOverlap,SEG_W); tries=0;
+      while(set.has(s3)&&tries<5){ s3=pickCustom(rndOverlap,SEG_W); tries++; }
+      set.add(s3);
+    }
+  }
+  p.segs=[...set];
+});
+
+/* Profissão (para o gráfico de pizza na Visão por Segmento) — também com gerador
+   independente, então não mexe em nenhum outro número já exibido. */
+const PROF_W=[["Autônomo(a)",20],["Estudante",16],["Administrativo",15],["Comércio e vendas",13],
+  ["Aposentado(a)",10],["Professor(a)",8],["Profissional de saúde",8],["Outro",10]];
+const PROF_COR={"Autônomo(a)":"#F2295B","Estudante":"#3B6FD4","Administrativo":"#149A5B","Comércio e vendas":"#D98A0F",
+  "Aposentado(a)":"#9B59B6","Professor(a)":"#0F8B8D","Profissional de saúde":"#E8590C","Outro":"#8A7078"};
+const rndProf=mulberry32(6161);
+base1000.forEach(p=>{ p.prof=pickCustom(rndProf,PROF_W); });
+
+/* Mapa em grade (cartograma) — posição [coluna, linha] de cada UF */
+const TILES={RR:[2,0],AP:[4,0], AM:[1,1],PA:[3,1],MA:[4,1],CE:[5,1],RN:[6,1],
+  AC:[0,2],RO:[2,2],MT:[3,2],TO:[4,2],PI:[5,2],PB:[6,2],
+  GO:[3,3],DF:[4,3],BA:[5,3],PE:[6,3],AL:[7,3],
+  MS:[2,4],MG:[4,4],ES:[5,4],SE:[6,4],
+  SP:[3,5],RJ:[4,5], PR:[3,6], SC:[3,7], RS:[3,8]};
+
+const filtros={uf:null,gen:null,cls:null,fx:null,cid:null};
+const FILTRO_NOME={uf:"Estado",gen:"Gênero",cls:"Classe",fx:"Faixa etária",cid:"Capital"};
+function toggleF(dim,val){ filtros[dim]=filtros[dim]===val?null:val; renderDashPart(); }
+function limparFiltros(){ Object.keys(filtros).forEach(k=>filtros[k]=null); renderDashPart(); }
+
+function contar(arr,campo){ const m={}; arr.forEach(p=>m[p[campo]]=(m[p[campo]]||0)+1); return m; }
+const fmt=n=>n.toLocaleString("pt-BR");
+
+function renderDashPart(){
+  if(!$("#mapBR")) return;
+  const dados=base1000.filter(p=>Object.entries(filtros).every(([d,v])=>!v||p[d]===v));
+  const tot=dados.length;
+
+  /* KPIs */
+  $("#dpTotal").textContent=fmt(tot);
+  $("#dpTotalFoot").textContent=`${Math.round(tot/10)}% da base de 1.000`;
+  const emCaps=dados.filter(p=>p.cid).length;
+  $("#dpCaps").textContent=fmt(emCaps);
+  $("#dpCapsFoot").textContent=tot?`${Math.round(emCaps/tot*100)}% do recorte · RJ, SP, Brasília, Fortaleza e Salvador`:"RJ · SP · Brasília · Fortaleza · Salvador";
+
+  /* Chips de filtros ativos */
+  const chips=Object.entries(filtros).filter(([,v])=>v)
+    .map(([d,v])=>`<button class="fchip" onclick="toggleF('${d}','${v}')"><small>${FILTRO_NOME[d]}:</small> ${v} ✕</button>`);
+  $("#fchips").innerHTML=chips.length
+    ?`<span class="lbl">Filtros ativos:</span> ${chips.join("")} <button class="fclear" onclick="limparFiltros()">limpar tudo</button>`
+    :'<span class="lbl">Nenhum filtro ativo — clique nos gráficos para segmentar a base.</span>';
+
+  /* Mapa por estado */
+  const porUf=contar(dados,"uf");
+  const maxUf=Math.max(1,...Object.values(porUf));
+  $("#mapBR").innerHTML=Object.entries(TILES).map(([uf,[c,r]])=>{
+    const n=porUf[uf]||0, al=n?0.12+0.83*(n/maxUf):0.05;
+    const claro=al>0.5;
+    return `<button class="tile ${filtros.uf===uf?"sel":""}" title="${uf}: ${fmt(n)} participante${n!==1?"s":""}"
+      style="grid-column:${c+1};grid-row:${r+1};background:rgba(242,41,91,${al.toFixed(2)});color:${claro?"#fff":"#5C1F32"}"
+      onclick="toggleF('uf','${uf}')"><b>${uf}</b><span>${fmt(n)}</span></button>`;
+  }).join("");
+
+  /* Rosca — 5 principais capitais */
+  const CAP_COR={"Rio de Janeiro":"#F2295B","São Paulo":"#FF7A3D","Brasília":"#FFB15C","Fortaleza":"#3B6FD4","Salvador":"#149A5B"};
+  const porCap={}; CAPITAIS.forEach(c=>porCap[c]=dados.filter(p=>p.cid===c).length);
+  const totCaps=Object.values(porCap).reduce((s,n)=>s+n,0);
+  let ang=0;
+  const fatias=CAPITAIS.filter(c=>porCap[c]>0).map(c=>{
+    const a0=ang, a1=ang+(totCaps?porCap[c]/totCaps*360:0); ang=a1;
+    return `${CAP_COR[c]} ${a0.toFixed(1)}deg ${a1.toFixed(1)}deg`;
+  });
+  const legenda=CAPITAIS.map(c=>{
+    const n=porCap[c];
+    return `<button class="lg ${filtros.cid===c?"sel":""}" onclick="toggleF('cid','${c}')">
+      <span class="sw" style="background:${CAP_COR[c]}"></span>${c}
+      <span class="ct">${fmt(n)} · ${totCaps?Math.round(n/totCaps*100):0}%</span></button>`;
+  }).join("");
+  $("#chCaps").innerHTML=`
+    <div class="donut" data-center="${fmt(totCaps)}\nnas capitais"
+      style="background:${totCaps?`conic-gradient(${fatias.join(",")})`:"#F1E4E8"}"></div>
+    <div class="donut-legend">${legenda}</div>`;
+
+  /* Gênero — barra empilhada + legenda */
+  const GEN_COR={"Feminino":"var(--violet)","Masculino":"var(--blue)","Outro":"var(--pink)","Não informa":"#C9BEC2"};
+  const porGen=contar(dados,"gen");
+  const stack=GEN_W.map(([g])=>{const n=porGen[g]||0;
+    return `<i style="width:${tot?n/tot*100:0}%;background:${GEN_COR[g]}" title="${g}: ${fmt(n)}"></i>`}).join("");
+  const legend=GEN_W.map(([g])=>{const n=porGen[g]||0;
+    return `<button class="lg ${filtros.gen===g?"sel":""}" onclick="toggleF('gen','${g}')">
+      <span class="sw" style="background:${GEN_COR[g]}"></span>${g}
+      <span class="ct">${fmt(n)} · ${tot?Math.round(n/tot*100):0}%</span></button>`}).join("");
+  $("#chGen").innerHTML=`<div class="stackbar">${stack}</div><div class="legend">${legend}</div>`;
+
+  /* Classe social — barras verticais */
+  const porCls=contar(dados,"cls");
+  const maxCls=Math.max(1,...CLS_W.map(([c])=>porCls[c]||0));
+  $("#chCls").innerHTML=CLS_W.map(([c])=>{const n=porCls[c]||0;
+    return `<button class="vbar ${filtros.cls===c?"sel":""}" onclick="toggleF('cls','${c}')">
+      <span class="ct">${fmt(n)}</span><b style="height:${Math.max(3,n/maxCls*100)}%"></b>
+      <span>Classe ${c}</span></button>`}).join("");
+
+  /* Faixa etária — barras verticais */
+  const porFx=contar(dados,"fx");
+  const maxFx=Math.max(1,...FX_W.map(([f])=>porFx[f]||0));
+  $("#chFx").innerHTML=FX_W.map(([f])=>{const n=porFx[f]||0;
+    return `<button class="vbar ${filtros.fx===f?"sel":""}" onclick="toggleF('fx','${f}')">
+      <span class="ct">${fmt(n)}</span><b style="height:${Math.max(3,n/maxFx*100)}%"></b>
+      <span>${f}</span></button>`}).join("");
+
+  renderVenn(dados);
+}
+
+/* ================= VENN: SOBREPOSIÇÃO ENTRE SEGMENTOS ================= */
+let vennSel=["Saúde","Cosméticos","Alimentação"];
+function toggleVennSeg(s){
+  const i=vennSel.indexOf(s);
+  if(i>=0){ vennSel.splice(i,1); }
+  else{
+    if(vennSel.length>=3){ toast("Selecione no máximo 3 segmentos para comparar no diagrama de Venn."); return; }
+    vennSel.push(s);
+  }
+  renderVenn();
+}
+function renderVenn(dadosAtuais){
+  const box=$("#vennBox"); if(!box) return;
+  const dados=dadosAtuais||base1000.filter(p=>Object.entries(filtros).every(([d,v])=>!v||p[d]===v));
+  $("#vennPills").innerHTML=SEGMENTOS.map(s=>`
+    <button class="seg-tab ${vennSel.includes(s)?"sel":""}" onclick="toggleVennSeg('${s}')">
+      <span class="sw" style="background:${SEG_COR[s]}"></span>${s}</button>`).join("");
+
+  if(vennSel.length<2){
+    box.innerHTML='<div class="empty" style="padding:36px 20px">Selecione ao menos 2 segmentos acima para ver quantos participantes atuam em mais de um deles.</div>';
+    $("#vennFoot").textContent="";
+    return;
+  }
+  const counts={};
+  dados.forEach(p=>{
+    const present=vennSel.map(s=>p.segs.includes(s));
+    if(!present.some(Boolean)) return;
+    const key=present.map(b=>b?"1":"0").join("");
+    counts[key]=(counts[key]||0)+1;
+  });
+  const get=k=>counts[k]||0;
+
+  if(vennSel.length===2){
+    const [A,B]=vennSel;
+    const onlyA=get("10"), onlyB=get("01"), both=get("11");
+    box.innerHTML=svgVenn2(A,B,onlyA,onlyB,both);
+    const totA=onlyA+both, totB=onlyB+both;
+    $("#vennFoot").textContent=`${fmt(both)} participante${both!==1?"s":""} ${both!==1?"atuam":"atua"} em ${A} e em ${B} ao mesmo tempo — ${totA?Math.round(both/totA*100):0}% de quem está em ${A} e ${totB?Math.round(both/totB*100):0}% de quem está em ${B}.`;
+  }else{
+    const [A,B,C]=vennSel;
+    const onlyA=get("100"), onlyB=get("010"), onlyC=get("001");
+    const ab=get("110"), ac=get("101"), bc=get("011"), abc=get("111");
+    box.innerHTML=svgVenn3(A,B,C,onlyA,onlyB,onlyC,ab,ac,bc,abc);
+    $("#vennFoot").textContent=`${fmt(abc)} participante${abc!==1?"s":""} ${abc!==1?"atuam":"atua"} nos três segmentos ao mesmo tempo (${A}, ${B} e ${C}).`;
+  }
+}
+const VENN_FONT="'Plus Jakarta Sans',system-ui,sans-serif";
+const VENN_DEEP="#C4143F", VENN_DARK="#750A26";
+function svgVenn2(A,B,onlyA,onlyB,both){
+  const cA=SEG_COR[A],cB=SEG_COR[B];
+  const dot=(x,y,n,color)=>`<circle cx="${x}" cy="${y}" r="19" fill="#fff" fill-opacity=".88"/>
+    <text x="${x}" y="${y+6}" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="17" fill="${color}">${n}</text>`;
+  return `<svg viewBox="0 0 350 250" width="100%" style="max-width:420px;display:block;margin:0 auto">
+    <circle cx="135" cy="135" r="95" fill="${cA}" fill-opacity=".42" style="mix-blend-mode:multiply"/>
+    <circle cx="215" cy="135" r="95" fill="${cB}" fill-opacity=".42" style="mix-blend-mode:multiply"/>
+    <circle cx="135" cy="135" r="95" fill="none" stroke="${cA}" stroke-width="2"/>
+    <circle cx="215" cy="135" r="95" fill="none" stroke="${cB}" stroke-width="2"/>
+    <text x="95" y="22" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="13" fill="${cA}">${A}</text>
+    <text x="255" y="22" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="13" fill="${cB}">${B}</text>
+    ${dot(85,135,onlyA,cA)}
+    ${dot(265,135,onlyB,cB)}
+    ${dot(175,135,both,VENN_DEEP)}
+  </svg>`;
+}
+function svgVenn3(A,B,C,onlyA,onlyB,onlyC,ab,ac,bc,abc){
+  const cA=SEG_COR[A],cB=SEG_COR[B],cC=SEG_COR[C];
+  const dot=(x,y,n,color)=>`<circle cx="${x}" cy="${y}" r="18" fill="#fff" fill-opacity=".88"/>
+    <text x="${x}" y="${y+6}" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="15" fill="${color}">${n}</text>`;
+  return `<svg viewBox="0 0 380 320" width="100%" style="max-width:420px;display:block;margin:0 auto">
+    <circle cx="150" cy="140" r="100" fill="${cA}" fill-opacity=".38" style="mix-blend-mode:multiply"/>
+    <circle cx="230" cy="140" r="100" fill="${cB}" fill-opacity=".38" style="mix-blend-mode:multiply"/>
+    <circle cx="190" cy="205" r="100" fill="${cC}" fill-opacity=".38" style="mix-blend-mode:multiply"/>
+    <circle cx="150" cy="140" r="100" fill="none" stroke="${cA}" stroke-width="2"/>
+    <circle cx="230" cy="140" r="100" fill="none" stroke="${cB}" stroke-width="2"/>
+    <circle cx="190" cy="205" r="100" fill="none" stroke="${cC}" stroke-width="2"/>
+    <text x="105" y="24" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="13" fill="${cA}">${A}</text>
+    <text x="275" y="24" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="13" fill="${cB}">${B}</text>
+    <text x="190" y="312" text-anchor="middle" font-family="${VENN_FONT}" font-weight="800" font-size="13" fill="${cC}">${C}</text>
+    ${dot(100,108,onlyA,cA)}
+    ${dot(280,108,onlyB,cB)}
+    ${dot(190,272,onlyC,cC)}
+    ${dot(190,92,ab,VENN_DEEP)}
+    ${dot(128,195,ac,VENN_DEEP)}
+    ${dot(252,195,bc,VENN_DEEP)}
+    ${dot(190,168,abc,VENN_DARK)}
+  </svg>`;
+}
+
+/* ================= DASH: VISÃO POR SEGMENTO ================= */
+let segSel="Alimentação";
+function selSeg(s){ segSel=s; renderDashSeg(); }
+function renderDashSeg(){
+  if(!$("#segTabs")) return;
+  const porSeg={}; SEGMENTOS.forEach(s=>porSeg[s]=base1000.filter(p=>p.seg===s).length);
+  $("#segTabs").innerHTML=SEGMENTOS.map(s=>`
+    <button class="seg-tab ${s===segSel?"sel":""}" onclick="selSeg('${s}')">
+      <span class="sw" style="background:${SEG_COR[s]}"></span>${s}
+      <span class="ct">${fmt(porSeg[s])}</span></button>`).join("");
+
+  const dados=base1000.filter(p=>p.seg===segSel);
+  const tot=dados.length;
+  $("#sgTotal").textContent=fmt(tot);
+  $("#sgPct").textContent=`${Math.round(tot/10)}% da base de 1.000`;
+  const porCap={}; CAPITAIS.forEach(c=>porCap[c]=dados.filter(p=>p.cid===c).length);
+  const topCap=Object.entries(porCap).sort((a,b)=>b[1]-a[1])[0];
+  $("#sgCap").textContent=topCap&&topCap[1]?topCap[0]:"—";
+  $("#sgCapFoot").textContent=topCap&&topCap[1]?`${fmt(topCap[1])} participantes no segmento`:"—";
+  const porGen=contar(dados,"gen");
+  const topGen=Object.entries(porGen).sort((a,b)=>b[1]-a[1])[0];
+  $("#sgGen").textContent=topGen?topGen[0]:"—";
+  $("#sgGenFoot").textContent=topGen?`${Math.round(topGen[1]/tot*100)}% do segmento`:"—";
+  const porCls=contar(dados,"cls");
+  const topCls=Object.entries(porCls).sort((a,b)=>b[1]-a[1])[0];
+  $("#sgCls").textContent=topCls?`Classe ${topCls[0]}`:"—";
+  $("#sgClsFoot").textContent=topCls?`${Math.round(topCls[1]/tot*100)}% do segmento`:"—";
+
+  /* comparativo entre segmentos */
+  const maxSeg=Math.max(1,...Object.values(porSeg));
+  $("#sgComp").innerHTML=SEGMENTOS.map(s=>`
+    <button class="vbar ${s===segSel?"sel":""}" onclick="selSeg('${s}')">
+      <span class="ct">${fmt(porSeg[s])}</span>
+      <b style="height:${Math.max(3,porSeg[s]/maxSeg*100)}%;background:${SEG_COR[s]}"></b>
+      <span>${s}</span></button>`).join("");
+
+  /* top estados */
+  const porUf=contar(dados,"uf");
+  const topUfs=Object.entries(porUf).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxUf=Math.max(1,...topUfs.map(([,n])=>n));
+  $("#sgUfs").innerHTML=topUfs.map(([uf,n])=>`
+    <div class="hbar-row"><span class="lb">${uf}</span>
+      <span class="hbar"><i style="width:${n/maxUf*100}%;background:${SEG_COR[segSel]}"></i></span>
+      <span class="ct">${fmt(n)} · ${Math.round(n/tot*100)}%</span></div>`).join("");
+
+  /* gênero / classe / faixa etária do segmento */
+  const GEN_COR={"Feminino":"var(--violet)","Masculino":"var(--blue)","Outro":"var(--pink)","Não informa":"#C9BEC2"};
+  const stack=GEN_W.map(([g])=>{const n=porGen[g]||0;
+    return `<i style="width:${tot?n/tot*100:0}%;background:${GEN_COR[g]}" title="${g}: ${fmt(n)}"></i>`}).join("");
+  $("#sgGenCh").innerHTML=`<div class="stackbar">${stack}</div><div class="legend">${
+    GEN_W.map(([g])=>{const n=porGen[g]||0;
+      return `<span class="lg" style="cursor:default"><span class="sw" style="background:${GEN_COR[g]}"></span>${g}
+        <span class="ct">${fmt(n)} · ${tot?Math.round(n/tot*100):0}%</span></span>`}).join("")}</div>`;
+  const maxCls=Math.max(1,...CLS_W.map(([c])=>porCls[c]||0));
+  $("#sgClsCh").innerHTML=CLS_W.map(([c])=>{const n=porCls[c]||0;
+    return `<span class="vbar" style="cursor:default"><span class="ct">${fmt(n)}</span>
+      <b style="height:${Math.max(3,n/maxCls*100)}%;background:${SEG_COR[segSel]}"></b>
+      <span>Classe ${c}</span></span>`}).join("");
+  const porFx=contar(dados,"fx");
+  const maxFx=Math.max(1,...FX_W.map(([f])=>porFx[f]||0));
+  $("#sgFxCh").innerHTML=FX_W.map(([f])=>{const n=porFx[f]||0;
+    return `<span class="vbar" style="cursor:default"><span class="ct">${fmt(n)}</span>
+      <b style="height:${Math.max(3,n/maxFx*100)}%;background:${SEG_COR[segSel]}"></b>
+      <span>${f}</span></span>`}).join("");
+
+  /* Profissão — pizza */
+  const porProf={}; PROF_W.forEach(([k])=>porProf[k]=dados.filter(p=>p.prof===k).length);
+  let angPr=0;
+  const fatiasProf=PROF_W.filter(([k])=>porProf[k]>0).map(([k])=>{
+    const a0=angPr, a1=angPr+(tot?porProf[k]/tot*360:0); angPr=a1;
+    return `${PROF_COR[k]} ${a0.toFixed(1)}deg ${a1.toFixed(1)}deg`;
+  });
+  const legendaProf=PROF_W.map(([k])=>{
+    const n=porProf[k]||0;
+    return `<span class="lg" style="cursor:default"><span class="sw" style="background:${PROF_COR[k]}"></span>${k}
+      <span class="ct">${fmt(n)} · ${tot?Math.round(n/tot*100):0}%</span></span>`;
+  }).join("");
+  $("#sgProf").innerHTML=`
+    <div class="donut pie" style="background:${tot?`conic-gradient(${fatiasProf.join(",")})`:"#F1E4E8"}"></div>
+    <div class="donut-legend">${legendaProf}</div>`;
+}
+
+/* ================= TERMOS E CONTRATOS ================= */
+const LGPD_TXT_1=`TERMO DE CONSENTIMENTO PARA TRATAMENTO DE DADOS PESSOAIS
+
+Em conformidade com a Lei nº 13.709/2018 (LGPD), autorizo o Instituto a coletar e tratar meus dados pessoais — nome, CPF, contato, endereço e dados de pagamento — com a finalidade exclusiva de:
+
+1. Avaliar minha compatibilidade com perfis de pesquisas de mercado;
+2. Realizar contato para convites, agendamentos e confirmações;
+3. Efetuar o pagamento de incentivos pela participação.
+
+Estou ciente de que posso revogar este consentimento a qualquer momento, solicitar acesso, correção ou eliminação dos meus dados pelo canal privacidade@qualyvortice.com.br.`;
+
+const LGPD_TXT_2=LGPD_TXT_1+`
+
+4. Compartilhar dados demográficos anonimizados com o cliente contratante da pesquisa, vedada qualquer identificação individual.`;
+
+const LGPD_TXT_3=LGPD_TXT_2+`
+
+5. Armazenar registros de participação por até 5 (cinco) anos para fins de comprovação e melhoria dos processos de seleção, incluindo sistemas de recomendação, sempre a partir de dados pseudonimizados.
+
+Prazo de retenção e canal do Encarregado (DPO) atualizados nesta versão.`;
+
+const CONTRATO_TXT_1=`CONTRATO DE PARTICIPAÇÃO REMUNERADA EM PESQUISA
+
+Pelo presente instrumento, o PARTICIPANTE se compromete a comparecer na data e horário agendados, fornecer informações verdadeiras e manter sigilo sobre os materiais apresentados durante as sessões.
+
+O INSTITUTO se compromete a efetuar o pagamento do incentivo acordado em até 10 (dez) dias úteis após a participação, via PIX ou transferência bancária.
+
+O não comparecimento sem aviso prévio de 24h implica cancelamento do incentivo.`;
+
+const CONTRATO_TXT_2=CONTRATO_TXT_1.replace("10 (dez) dias úteis","7 (sete) dias úteis")+`
+
+Parágrafo único: em caso de cancelamento pelo INSTITUTO com menos de 24h de antecedência, será devido ao PARTICIPANTE 50% do incentivo previsto.`;
+
+const NDA_TXT_1=`TERMO DE CONFIDENCIALIDADE (NDA)
+
+O PARTICIPANTE reconhece que terá acesso a conceitos, protótipos, embalagens e campanhas não lançados ao mercado, e se compromete a não divulgar, fotografar, copiar ou comentar publicamente qualquer material apresentado, por prazo de 24 (vinte e quatro) meses.
+
+O descumprimento sujeita o PARTICIPANTE às penalidades legais cabíveis.`;
+
+state.termos=[
+  {id:1,nome:"Termo de Consentimento LGPD",tipo:"Termo de consentimento",
+    versoes:[
+      {v:"v2026.1",inicio:"2026-01-01",fim:"2026-12-31",texto:LGPD_TXT_3,autor:"Andrea Lopes",quando:"02/01/2026 09:12",aceites:38,status:"Vigente"},
+      {v:"v2025.2",inicio:"2025-07-01",fim:"2025-12-31",texto:LGPD_TXT_2,autor:"Andrea Lopes",quando:"28/06/2025 15:40",aceites:64,status:"Substituída"},
+      {v:"v2025.1",inicio:"2025-01-01",fim:"2025-06-30",texto:LGPD_TXT_1,autor:"Diego Farias",quando:"03/01/2025 10:05",aceites:71,status:"Substituída"},
+    ],
+    logs:[
+      {q:"02/01/2026 09:12",quem:"Andrea Lopes",acao:"Publicou a versão v2026.1 (retenção de 5 anos e canal do DPO)"},
+      {q:"28/06/2025 15:40",quem:"Andrea Lopes",acao:"Publicou a versão v2025.2 (compartilhamento anonimizado com cliente)"},
+      {q:"12/03/2025 11:23",quem:"Carla Mendes",acao:"Visualizou a versão v2025.1 para conferência de aceite"},
+      {q:"03/01/2025 10:05",quem:"Diego Farias",acao:"Criou o documento com a versão v2025.1"},
+    ]},
+  {id:2,nome:"Contrato de Participação Remunerada",tipo:"Contrato",
+    versoes:[
+      {v:"v1.1",inicio:"2026-03-01",fim:"2027-02-28",texto:CONTRATO_TXT_2,autor:"Andrea Lopes",quando:"25/02/2026 17:02",aceites:21,status:"Vigente"},
+      {v:"v1.0",inicio:"2025-03-01",fim:"2026-02-28",texto:CONTRATO_TXT_1,autor:"Andrea Lopes",quando:"20/02/2025 14:18",aceites:96,status:"Substituída"},
+    ],
+    logs:[
+      {q:"25/02/2026 17:02",quem:"Andrea Lopes",acao:"Publicou a versão v1.1 (prazo de pagamento reduzido para 7 dias; cláusula de cancelamento)"},
+      {q:"20/02/2025 14:18",quem:"Andrea Lopes",acao:"Criou o documento com a versão v1.0"},
+    ]},
+  {id:3,nome:"Termo de Confidencialidade (NDA)",tipo:"Termo de confidencialidade",
+    versoes:[
+      {v:"v1.0",inicio:"2025-09-01",fim:"2026-08-31",texto:NDA_TXT_1,autor:"Diego Farias",quando:"29/08/2025 09:47",aceites:44,status:"Vigente"},
+    ],
+    logs:[
+      {q:"29/08/2025 09:47",quem:"Diego Farias",acao:"Criou o documento com a versão v1.0"},
+    ]},
+];
+let termoAberto=null, versaoSel=0, nextTermoId=4;
+const fmtData=d=>{const [a,m,dd]=d.split("-");return `${dd}/${m}/${a}`};
+const stTermo=s=>({Vigente:"b-green",Substituída:"b-gray",Agendada:"b-blue",Expirada:"b-amber"}[s]||"b-gray");
+
+function renderTermos(){
+  const tb=$("#tbTermos"); if(!tb) return;
+  tb.innerHTML=state.termos.map(t=>{
+    const vig=t.versoes.find(v=>v.status==="Vigente")||t.versoes[0];
+    const aceites=t.versoes.reduce((s,v)=>s+v.aceites,0);
+    const ult=t.logs[0];
+    return `<tr style="cursor:pointer" onclick="abrirTermo(${t.id})">
+      <td><div class="cell-main">${t.nome}</div>
+        <div class="cell-sub">${t.versoes.length} versão${t.versoes.length>1?"ões":""} registrada${t.versoes.length>1?"s":""}</div></td>
+      <td><span class="badge b-violet">${t.tipo}</span></td>
+      <td><span class="mono" style="font-weight:600">${vig.v}</span>
+        <span class="badge ${stTermo(vig.status)}" style="margin-left:6px">${vig.status}</span></td>
+      <td style="font-size:.8rem">${fmtData(vig.inicio)} — ${fmtData(vig.fim)}</td>
+      <td><b style="color:var(--ink)">${aceites}</b> <span class="cell-sub" style="display:inline">no total</span></td>
+      <td style="font-size:.78rem;color:var(--mut)">${ult.q}<div class="cell-sub">por ${ult.quem}</div></td>
+      <td><button class="btn btn-soft" style="padding:6px 12px;font-size:.76rem">Abrir ›</button></td>
+    </tr>`;
+  }).join("")||'<tr><td colspan="7" class="empty">Nenhum documento cadastrado ainda.</td></tr>';
+}
+
+function abrirTermo(id){
+  termoAberto=state.termos.find(t=>t.id===id); versaoSel=0;
+  cancelarNovaVersao(); renderTermoDetail(); go("termoDetail");
+}
+function selVersao(i){ versaoSel=i; cancelarNovaVersao(); renderTermoDetail();
+  const t=termoAberto, v=t.versoes[i];
+  t.logs.unshift({q:"agora",quem:state.user.nome,acao:`Visualizou a versão ${v.v}`});
+  renderTermoLogs();
+}
+function renderTermoDetail(){
+  const t=termoAberto; if(!t) return;
+  const v=t.versoes[versaoSel];
+  $("#tdNome").textContent=t.nome;
+  $("#tdSub").textContent=`${t.tipo} · ${t.versoes.length} versão(ões) · ${t.versoes.reduce((s,x)=>s+x.aceites,0)} aceites registrados`;
+  $("#tdVerCount").textContent=`${t.versoes.length} versão(ões)`;
+  $("#tdVersoes").innerHTML=t.versoes.map((x,i)=>`
+    <button class="ver-item ${i===versaoSel?"sel":""}" onclick="selVersao(${i})">
+      <span class="vh"><b>${x.v}</b><span class="badge ${stTermo(x.status)}">${x.status}</span></span>
+      <span class="vm">${fmtData(x.inicio)} — ${fmtData(x.fim)} · ${x.aceites} aceites</span><br>
+      <span class="vm">publicada por <b style="color:var(--ink)">${x.autor}</b> em ${x.quando}</span>
+    </button>`).join("");
+  $("#tdVerTitulo").textContent=`Conteúdo da versão ${v.v}`;
+  $("#tdVerStatus").innerHTML=`<span class="badge ${stTermo(v.status)}">${v.status}</span>`;
+  $("#tdMeta").innerHTML=`<span>Vigência: <b>${fmtData(v.inicio)} — ${fmtData(v.fim)}</b></span>
+    <span>Publicada por: <b>${v.autor}</b></span><span>Em: <b>${v.quando}</b></span>
+    <span>Aceites nesta versão: <b>${v.aceites}</b></span>`;
+  $("#tdTexto").textContent=v.texto;
+  renderTermoLogs();
+}
+function renderTermoLogs(){
+  $("#tdLogs").innerHTML=termoAberto.logs.map(l=>`
+    <div class="logline"><span class="lq">${l.q}</span>
+    <span><b>${l.quem}</b> — ${l.acao}</span></div>`).join("");
+}
+function novaVersaoUI(){
+  const t=termoAberto, atual=t.versoes[0];
+  $("#tdEditorTitulo").textContent=`Nova versão de "${t.nome}" (base: ${atual.v})`;
+  $("#nvInicio").value=atual.fim; $("#nvFim").value="";
+  $("#nvTexto").value=atual.texto;
+  $("#tdLeitura").style.display="none"; $("#tdEditor").style.display="";
+}
+function cancelarNovaVersao(){
+  const e=$("#tdEditor"); if(e){ e.style.display="none"; $("#tdLeitura").style.display=""; }
+}
+function proximaVersao(v){
+  const m=v.match(/^v(\d{4})\.(\d+)$/);
+  if(m) return `v2026.${state.termos.flatMap(t=>t.versoes).filter(x=>x.v.startsWith("v2026")).length+1}`;
+  const s=v.match(/^v(\d+)\.(\d+)$/);
+  return s?`v${s[1]}.${+s[2]+1}`:v+".1";
+}
+function publicarNovaVersao(){
+  const t=termoAberto;
+  const texto=$("#nvTexto").value.trim();
+  if(!texto){ toast("O texto do documento não pode ficar vazio."); return; }
+  const nv=proximaVersao(t.versoes[0].v);
+  t.versoes.forEach(v=>{ if(v.status==="Vigente") v.status="Substituída"; });
+  t.versoes.unshift({v:nv,inicio:$("#nvInicio").value||"2026-08-01",fim:$("#nvFim").value||"2027-07-31",
+    texto,autor:state.user.nome,quando:"agora",aceites:0,status:"Vigente"});
+  t.logs.unshift({q:"agora",quem:state.user.nome,acao:`Publicou a versão ${nv} — a anterior foi arquivada como Substituída`});
+  versaoSel=0; cancelarNovaVersao(); renderTermoDetail(); renderTermos();
+  toast(`Versão ${nv} publicada. A anterior permanece arquivada com os aceites preservados.`);
+}
+function criarTermo(){
+  const nome=$("#ntNome").value.trim();
+  if(!nome){ toast("Dê um nome ao documento."); return; }
+  const texto=$("#ntTexto").value.trim();
+  if(!texto){ toast("O texto do documento não pode ficar vazio."); return; }
+  const t={id:nextTermoId++,nome,tipo:$("#ntTipo").value,
+    versoes:[{v:"v1.0",inicio:$("#ntInicio").value||"2026-08-01",fim:$("#ntFim").value||"2027-07-31",
+      texto,autor:state.user.nome,quando:"agora",aceites:0,status:"Vigente"}],
+    logs:[{q:"agora",quem:state.user.nome,acao:"Criou o documento com a versão v1.0"}]};
+  state.termos.unshift(t);
+  renderTermos(); fecharModal("mNovoTermo");
+  $("#ntNome").value=""; $("#ntTexto").value="";
+  abrirTermo(t.id);
+  toast(`"${nome}" criado com a versão v1.0 vigente.`);
+}
+
+/* ================= LINK DE CADASTRO + PÁGINA PÚBLICA ================= */
+let linkProj=null, linkRec=null;
+const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+function codigoRec(nome){
+  const soma=[...nome].reduce((a,c)=>a+c.charCodeAt(0),0);
+  return iniciais(nome)+"-"+(1000+soma%9000);
+}
+function abrirLink(projNome){
+  linkProj=state.projetos.find(p=>p.nome===projNome);
+  $("#lkProjNome").textContent=projNome;
+  const recs=state.usuarios.filter(u=>["RECRUTADOR","ADMIN","GESTOR"].includes(u.papel)&&u.status==="Ativo");
+  const atual=recs.find(r=>r.nome===state.user.nome);
+  $("#lkRec").innerHTML=recs.map(r=>
+    `<option value="${r.nome}" ${atual&&r.nome===atual.nome?"selected":""}>${r.nome} — ${codigoRec(r.nome)}</option>`).join("");
+  atualizarLink(); abrirModal("mLink");
+}
+function atualizarLink(){
+  const rec=$("#lkRec").value; linkRec={nome:rec,cod:codigoRec(rec)};
+  $("#lkUrl").value=`https://qualyvortice.com.br/c/${slug(linkProj.nome)}?rec=${linkRec.cod}`;
+}
+function copiarLink(){
+  const inp=$("#lkUrl"); inp.select();
+  try{ navigator.clipboard.writeText(inp.value); }catch(e){ document.execCommand("copy"); }
+  toast("Link copiado — envie ao participante por WhatsApp ou e-mail.");
+}
+function abrirCadastroPublico(){
+  fecharModal("mLink");
+  $("#pubUrl").textContent=$("#lkUrl").value.replace("https://","");
+  $("#pubRecChip").innerHTML=`Indicação de <b>&nbsp;${linkRec.nome}</b>&nbsp;· código <span class="mono">${linkRec.cod}</span>`;
+  const p=linkProj;
+  $("#pubProj").innerHTML=`<h3>${p.nome}</h3>
+    <div class="pm">${p.cliente} · ${p.metodo} · vagas limitadas</div>
+    <div class="perfil"><b>Quem buscamos:</b> ${p.perfil}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span class="pm">Incentivo pela participação</span><span class="inc">R$ ${p.incentivo}</span></div>`;
+  const termo=state.termos[0], vig=termo.versoes.find(v=>v.status==="Vigente")||termo.versoes[0];
+  $("#pubTermoNome").textContent=`${termo.nome} (${vig.v})`;
+  $("#pubTermoTexto").textContent=vig.texto;
+  $("#pubForm").style.display=""; $("#pubOk").style.display="none";
+  ["pbNome","pbCpf","pbNasc","pbEmail","pbFone","pbCidade","pbProf","pbCep"].forEach(id=>$("#"+id).value="");
+  $("#pbUf").value="RJ"; $("#pbConsent").checked=false;
+  $$("#viewPublico .field.invalid, #f-pbConsent.invalid").forEach(f=>f.classList.remove("invalid"));
+  $("#viewPublico").classList.add("on"); $("#viewPublico").scrollTop=0;
+}
+function voltarPainel(){
+  $("#viewPublico").classList.remove("on");
+  go("participantes");
+}
+
+/* validações */
+function cpfValido(cpf){
+  const d=cpf.replace(/\D/g,"");
+  if(d.length!==11||/^(\d)\1{10}$/.test(d)) return false;
+  for(const t of [9,10]){
+    let s=0; for(let i=0;i<t;i++) s+=+d[i]*(t+1-i);
+    const dv=((s*10)%11)%10;
+    if(dv!==+d[t]) return false;
+  }
+  return true;
+}
+const emailValido=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+function marcar(id,ok){
+  const f=$("#f-"+id); if(f) f.classList.toggle("invalid",!ok); return ok;
+}
+function enviarCadastroPublico(){
+  let ok=true;
+  ok=marcar("pbNome",$("#pbNome").value.trim().split(/\s+/).length>=2)&&ok;
+  ok=marcar("pbCpf",cpfValido($("#pbCpf").value))&&ok;
+  const nasc=$("#pbNasc").value;
+  const idade=nasc?Math.floor((new Date("2026-07-23")-new Date(nasc))/31557600000):0;
+  ok=marcar("pbNasc",!!nasc&&idade>=18&&idade<110)&&ok;
+  ok=marcar("pbEmail",emailValido($("#pbEmail").value.trim()))&&ok;
+  ok=marcar("pbFone",$("#pbFone").value.replace(/\D/g,"").length>=10)&&ok;
+  ok=marcar("pbCidade",!!$("#pbCidade").value.trim())&&ok;
+  ok=marcar("pbUf",/^[A-Za-z]{2}$/.test($("#pbUf").value.trim()))&&ok;
+  const consent=$("#pbConsent").checked;
+  $("#f-pbConsent").classList.toggle("invalid",!consent); ok=ok&&consent;
+  if(!ok){
+    toast("Revise os campos destacados para concluir o cadastro.");
+    const first=$("#viewPublico .invalid"); if(first) first.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  /* duplicidade por CPF (na prática: cpf_hash único no banco) */
+  const cpfNum=$("#pbCpf").value.replace(/\D/g,"");
+  if(state.participantes.some(p=>p.cpf.replace(/\D/g,"")===cpfNum)){
+    marcar("pbCpf",false);
+    toast("Já existe um cadastro com este CPF."); return;
+  }
+  const nome=$("#pbNome").value.trim();
+  const seq=String(153+state.participantes.length).padStart(4,"0");
+  const cod=`P-2026-${seq}`;
+  state.participantes.unshift({
+    cod,nome,cpf:$("#pbCpf").value,fone:$("#pbFone").value,email:$("#pbEmail").value.trim(),
+    cidade:$("#pbCidade").value.trim(),uf:$("#pbUf").value.trim().toUpperCase(),
+    idade,renda:$("#pbRenda").value,consent:"v2026.1",media:0,
+    rec:`${linkRec.nome} (${linkRec.cod})`,sit:"Pendente",
+  });
+  state.pipeline.unshift({id:nextId++,part:cod,proj:linkProj.nome,etapa:"Análise de Perfil",
+    dias:0,resp:linkRec.nome,aval:null,status:"Aprovação"});
+  if(linkProj.ocupadas<linkProj.vagas) linkProj.ocupadas++;
+  state.auditoria.unshift({q:"agora",u:"Formulário público",t:cod,a:"Alteração",
+    d:`Cadastro via link do projeto "${linkProj.nome}" — recrutador ${linkRec.nome} (${linkRec.cod})`});
+  renderParticipantes(); renderBoard(); renderMov(); renderKpis(); renderFolders();
+  renderProjetos(); renderParticipacoesTab(); renderAuditoria(); preencherSelects();
+  $("#pubForm").style.display="none"; $("#pubOk").style.display="";
+  $("#pubOkCod").textContent=cod;
+  $("#pubOkMsg").innerHTML=`Você entrou no processo seletivo do projeto <b>${linkProj.nome}</b> na etapa <b>Análise de Perfil</b>, com indicação de <b>${linkRec.nome}</b>.`;
+  $("#viewPublico").scrollTop=0;
+}
+
+/* ================= DETALHES / TRIAGEM ================= */
+let detCod=null;
+const sitBadge=s=>({
+  "Pendente":'<span class="badge b-amber"><span class="dot"></span>Pendente de triagem</span>',
+  "Aprovado":'<span class="badge b-green"><span class="dot"></span>Aprovado</span>',
+  "Descartado":'<span class="badge b-red"><span class="dot"></span>Descartado</span>',
+}[s]||'<span class="badge b-gray">—</span>');
+
+function entradaPendente(cod){
+  return state.pipeline.find(x=>x.part===cod&&x.etapa==="Análise de Perfil");
+}
+function abrirDetalhe(cod){
+  detCod=cod;
+  const p=state.participantes.find(p=>p.cod===cod);
+  const perm=PERMS[state.user.papel];
+  $("#dtHead").innerHTML=`<span class="av ${gcor(p.cod)}">${iniciais(p.nome)}</span>
+    <div><h4>${perm.revelar?p.nome:p.nome.split(" ")[0]+" •••••"}</h4>
+    <div class="mono">${p.cod}</div></div>
+    <span style="margin-left:auto">${sitBadge(p.sit)}</span>`;
+  $("#dtDados").innerHTML=`
+    <div class="det-row"><span class="k">CPF</span><span class="v">${piiCell(maskCpf(p.cpf),p.cpf,"CPF",p.cod)}</span></div>
+    <div class="det-row"><span class="k">Idade</span><span class="v">${p.idade} anos</span></div>
+    <div class="det-row"><span class="k">Telefone</span><span class="v">${piiCell(maskFone(p.fone),p.fone,"telefone",p.cod)}</span></div>
+    <div class="det-row"><span class="k">E-mail</span><span class="v">${piiCell(maskMail(p.email),p.email,"e-mail",p.cod)}</span></div>
+    <div class="det-row"><span class="k">Cidade / UF</span><span class="v">${p.cidade} / ${p.uf}</span></div>
+    <div class="det-row"><span class="k">Faixa de renda</span><span class="v">${p.renda}</span></div>
+    <div class="det-row"><span class="k">Nota média</span><span class="v">${p.media?p.media.toFixed(1)+" ★":"sem avaliações"}</span></div>`;
+  $("#dtOrigem").innerHTML=`
+    <div class="det-row"><span class="k">Origem</span><span class="v">${p.rec?`Link de cadastro — ${p.rec}`:"Cadastro interno pela equipe"}</span></div>
+    <div class="det-row"><span class="k">Consentimento</span><span class="v">${consentBadge(p.consent)}</span></div>
+    <div class="det-row"><span class="k">Comissão do recrutador</span><span class="v">${p.rec?"Vinculada às participações pagas":"—"}</span></div>`;
+  const parts=state.pipeline.filter(x=>x.part===cod);
+  $("#dtParts").innerHTML=parts.length?parts.map(x=>`
+    <div class="det-part"><span style="font-weight:600;color:var(--ink)">${x.proj}</span>
+      <span style="display:flex;align-items:center;gap:10px">
+        <span class="badge b-${ETAPA_COR[x.etapa]}">${x.etapa}</span>
+        ${x.aval?stars(x.aval.ger):'<span class="cell-sub">sem avaliação</span>'}</span></div>`).join("")
+    :'<div class="cell-sub" style="padding:4px 0">Nenhuma participação registrada ainda.</div>';
+  /* triagem: contexto do botão de associar */
+  const ent=entradaPendente(cod);
+  const btnA=$("#triAssociar");
+  btnA.disabled=!ent;
+  $("#triAssociarSub").textContent=ent
+    ?`Confirma o participante e avança a candidatura no projeto "${ent.proj}" para Preenchimento de Dados.`
+    :"Sem candidatura em Análise de Perfil no momento — use as opções abaixo.";
+  $("#dtTriagem").style.display=p.sit==="Descartado"?"none":"";
+  abrirModal("mDetalhe");
+}
+
+function triagem(acao){
+  const p=state.participantes.find(x=>x.cod===detCod);
+  const ent=entradaPendente(detCod);
+  if(acao==="associar"){
+    if(!ent) return;
+    p.sit="Aprovado";
+    ent.etapa="Preenchimento de Dados"; ent.dias=0;
+    state.auditoria.unshift({q:"agora",u:state.user.nome,t:p.cod,a:"Alteração",
+      d:`Triagem: aprovado e associado ao projeto "${ent.proj}"`});
+    toast(`${p.cod} aprovado — avançou para Preenchimento de Dados em "${ent.proj}".`);
+  }
+  if(acao==="futuro"){
+    p.sit="Aprovado";
+    const abertas=state.pipeline.filter(x=>x.part===detCod&&x.etapa==="Análise de Perfil");
+    abertas.forEach(x=>{
+      const pj=state.projetos.find(pr=>pr.nome===x.proj);
+      if(pj&&pj.ocupadas>0) pj.ocupadas--;
+    });
+    state.pipeline=state.pipeline.filter(x=>!(x.part===detCod&&x.etapa==="Análise de Perfil"));
+    state.auditoria.unshift({q:"agora",u:state.user.nome,t:p.cod,a:"Alteração",
+      d:"Triagem: aprovado apenas para projetos futuros — candidatura de entrada encerrada"});
+    toast(`${p.cod} aprovado para o banco de participantes (sem projeto atual).`);
+  }
+  if(acao==="descartar"){
+    p.sit="Descartado";
+    const abertas=state.pipeline.filter(x=>x.part===detCod&&x.etapa!=="Pago");
+    abertas.forEach(x=>{
+      const pj=state.projetos.find(pr=>pr.nome===x.proj);
+      if(pj&&pj.ocupadas>0) pj.ocupadas--;
+    });
+    state.pipeline=state.pipeline.filter(x=>x.part!==detCod||x.etapa==="Pago");
+    state.auditoria.unshift({q:"agora",u:state.user.nome,t:p.cod,a:"Alteração",
+      d:"Triagem: participante descartado — candidaturas em aberto encerradas"});
+    toast(`${p.cod} descartado. Histórico pago preservado; dados elegíveis a anonimização.`);
+  }
+  fecharModal("mDetalhe");
+  renderParticipantes(); renderBoard(); renderMov(); renderKpis();
+  renderFolders(); renderProjetos(); renderParticipacoesTab(); renderAuditoria();
+}
+
+/* ================= MODAIS / RATINGS ================= */
+function abrirModal(id){ $("#"+id).classList.add("on"); }
+function fecharModal(id){ $("#"+id).classList.remove("on"); }
+$$(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("on"); }));
+function montarRatings(){
+  $$(".rating-group").forEach(g=>{
+    if(g.children.length) return;
+    const key=g.dataset.r;
+    for(let i=1;i<=5;i++){
+      const l=document.createElement("label"); l.textContent=i;
+      l.onclick=()=>{ notas[key]=i; [...g.children].forEach((c,idx)=>c.classList.toggle("sel",idx<i)); };
+      g.appendChild(l);
+    }
+  });
+}
+</script>
+</body>
+</html>

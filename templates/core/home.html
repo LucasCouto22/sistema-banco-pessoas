@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Painel · Qualy Vortice{% endblock %}
+{% block crumbs %}Painel / <b>Resumo</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Resumo da operação</h2><p class="sub">Bem-vindo(a), {{ request.user.get_full_name|default:request.user.username }}</p></div></div>
+
+<div class="kpis">
+  {% if total_participantes is not None %}
+  <div class="kpi"><div class="kpi-top">Participantes na base</div><div class="v">{{ total_participantes }}</div></div>
+  <div class="kpi"><div class="kpi-top">Aprovados</div><div class="v" style="color:var(--green)">{{ total_aprovados }}</div></div>
+  <div class="kpi"><div class="kpi-top">Pendentes</div><div class="v" style="color:#9A6408">{{ total_pendentes }}</div></div>
+  <div class="kpi"><div class="kpi-top">Descartados</div><div class="v" style="color:#B03225">{{ total_descartados }}</div></div>
+  {% endif %}
+  {% if total_projetos is not None %}
+  <div class="kpi"><div class="kpi-top">Projetos ativos</div><div class="v">{{ total_projetos }}</div></div>
+  {% endif %}
+  {% if total_participacoes is not None %}
+  <div class="kpi"><div class="kpi-top">Participações no pipeline</div><div class="v">{{ total_participacoes }}</div></div>
+  {% endif %}
+</div>
+
+{% if total_participantes %}
+<div class="sec-head"><h2>Visão participantes</h2><span class="sub">Distribuição da base analítica por perfil e localização</span></div>
+<div class="dp-grid">
+  <div class="dp-col">
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Participantes por estado</h3><span class="chart-note">top 10 UFs</span></div>
+      <div class="chart-body"><div class="chart-canvas-wrap tall"><canvas id="chartUf"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Principais cidades</h3><span class="chart-note">top 5</span></div>
+      <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartCidade"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Situação dos participantes</h3></div>
+      <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartSituacao"></canvas></div></div>
+    </div>
+  </div>
+  <div class="dp-col">
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Gênero</h3></div>
+      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartGenero"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Classe social (faixa de renda)</h3></div>
+      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartRenda"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Escolaridade</h3></div>
+      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartEscolaridade"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3 style="font-size:.95rem">Faixa etária</h3></div>
+      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartIdade"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+{{ graf_uf|json_script:"dados-uf" }}
+{{ graf_cidade|json_script:"dados-cidade" }}
+{{ graf_situacao|json_script:"dados-situacao" }}
+{{ graf_genero|json_script:"dados-genero" }}
+{{ graf_renda|json_script:"dados-renda" }}
+{{ graf_escolaridade|json_script:"dados-escolaridade" }}
+{{ graf_idade|json_script:"dados-idade" }}
+{% endif %}
+
+{% if graf_pipeline %}
+<div class="sec-head"><h2>Pipeline de captação</h2>
+  <a class="btn btn-ghost btn-sm" href="{% url 'participacoes:kanban' %}">Ver kanban ›</a></div>
+<div class="panel">
+  <div class="panel-head"><h3 style="font-size:.95rem">Participações por etapa</h3></div>
+  <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartPipeline"></canvas></div></div>
+</div>
+{{ graf_pipeline|json_script:"dados-pipeline" }}
+{% endif %}
+
+{% if total_participantes is None and graf_pipeline is None %}
+<div class="panel" style="padding:24px;text-align:center">
+  <p class="empty">Seu nível de acesso não tem visualizações para mostrar aqui.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/vendor/chart.umd.js' %}" defer></script>
+<script src="{% static 'js/charts.js' %}" defer></script>
+<script>
+/* Atenção: o atributo "defer" não tem efeito em <script> inline (sem src) —
+   por isso a espera pelo DOMContentLoaded é explícita aqui, garantindo que
+   chart.umd.js e charts.js (esses sim "defer") já rodaram antes desta linha. */
+document.addEventListener("DOMContentLoaded", function () {
+  if (!QV.configurarPadroes()) return;
+  var P = QV.PALETA;
+  QV.graficoBarraH("chartUf", "dados-uf");
+  QV.graficoRosca("chartCidade", "dados-cidade");
+  QV.graficoRosca("chartSituacao", "dados-situacao", [P.ambar, P.verde, "#C21807"]);
+  QV.graficoRosca("chartGenero", "dados-genero");
+  QV.graficoBarraV("chartRenda", "dados-renda");
+  QV.graficoBarraV("chartEscolaridade", "dados-escolaridade");
+  QV.graficoBarraV("chartIdade", "dados-idade");
+  QV.graficoBarraH("chartPipeline", "dados-pipeline", [P.azul, P.violeta, P.ambar, P.rosa, P.verde]);
+});
+</script>
+{% endblock %}

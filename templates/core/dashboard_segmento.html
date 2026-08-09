@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Visão por segmento · Qualy Vortice{% endblock %}
+{% block crumbs %}Painel / <b>Visão por segmento</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Visão por segmento</h2>
+<p class="sub">Participantes agrupados pelo segmento dos projetos em que atuaram</p></div></div>
+
+<div class="seg-tabs">
+{% for valor, label in segmentos %}
+  <a class="seg-tab {% if segmento_atual == valor %}sel{% endif %}" href="?segmento={{ valor }}">{{ label }}</a>
+{% endfor %}
+</div>
+
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Participantes por segmento</h3><span class="chart-note">comparativo entre todos os segmentos</span></div>
+  <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartComparativo"></canvas></div></div>
+</div>
+{{ graf_comparativo|json_script:"dados-comparativo" }}
+
+{% if segmento_atual %}
+  {% if total_no_segmento %}
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-top">Participantes no segmento</div><div class="v">{{ total_no_segmento }}</div></div>
+  </div>
+  <div class="dp-grid">
+    <div class="dp-col">
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Principais cidades</h3></div>
+        <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartCidadeSeg"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Gênero</h3></div>
+        <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartGeneroSeg"></canvas></div></div>
+      </div>
+    </div>
+    <div class="dp-col">
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Classe social</h3></div>
+        <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartRendaSeg"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3 style="font-size:.95rem">Faixa etária</h3></div>
+        <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartIdadeSeg"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+  {{ graf_cidade_seg|json_script:"dados-cidade-seg" }}
+  {{ graf_genero_seg|json_script:"dados-genero-seg" }}
+  {{ graf_renda_seg|json_script:"dados-renda-seg" }}
+  {{ graf_idade_seg|json_script:"dados-idade-seg" }}
+  {% else %}
+  <div class="panel" style="padding:24px;text-align:center"><p class="empty">Nenhum participante encontrado neste segmento ainda.</p></div>
+  {% endif %}
+{% else %}
+<div class="panel" style="padding:24px;text-align:center"><p class="empty">Selecione um segmento acima para ver o detalhamento.</p></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/vendor/chart.umd.js' %}" defer></script>
+<script src="{% static 'js/charts.js' %}" defer></script>
+<script>
+/* "defer" não tem efeito em <script> inline — espera explícita pelo
+   DOMContentLoaded, que só dispara depois que os scripts "defer" acima já
+   rodaram (é isso que garante que QV já existe aqui). */
+document.addEventListener("DOMContentLoaded", function () {
+  if (!QV.configurarPadroes()) return;
+  QV.graficoBarraV("chartComparativo", "dados-comparativo");
+  QV.graficoRosca("chartCidadeSeg", "dados-cidade-seg");
+  QV.graficoRosca("chartGeneroSeg", "dados-genero-seg");
+  QV.graficoBarraV("chartRendaSeg", "dados-renda-seg");
+  QV.graficoBarraV("chartIdadeSeg", "dados-idade-seg");
+});
+</script>
+{% endblock %}

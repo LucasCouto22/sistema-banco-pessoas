@@ -1,0 +1,9 @@
+<div class="wiz-steps">
+  {% for step in steps %}
+  <div class="wiz-step {% if forloop.counter0 < step_atual %}done{% elif forloop.counter0 == step_atual %}active{% endif %}">
+    <div class="circ">{{ forloop.counter }}</div>
+    <div class="lb">{{ step }}</div>
+  </div>
+  {% if not forloop.last %}<div class="wiz-line {% if forloop.counter0 < step_atual %}done{% endif %}"></div>{% endif %}
+  {% endfor %}
+</div>

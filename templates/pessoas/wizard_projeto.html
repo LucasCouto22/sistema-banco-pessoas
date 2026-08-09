@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Novo cadastro de participantes · Qualy Vortice{% endblock %}
+{% block crumbs %}Banco de Pessoas / <b>Novo cadastro de participantes</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Novo cadastro de participantes</h2></div></div>
+{% include "pessoas/_wizard_steps.html" %}
+<div class="panel" style="padding:24px;max-width:560px;margin:0 auto">
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.projeto.id_for_label }}">{{ form.projeto.label }}</label>
+      {{ form.projeto }}
+      {% for erro in form.projeto.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Continuar</button>
+  </form>
+</div>
+{% endblock %}

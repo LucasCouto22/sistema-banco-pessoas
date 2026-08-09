@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoria LGPD · Qualy Vortice{% endblock %}
+{% block crumbs %}Administração / <b>Auditoria LGPD</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>Auditoria LGPD</h2>
+  <p class="sub">Trilha de acessos a dados de titulares — {{ registros|length }} registro(s) (máx. 500 exibidos)</p></div>
+</div>
+
+<div class="panel" style="padding:14px 18px;margin-bottom:16px">
+  <form method="get" class="form-row">
+    <div class="field">
+      <label for="f_usuario">Usuário</label>
+      <select name="usuario" id="f_usuario">
+        <option value="">Todos</option>
+        {% for u in usuarios %}
+        <option value="{{ u.id }}" {% if filtros.usuario == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="f_titular">Titular (código do participante)</label>
+      <input type="text" name="titular" id="f_titular" value="{{ filtros.titular }}" placeholder="Ex.: P-2026-0001">
+    </div>
+    <div class="field">
+      <label for="f_acao">Ação</label>
+      <select name="acao" id="f_acao">
+        <option value="">Todas</option>
+        {% for valor, label in acoes %}
+        <option value="{{ valor }}" {% if filtros.acao == valor %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="f_inicio">De</label>
+      <input type="date" name="data_inicio" id="f_inicio" value="{{ filtros.data_inicio }}">
+    </div>
+    <div class="field">
+      <label for="f_fim">Até</label>
+      <input type="date" name="data_fim" id="f_fim" value="{{ filtros.data_fim }}">
+    </div>
+    <div class="field" style="display:flex;align-items:flex-end">
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Quando</th><th>Usuário</th><th>Titular</th><th>Ação</th><th>Detalhe</th></tr></thead>
+    <tbody>
+    {% for r in registros %}
+      <tr>
+        <td class="mono">{{ r.quando|date:"d/m/Y H:i" }}</td>
+        <td>{{ r.usuario.get_full_name|default:r.usuario.username|default:"—" }}</td>
+        <td class="mono">{{ r.titular }}</td>
+        <td>
+          {% if r.acao == "PAGAMENTO" %}<span class="badge b-green">{{ r.get_acao_display }}</span>
+          {% elif r.acao == "ALTERACAO" %}<span class="badge b-amber">{{ r.get_acao_display }}</span>
+          {% else %}<span class="badge b-blue">{{ r.get_acao_display }}</span>{% endif %}
+        </td>
+        <td class="cell-sub">{{ r.detalhe }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="empty">Nenhum registro de auditoria encontrado para os filtros informados.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

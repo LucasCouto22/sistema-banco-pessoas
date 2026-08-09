@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Excluir {{ usuario.username }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Administração / <b>Excluir usuário</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Excluir usuário</h2></div></div>
+<div class="panel" style="padding:20px 24px;max-width:560px">
+  <p>Tem certeza que deseja excluir o usuário <b>{{ usuario.get_full_name|default:usuario.username }}</b> ({{ usuario.username }})?</p>
+  <div class="lock-note" style="margin-top:12px">Esta ação não pode ser desfeita. Os registros que este usuário criou (participantes, projetos etc.) não são apagados.</div>
+  <form method="post" style="margin-top:18px;display:flex;gap:10px">
+    {% csrf_token %}
+    <button class="btn btn-primary" type="submit" style="background:#C21807;box-shadow:none">Sim, excluir</button>
+    <a class="btn btn-ghost" href="{% url 'accounts:usuarios_lista' %}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

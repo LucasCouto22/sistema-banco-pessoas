@@ -1,0 +1,169 @@
+from django.contrib import messages
+from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
+
+from .forms import PerfilForm, PreferenciaAvisosForm, TrocarSenhaForm, UsuarioCreateForm, UsuarioEditForm
+from .models import AvisoDispensado, NivelPermissao, Permissao, PreferenciaAvisos, TIPOS_AVISO, Usuario
+from .permissions import requer_permissao
+
+
+class LoginView(auth_views.LoginView):
+    template_name = "accounts/login.html"
+    redirect_authenticated_user = True
+
+
+class LogoutView(auth_views.LogoutView):
+    pass
+
+
+@login_required
+@requer_permissao("usuarios.gerenciar")
+def usuarios_lista(request):
+    usuarios = Usuario.objects.all().order_by("first_name", "username")
+    return render(request, "accounts/usuarios_lista.html", {"usuarios": usuarios})
+
+
+@login_required
+@requer_permissao("usuarios.gerenciar")
+def usuario_novo(request):
+    if request.method == "POST":
+        form = UsuarioCreateForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            messages.success(request, f"Usuário {usuario.username} criado com sucesso.")
+            return redirect("accounts:usuarios_lista")
+    else:
+        form = UsuarioCreateForm()
+    return render(request, "accounts/usuario_form.html", {"form": form})
+
+
+@login_required
+@requer_permissao("usuarios.gerenciar")
+def usuario_editar(request, pk):
+    usuario = get_object_or_404(Usuario, pk=pk)
+    if request.method == "POST":
+        form = UsuarioEditForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Usuário {usuario.username} atualizado.")
+            return redirect("accounts:usuarios_lista")
+    else:
+        form = UsuarioEditForm(instance=usuario)
+    return render(request, "accounts/usuario_form.html", {"form": form, "titulo": f"Editar {usuario.username}"})
+
+
+@login_required
+@requer_permissao("usuarios.excluir")
+def usuario_excluir(request, pk):
+    usuario = get_object_or_404(Usuario, pk=pk)
+    if usuario.pk == request.user.pk:
+        messages.error(request, "Você não pode excluir seu próprio usuário.")
+        return redirect("accounts:usuarios_lista")
+    if request.method == "POST":
+        nome = usuario.username
+        usuario.delete()
+        messages.success(request, f"Usuário {nome} excluído.")
+        return redirect("accounts:usuarios_lista")
+    return render(request, "accounts/usuario_excluir.html", {"usuario": usuario})
+
+
+@login_required
+@requer_permissao("permissoes.gerenciar")
+def painel_permissoes(request):
+    if request.method == "POST":
+        for permissao in Permissao.objects.all():
+            for nivel, _ in Usuario.Nivel.choices:
+                campo = f"perm_{nivel}_{permissao.id}"
+                concedida = campo in request.POST
+                NivelPermissao.objects.update_or_create(
+                    nivel=nivel, permissao=permissao, defaults={"concedida": concedida}
+                )
+        messages.success(request, "Matriz de permissões atualizada.")
+        return redirect("accounts:painel_permissoes")
+
+    niveis = Usuario.Nivel.choices
+    concedidas = set(
+        NivelPermissao.objects.filter(concedida=True).values_list("nivel", "permissao_id")
+    )
+
+    grupos = {}
+    for permissao in Permissao.objects.all():
+        linha = {
+            "permissao": permissao,
+            "checks": [
+                {"nivel": nivel, "marcado": (nivel, permissao.id) in concedidas}
+                for nivel, _ in niveis
+            ],
+        }
+        grupos.setdefault(permissao.grupo, []).append(linha)
+
+    return render(
+        request,
+        "accounts/painel_permissoes.html",
+        {"niveis": niveis, "grupos": grupos},
+    )
+
+
+def _restringir_campos(form, campos_permitidos):
+    for campo in list(form.fields):
+        if campo not in campos_permitidos:
+            form.fields.pop(campo)
+
+
+@login_required
+def meu_perfil(request):
+    preferencia = PreferenciaAvisos.para(request.user)
+    campos_avisos_visiveis = [
+        campo for campo, codigo in TIPOS_AVISO.items() if request.user.tem_permissao(codigo)
+    ]
+
+    if request.method == "POST":
+        form_perfil = PerfilForm(request.POST, instance=request.user)
+        form_avisos = PreferenciaAvisosForm(request.POST, instance=preferencia)
+        _restringir_campos(form_avisos, campos_avisos_visiveis)
+        if form_perfil.is_valid() and form_avisos.is_valid():
+            form_perfil.save()
+            form_avisos.save()
+            messages.success(request, "Perfil atualizado.")
+            return redirect("accounts:meu_perfil")
+    else:
+        form_perfil = PerfilForm(instance=request.user)
+        form_avisos = PreferenciaAvisosForm(instance=preferencia)
+        _restringir_campos(form_avisos, campos_avisos_visiveis)
+
+    return render(
+        request,
+        "accounts/meu_perfil.html",
+        {"form_perfil": form_perfil, "form_avisos": form_avisos},
+    )
+
+
+class TrocarSenhaView(auth_views.PasswordChangeView):
+    template_name = "accounts/trocar_senha.html"
+    form_class = TrocarSenhaForm
+    success_url = reverse_lazy("accounts:meu_perfil")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Senha alterada com sucesso.")
+        return response
+
+
+@login_required
+@require_POST
+def aviso_dispensar(request):
+    chave = request.POST.get("chave", "").strip()
+    conteudo = request.POST.get("conteudo", "").strip()
+    if chave:
+        AvisoDispensado.objects.get_or_create(usuario=request.user, chave=chave, conteudo=conteudo)
+
+    destino = request.POST.get("next", "")
+    if destino and url_has_allowed_host_and_scheme(
+        destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(destino)
+    return redirect("core:home")

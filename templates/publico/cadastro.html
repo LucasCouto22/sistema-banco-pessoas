@@ -1,0 +1,46 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de participante · Qualy Vortice</title>
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+</head>
+<body>
+<section id="viewLogin">
+  <div class="login-card wide">
+    <div class="brand"><span class="brand-mark"></span><h1>Qualy Vortice</h1></div>
+    <p class="login-sub">Cadastro de participante — pesquisa <b>{{ projeto.nome }}</b></p>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-row">
+        {% for field in form %}
+          {% if field.field.widget.input_type == "checkbox" %}
+          <div class="check">{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+          {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          {% else %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      {% if versao_lgpd %}
+      <div class="lock-note" style="margin-bottom:14px;max-height:160px;overflow:auto;white-space:pre-wrap">{{ versao_lgpd.texto }}</div>
+      {% endif %}
+
+      <button class="btn btn-primary btn-block" type="submit">Enviar cadastro</button>
+    </form>
+
+    <div class="login-lgpd">
+      Seus dados serão usados apenas para fins de recrutamento desta pesquisa, conforme a
+      LGPD (Lei 13.709/2018).
+    </div>
+  </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}{{ termo.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Termos e Contratos / <b>{{ termo.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>{{ termo.nome }}</h2><p class="sub">{{ termo.get_tipo_display }}</p></div>
+  {% if request.user|tem_permissao:"termos.gerenciar" %}
+  <a class="btn btn-primary" href="{% url 'termos:nova_versao' termo.pk %}">＋ Criar nova versão</a>
+  {% endif %}
+</div>
+
+<div class="termo-grid" style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start">
+  <div class="panel">
+    <div class="panel-head"><h3 style="font-size:.9rem">Histórico de versões</h3></div>
+    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+      {% for v in versoes %}
+      <a href="?versao={{ v.pk }}" class="ver-item" style="display:block;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;text-decoration:none;color:inherit;{% if versao_atual.pk == v.pk %}border-color:var(--violet);background:var(--violet-soft){% endif %}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <b>{{ v.versao }}</b>
+          {% if v.status == "VIGENTE" %}<span class="badge b-green">Vigente</span>
+          {% elif v.status == "SUBSTITUIDA" %}<span class="badge b-gray">Substituída</span>
+          {% elif v.status == "AGENDADA" %}<span class="badge b-blue">Agendada</span>
+          {% else %}<span class="badge b-amber">Expirada</span>{% endif %}
+        </div>
+        <div class="cell-sub">{{ v.inicio_vigencia }}{% if v.fim_vigencia %} — {{ v.fim_vigencia }}{% endif %} · {{ v.aceites }} aceite(s)</div>
+      </a>
+      {% empty %}
+      <p class="empty">Nenhuma versão publicada ainda.</p>
+      {% endfor %}
+    </div>
+
+    {% if logs %}
+    <div class="panel-head" style="border-top:1px solid var(--line)"><h3 style="font-size:.9rem">Log de alterações</h3></div>
+    <div style="padding:6px 14px 14px">
+      {% for log in logs %}
+      <div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:.76rem">
+        <span class="mono" style="color:var(--mut)">{{ log.quando|date:"d/m/Y H:i" }}</span>
+        — <b>{{ log.usuario|nome_usuario }}</b>: {{ log.acao }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel" style="padding:20px 22px">
+    {% if versao_atual %}
+    <div class="doc-meta" style="display:flex;flex-wrap:wrap;gap:16px;font-size:.78rem;color:var(--mut);margin-bottom:12px">
+      <span>Versão <b style="color:var(--ink)">{{ versao_atual.versao }}</b></span>
+      <span>Vigência <b style="color:var(--ink)">{{ versao_atual.inicio_vigencia }}{% if versao_atual.fim_vigencia %} — {{ versao_atual.fim_vigencia }}{% endif %}</b></span>
+      <span>Publicado por <b style="color:var(--ink)">{{ versao_atual.autor|nome_usuario }}</b></span>
+      <span>Aceites nesta versão <b style="color:var(--ink)">{{ versao_atual.aceites }}</b></span>
+    </div>
+    <div class="doc-text" style="white-space:pre-wrap;font-size:.84rem;line-height:1.7;background:#FAF9FE;border:1px solid var(--line);border-radius:12px;padding:18px 20px;max-height:430px;overflow:auto">{{ versao_atual.texto }}</div>
+    <div class="lock-note">Esta versão é imutável. Para alterar o texto, publique uma nova versão — a atual será marcada como substituída, preservando o histórico.</div>
+    {% else %}
+    <p class="empty">Nenhuma versão para exibir.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

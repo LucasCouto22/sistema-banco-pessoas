@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}Projetos · Qualy Vortice{% endblock %}
+{% block crumbs %}Projetos / <b>Lista</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>Projetos</h2><p class="sub">{{ projetos|length }} projeto(s)</p></div>
+  {% if request.user|tem_permissao:"projetos.gerenciar" %}
+  <a class="btn btn-primary" href="{% url 'projetos:novo' %}">＋ Novo projeto</a>
+  {% endif %}
+</div>
+<div class="folders">
+{% for proj in projetos %}
+  <a class="folder" href="{% url 'projetos:detalhe' proj.pk %}">
+    <div class="f-row">
+      <span class="f-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+      {% if proj.cliente %}<span class="badge b-violet">{{ proj.cliente }}</span>{% endif %}
+    </div>
+    <h4>{{ proj.nome }}</h4>
+    <div class="f-sub">{{ proj.cliente }}{% if proj.metodologia %} · {{ proj.metodologia }}{% endif %}{% if proj.segmento %} · {{ proj.get_segmento_display }}{% endif %}</div>
+    {% if proj.perfil_resumo %}
+    <div class="f-perfil">Perfil: {{ proj.perfil_resumo }}</div>
+    {% endif %}
+    <div class="f-row">
+      <div class="mini-bar"><i style="width:{{ proj.ocupacao_percentual }}%"></i></div>
+      <span class="cell-sub mono">{{ proj.ocupadas }}/{{ proj.vagas }}</span>
+    </div>
+    <div class="f-row">
+      <span class="cell-sub">R$ {{ proj.valor_perfil }} / perfil</span>
+      <span class="btn btn-primary btn-sm">Acessar ›</span>
+    </div>
+  </a>
+{% empty %}
+  <p class="empty">Nenhum projeto cadastrado.</p>
+{% endfor %}
+</div>
+{% endblock %}

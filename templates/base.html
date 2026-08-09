@@ -1,0 +1,115 @@
+{% load static perms_extras %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block titulo %}Qualy Vortice{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<script src="{% static 'js/pii.js' %}" defer></script>
+</head>
+<body>
+{% if user.is_authenticated %}
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"></span><h1>Qualy Vortice</h1></div>
+
+    <p class="nav-label">Operação</p>
+
+    {% if request.user|tem_permissao:"participantes.ver" or request.user|tem_permissao:"participacoes.ver" %}
+    <details class="nav-group" {% if request.resolver_match.app_name == "core" %}open{% endif %}>
+      <summary>Dashboards <span class="chev">▾</span></summary>
+      <div class="nav-sub">
+        <a class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'core:home' %}">Visão participantes</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard_segmento' %}active{% endif %}" href="{% url 'core:dashboard_segmento' %}">Visão por segmento</a>
+      </div>
+    </details>
+    {% endif %}
+
+    {% if request.user|tem_permissao:"participantes.ver" or request.user|tem_permissao:"projetos.ver" or request.user|tem_permissao:"participacoes.ver" %}
+    <details class="nav-group" open>
+      <summary>Banco de Pessoas <span class="chev">▾</span></summary>
+      <div class="nav-sub">
+        {% if request.user|tem_permissao:"participantes.ver" %}
+        <a class="nav-item {% if request.resolver_match.app_name == 'pessoas' and request.resolver_match.url_name != 'cadastro_publico' %}active{% endif %}" href="{% url 'pessoas:lista' %}">Pessoas</a>
+        {% endif %}
+        {% if request.user|tem_permissao:"projetos.ver" %}
+        <a class="nav-item {% if request.resolver_match.app_name == 'projetos' %}active{% endif %}" href="{% url 'projetos:lista' %}">Projetos</a>
+        {% endif %}
+        {% if request.user|tem_permissao:"participacoes.ver" %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'lista' and request.resolver_match.app_name == 'participacoes' %}active{% endif %}" href="{% url 'participacoes:lista' %}">Participações</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'kanban' %}active{% endif %}" href="{% url 'participacoes:kanban' %}">Pipeline (kanban)</a>
+        {% endif %}
+        {% if request.user|tem_permissao:"participantes.gerenciar" %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'wizard_projeto' %}active{% endif %}" href="{% url 'pessoas:wizard_projeto' %}">Novos participantes</a>
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}
+
+    {% if request.user|tem_permissao:"termos.ver" %}
+    <a class="nav-item {% if request.resolver_match.app_name == 'termos' %}active{% endif %}" href="{% url 'termos:lista' %}">Termos e Contratos</a>
+    {% endif %}
+
+    {% if request.user|tem_permissao:"usuarios.gerenciar" or request.user|tem_permissao:"permissoes.gerenciar" %}
+    <p class="nav-label">Administração</p>
+    {% if request.user|tem_permissao:"usuarios.gerenciar" %}
+    <a class="nav-item {% if request.resolver_match.url_name == 'usuarios_lista' %}active{% endif %}" href="{% url 'accounts:usuarios_lista' %}">Usuários</a>
+    {% endif %}
+    {% if request.user|tem_permissao:"permissoes.gerenciar" %}
+    <a class="nav-item {% if request.resolver_match.url_name == 'painel_permissoes' %}active{% endif %}" href="{% url 'accounts:painel_permissoes' %}">Painel de Permissões</a>
+    {% endif %}
+    {% if request.user|tem_permissao:"auditoria.ver" %}
+    <a class="nav-item {% if request.resolver_match.app_name == 'auditoria' %}active{% endif %}" href="{% url 'auditoria:lista' %}">Auditoria LGPD</a>
+    {% endif %}
+    {% endif %}
+
+    {% if alertas_sidebar %}
+    <div class="alerts">
+      <p class="nav-label">Alertas <b>{{ total_alertas_sidebar }}</b></p>
+      {% for alerta in alertas_sidebar %}
+      <div class="alert-card">
+        <form method="post" action="{% url 'accounts:aviso_dispensar' %}" class="alert-dismiss">
+          {% csrf_token %}
+          <input type="hidden" name="chave" value="{{ alerta.chave }}">
+          <input type="hidden" name="conteudo" value="{{ alerta.detalhe }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="alert-x" title="Dispensar este aviso" aria-label="Dispensar este aviso">×</button>
+        </form>
+        <h4>{{ alerta.titulo }}</h4><p>{{ alerta.detalhe }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="side-foot">
+      <a href="{% url 'accounts:meu_perfil' %}" class="side-foot-link" title="Meu perfil">
+        <span class="av">{{ request.user.get_full_name|default:request.user.username|slice:":2"|upper }}</span>
+        <div>
+          <div class="u-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="u-role">{{ request.user.get_nivel_display }}</div>
+        </div>
+      </a>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn-logout" type="submit">Sair</button></form>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="crumbs">{% block crumbs %}Painel{% endblock %}</div>
+    </div>
+    <div class="content">
+      {% if messages %}
+      <ul class="messages">
+        {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% block conteudo %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+{% else %}
+{% block conteudo_publico %}{% endblock %}
+{% endif %}
+</body>
+</html>

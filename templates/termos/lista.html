@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}Termos e Contratos · Qualy Vortice{% endblock %}
+{% block crumbs %}Administração / <b>Termos e Contratos</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>Termos e Contratos</h2><p class="sub">Documentos versionados de consentimento e contratação</p></div>
+  {% if request.user|tem_permissao:"termos.gerenciar" %}
+  <a class="btn btn-primary" href="{% url 'termos:novo' %}">＋ Novo termo ou contrato</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Documento</th><th>Tipo</th><th>Versão vigente</th><th>Vigência</th><th>Aceites</th><th></th></tr></thead>
+    <tbody>
+    {% for termo in termos %}
+      {% with vigente=termo.versao_vigente %}
+      <tr>
+        <td class="cell-main">{{ termo.nome }}</td>
+        <td>{{ termo.get_tipo_display }}</td>
+        <td>
+          {% if vigente %}<span class="badge b-green">{{ vigente.versao }}</span>
+          {% else %}<span class="badge b-gray">Sem versão vigente</span>{% endif %}
+        </td>
+        <td>{% if vigente %}{{ vigente.inicio_vigencia }}{% if vigente.fim_vigencia %} — {{ vigente.fim_vigencia }}{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if vigente %}{{ vigente.aceites }}{% else %}0{% endif %}</td>
+        <td><a class="btn btn-ghost btn-sm" href="{% url 'termos:detalhe' termo.pk %}">Detalhes</a></td>
+      </tr>
+      {% endwith %}
+    {% empty %}
+      <tr><td colspan="6" class="empty">Nenhum termo ou contrato cadastrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<div class="lock-note">Cada versão publicada é imutável — alterar um documento sempre cria uma nova versão, preservando o histórico (LGPD, art. 8º §2º).</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+<span class="pii">
+  <span class="val" id="pii-{{ campo }}-{{ participante.pk }}" data-mascarado="{{ mascarado }}" data-revelado="0">{{ mascarado }}</span>
+  {% if pode_revelar %}
+  <button type="button" class="eye" title="Revelar" aria-label="Revelar"
+    data-alvo="pii-{{ campo }}-{{ participante.pk }}"
+    data-url="{% url 'pessoas:revelar_campo' participante.pk campo %}"
+    onclick="revelarCampoPII(this)">👁</button>
+  {% endif %}
+</span>

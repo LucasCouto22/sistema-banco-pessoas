@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}Participações · Qualy Vortice{% endblock %}
+{% block crumbs %}Participações / <b>Lista</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>Participações</h2><p class="sub">Histórico de participantes em projetos</p></div>
+  {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
+  <a class="btn btn-primary" href="{% url 'participacoes:nova' %}">＋ Associar a projeto</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Participante</th><th>Projeto</th><th>Etapa</th><th>Status</th><th>Responsável</th><th></th></tr></thead>
+    <tbody>
+    {% for part in participacoes %}
+      <tr>
+        <td class="cell-main">{{ part.participante.nome }}</td>
+        <td>{{ part.projeto.nome }}</td>
+        <td><span class="badge b-blue">{{ part.get_etapa_display }}</span></td>
+        <td>{{ part.get_status_display|default:"—" }}</td>
+        <td>{{ part.responsavel|nome_usuario }}</td>
+        <td>
+          {% if request.user|tem_permissao:"avaliacao.criar" %}
+          <a class="btn btn-soft btn-sm" href="{% url 'participacoes:avaliar' part.pk %}">Avaliar</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="empty">Nenhuma participação encontrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

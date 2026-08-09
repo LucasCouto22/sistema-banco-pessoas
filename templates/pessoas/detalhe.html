@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}{{ participante.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Banco de Pessoas / <b>{{ participante.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>{{ participante.nome }}</h2><p class="sub mono">{{ participante.codigo }}</p></div>
+  <div style="display:flex;gap:8px">
+    {% if pode_editar %}
+    <a class="btn btn-ghost" href="{% url 'pessoas:editar' participante.pk %}">Editar</a>
+    {% endif %}
+    {% if pode_excluir %}
+    <a class="btn btn-ghost" style="border-color:#F7C9C0;color:#B03225" href="{% url 'pessoas:excluir' participante.pk %}">Excluir</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel" style="padding:18px 20px">
+  <h3 style="font-size:.9rem;margin-bottom:10px">Dados cadastrais</h3>
+  <table>
+    <tbody>
+    <tr><td class="cell-sub">CPF</td><td>{% include "pessoas/_pii_campo.html" with participante=participante campo="cpf" mascarado=participante.cpf_mascarado %}</td></tr>
+    <tr><td class="cell-sub">Telefone</td><td>{% include "pessoas/_pii_campo.html" with participante=participante campo="telefone" mascarado=participante.telefone_mascarado %}</td></tr>
+    <tr><td class="cell-sub">E-mail</td><td>{% include "pessoas/_pii_campo.html" with participante=participante campo="email" mascarado=participante.email_mascarado %}</td></tr>
+    <tr><td class="cell-sub">Nascimento</td><td>{{ participante.data_nascimento }} ({{ participante.idade }} anos)</td></tr>
+    <tr><td class="cell-sub">Cidade/UF</td><td>{{ participante.cidade }}/{{ participante.uf }}</td></tr>
+    <tr><td class="cell-sub">Escolaridade</td><td>{{ participante.get_escolaridade_display }}</td></tr>
+    <tr><td class="cell-sub">Profissão</td><td>{{ participante.profissao }}</td></tr>
+    <tr><td class="cell-sub">Faixa de renda</td><td>{{ participante.get_faixa_renda_display }}</td></tr>
+    <tr><td class="cell-sub">Situação</td><td>
+      {% if participante.situacao == "APROVADO" %}<span class="badge b-green">{{ participante.get_situacao_display }}</span>
+      {% elif participante.situacao == "DESCARTADO" %}<span class="badge b-red">{{ participante.get_situacao_display }}</span>
+      {% else %}<span class="badge b-amber">{{ participante.get_situacao_display }}</span>{% endif %}
+    </td></tr>
+    {% if participante.origem_recrutador %}
+    <tr><td class="cell-sub">Origem</td><td>Cadastro público, indicado por <b>{{ participante.origem_recrutador|nome_usuario }}</b></td></tr>
+    {% endif %}
+    <tr><td class="cell-sub">Consentimento LGPD</td><td>
+      {% if participante.consentimento_versao %}<span class="badge b-green">{{ participante.consentimento_versao.versao }}</span>
+      {% elif participante.consentimento_lgpd %}<span class="badge b-amber">Aceito (versão não registrada)</span>
+      {% else %}<span class="badge b-red">Não aceito</span>{% endif %}
+    </td></tr>
+    </tbody>
+  </table>
+
+  {% if pode_revelar %}
+  <div class="lock-note">Clique no ícone 👁 ao lado de cada dado sensível para revelá-lo — cada revelação fica registrada na Auditoria LGPD.</div>
+  {% else %}
+  <div class="lock-note">Seu nível de acesso não permite revelar os dados sensíveis deste participante.</div>
+  {% endif %}
+
+  {% if pode_pagamento and participante.forma_pagamento %}
+  <h3 style="font-size:.9rem;margin:18px 0 10px">Pagamento</h3>
+  <table>
+    <tbody>
+    <tr><td class="cell-sub">Forma</td><td>{{ participante.get_forma_pagamento_display }}</td></tr>
+    <tr><td class="cell-sub">Chave PIX</td><td class="pii">{{ participante.chave_pix }}</td></tr>
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if participante.situacao == "PENDENTE" and request.user|tem_permissao:"participantes.gerenciar" %}
+<div class="panel" style="padding:16px 20px;margin-top:16px">
+  <h3 style="font-size:.9rem;margin-bottom:10px">Triagem</h3>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <form method="post" action="{% url 'pessoas:aprovar' participante.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-primary" type="submit">Aprovar participante</button>
+    </form>
+    <form method="post" action="{% url 'pessoas:descartar' participante.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-ghost" type="submit" style="border-color:var(--red);color:#B03225" onclick="return confirm('Descartar este participante?');">Descartar participante</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="panel" style="margin-top:16px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Participações</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Projeto</th><th>Etapa</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for part in participante.participacoes.all %}
+      <tr><td class="cell-main">{{ part.projeto.nome }}</td><td>{{ part.get_etapa_display }}</td><td>{{ part.get_status_display|default:"—" }}</td></tr>
+    {% empty %}
+      <tr><td colspan="3" class="empty">Ainda não participou de nenhum projeto.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

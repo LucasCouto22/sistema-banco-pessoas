@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Novo cadastro de participantes · Qualy Vortice{% endblock %}
+{% block crumbs %}Banco de Pessoas / <b>Novo cadastro de participantes</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Como você quer cadastrar os participantes?</h2></div></div>
+{% include "pessoas/_wizard_steps.html" %}
+<div class="wiz-modo-grid">
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="modo" value="CSV">
+    <button class="wiz-modo-card" type="submit">
+      <b>Importar planilha</b>
+      <small>Envie um arquivo CSV com vários participantes de uma vez.</small>
+    </button>
+  </form>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="modo" value="MANUAL">
+    <button class="wiz-modo-card" type="submit">
+      <b>Cadastro manual</b>
+      <small>Preencha os dados de cada participante diretamente na tela.</small>
+    </button>
+  </form>
+</div>
+<p style="text-align:center;margin-top:16px"><a class="btn btn-ghost btn-sm" href="{% url 'pessoas:wizard_cancelar' %}">Cancelar</a></p>
+{% endblock %}

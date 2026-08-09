@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Importar planilha · Qualy Vortice{% endblock %}
+{% block crumbs %}Banco de Pessoas / <b>Importar planilha</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title"><div><h2>Importar planilha</h2></div></div>
+{% include "pessoas/_wizard_steps.html" %}
+<div class="panel" style="padding:24px;max-width:640px;margin:0 auto">
+  <div class="wiz-import-bar">
+    <a class="btn btn-ghost btn-sm" href="{% url 'pessoas:wizard_modelo_csv' %}">⬇ Baixar modelo CSV</a>
+  </div>
+  <p class="hint" style="margin-bottom:16px">
+    Colunas aceitas: Nome completo, CPF, Data de nascimento (AAAA-MM-DD), Gênero, E-mail,
+    Telefone, Cidade, UF, CEP, Escolaridade, Profissão, Faixa de renda. O consentimento LGPD
+    de cada participante será confirmado na próxima etapa (revisão).
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.arquivo.id_for_label }}">{{ form.arquivo.label }}</label>
+      {{ form.arquivo }}
+      {% for erro in form.arquivo.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" type="submit">Enviar e continuar</button>
+      <a class="btn btn-ghost" href="{% url 'pessoas:wizard_modo' %}">‹ Voltar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
