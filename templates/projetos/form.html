@@ -2,21 +2,57 @@
 {% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Projetos / <b>{{ titulo }}</b>{% endblock %}
 {% block conteudo %}
-<div class="view-title"><div><h2>{{ titulo }}</h2></div></div>
-<div class="panel" style="padding:20px 24px;max-width:720px">
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ titulo }}</h2><p class="sub">Defina a pesquisa e o perfil de participantes desejado</p></div>
+  <a class="btn btn-ghost" href="{% url 'projetos:lista' %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px">
   <form method="post">
     {% csrf_token %}
-    <div class="form-row">
-      {% for field in form %}
-      <div class="field">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-        {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    <fieldset>
+      <legend>Dados da pesquisa</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.nome %}
+        {% include "core/_campo_form.html" with campo=form.cliente %}
       </div>
-      {% endfor %}
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.metodologia %}
+        {% include "core/_campo_form.html" with campo=form.status %}
+        {% include "core/_campo_form.html" with campo=form.segmento %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.data_inicio %}
+        {% include "core/_campo_form.html" with campo=form.data_fim %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.incentivo %}
+        {% include "core/_campo_form.html" with campo=form.valor_perfil %}
+        {% include "core/_campo_form.html" with campo=form.vagas %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.descricao %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Perfil desejado <span class="badge b-blue tag">segmentação</span></legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.perfil_idade_min %}
+        {% include "core/_campo_form.html" with campo=form.perfil_idade_max %}
+        {% include "core/_campo_form.html" with campo=form.perfil_genero %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.perfil_regiao %}
+        {% include "core/_campo_form.html" with campo=form.perfil_renda %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.perfil_criterios_livres %}
+      </div>
+      <p class="hint">Critérios livres são gravados como texto — entrada futura do modelo de recomendação.</p>
+    </fieldset>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <a class="btn btn-ghost" href="{% url 'projetos:lista' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar projeto</button>
     </div>
-    <p style="margin-top:16px"><button class="btn btn-primary" type="submit">Salvar projeto</button></p>
   </form>
-</div>
+</div></div>
 {% endblock %}

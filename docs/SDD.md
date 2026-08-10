@@ -292,9 +292,9 @@ Ordem sugerida (negociável com o usuário a cada item):
    gráfico comparativo entre todos + (ao selecionar um) gráficos de cidade/gênero/classe
    social/faixa etária **só dos participantes que já passaram por algum projeto daquele
    segmento** (`Participante.objects.filter(participacoes__projeto__segmento=X).distinct()`).
-   O diagrama de Venn de sobreposição entre segmentos continua fora do escopo — Chart.js não
-   tem isso nativamente e o valor é baixo para o esforço nesta fase; fica no backlog de Fase
-   3 se o usuário quiser depois.
+   O diagrama de Venn de sobreposição entre segmentos ficou fora do escopo nesta entrega —
+   Chart.js não tem isso nativamente. **Atualização de 2026-08-10: implementado depois**, ver
+   entrada de log correspondente — não usa Chart.js, é SVG puro, igual ao protótipo.
 
 ### Fase 3 — polimento (backlog, sem data)
 
@@ -575,3 +575,221 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
   GitHub já existente. Falta o usuário conferir se o build passou e gerar o domínio público
   (Settings → Networking → Generate Domain) — não tenho acesso à conta do Railway para fazer
   isso por ele.
+- **2026-08-10** — Usuário comparou "Visão participantes" lado a lado com o protótipo de
+  novo e apontou que ainda estava muito diferente: sem o mapa de estados, sem números nos
+  gráficos, sem destaque pras 5 capitais, sem diagrama de Venn. Perguntou se isso era
+  limitação do Chart.js. **Resposta: em parte.** Reli o JS do próprio protótipo
+  (`renderDashPart`, `svgVenn2`/`svgVenn3`) pra confirmar: **o protótipo não usa Chart.js
+  nem nenhuma outra lib de gráfico nessa tela** — é tudo HTML/CSS/SVG artesanal (grade de UF
+  em `<div>`s coloridos por `rgba()`, rosca via `conic-gradient` do CSS com texto no centro
+  via `content:attr(data-center)`, barra de gênero é uma `<div>` só com pedaços coloridos,
+  barras verticais são só `<b style="height:X%">` com o número ao lado em texto puro, e o
+  Venn é SVG com círculos e texto posicionados na mão). Ou seja: o Chart.js genuinamente não
+  faz Venn e não desenha texto centralizado numa rosca por padrão, mas o resto (números nas
+  barras, layout do mapa) era só eu não ter replicado o componente certo — não era uma
+  limitação real da lib. Corrigido trocando esses componentes por HTML/CSS/SVG puro,
+  reproduzindo o protótipo quase literalmente (mesmas posições de UF no cartograma, mesmas
+  cores, mesma fórmula de intensidade), com os dados vindos do banco real:
+  - `core/dashviz.py` (novo): `mapa_estados()` (cartograma, todas as 27 UFs), `construir_donut()`
+    (rosca com `conic-gradient` + legenda com contagem e %, reusada em "5 principais capitais"
+    E "Situação dos participantes"), `construir_stackbar()` (barra de gênero), `construir_barras_verticais()`
+    (classe social / faixa etária, com o número já embutido), e `montar_venn()` +
+    `svg_venn2`/`svg_venn3` (tradução literal das funções JS do protótipo pra Python, gerando
+    SVG server-side com `mark_safe`, contagens reais via `Participacao.objects.filter(projeto__segmento__in=...)`).
+  - "5 principais capitais" ficou com a mesma lista fixa do protótipo (Rio de Janeiro, São
+    Paulo, Brasília, Fortaleza, Salvador) — é uma escolha editorial, não estatística, então
+    não faz sentido calcular dinamicamente.
+  - O Venn agora mora na própria "Visão participantes" (igual ao protótipo — no protótipo não
+    é a tela "Visão por segmento" que tem o Venn, é a "Visão participantes" mesmo), com um
+    seletor de 2 a 3 segmentos via pills (`?segs=BANCO,SAUDE`, recarrega a página — sem JS).
+  - **Bug real encontrado no meio do processo**: `Projeto.Segmento` tem uma opção "Outro"
+    (catch-all) que não existe no protótipo (lá só tem os 5 segmentos nomeados) — o código
+    tentava buscar a cor dela em `COR_SEGMENTO` e caía num `KeyError('OUTRO')`, 500 em toda a
+    home. Corrigido excluindo "Outro" da lista de segmentos válidos pro Venn/seletor.
+  - Testado com Playwright: screenshots batendo visualmente com o protótipo (cartograma,
+    rosca com texto no centro, barra de gênero com legenda, barras com número em cima) e o
+    Venn testado de verdade com dados reais de sobreposição (criei e depois apaguei 2
+    projetos de teste com segmentos diferentes e participações cruzadas só pra gerar overlap
+    de 2 e de 3 vias e conferir visualmente — os números bateram exatamente com o esperado
+    em ambos os casos).
+  - Simplificação assumida: os cliques em tile/legenda/barra do protótipo filtravam a base
+    (era um recorte interativo tipo "clique no RJ pra ver só quem é do RJ"). Isso **não** foi
+    replicado — os componentes aqui são só visualização, sem interação de filtro. Se fizer
+    falta, é um próximo passo natural (cada elemento já tem os dados pra virar um link de
+    filtro por querystring, no mesmo estilo do seletor de segmentos do Venn).
+  - **Nada disso foi commitado ainda** — usuário pediu pra ver antes. `git status` mostra as
+    mudanças pendentes: `core/dashviz.py` (novo), `core/views.py`, `templates/core/home.html`,
+    `static/css/base.css`.
+- **2026-08-10 (mesma sessão, correções seguintes)** — Usuário testou o resultado acima e
+  reportou dois problemas pontuais por screenshot: (1) o gráfico de "Pipeline de captação"
+  (barra horizontal via Chart.js, herdado da versão anterior) estava "ruim e feio, muito
+  grande" pra só 5 categorias com números pequenos; (2) no mapa de estados, o texto ficava
+  branco sobre fundo ainda claro em vários estados, ilegível.
+  - **Mapa — causa raiz real**: a regra que decide se o texto do tile fica claro ou escuro
+    era `intensidade > 0.5`, mas a cor de fundo é `rgba(242,41,91,intensidade)` sobre fundo
+    branco — nessa mistura, em `intensidade=0.5` o tile ainda fica com RGB≈(248,148,173), que
+    é visualmente bem claro (o rosa só fica escuro o suficiente pra pedir texto branco lá
+    perto de `intensidade≈0.78`). Troquei o corte fixo por um cálculo real de luminância
+    perceptual (`0.299R+0.587G+0.114B`, mesma fórmula usada em acessibilidade) em
+    `core/dashviz.py::_fundo_e_escuro()`, que decide "texto escuro" quando a luminância
+    calculada é `< 140`. Verifiquei os dois extremos rodando a função pra intensidade de
+    0.0 a 1.0 (crossover real fica em ~0.8) e depois visualmente: criei 9 participantes de
+    teste em SP (script `C:/tmp/seed_map_test.py`, apagados logo depois via
+    `Participante.objects.filter(nome__startswith="Teste Mapa ").delete()`) pra forçar um
+    tile de intensidade alta e conferi por screenshot do Playwright que SP ficou com fundo
+    escuro e texto branco legível, enquanto os demais estados (intensidade baixa) mantiveram
+    texto escuro sobre fundo claro.
+  - **Pipeline — não era limitação do Chart.js, era o componente errado de novo**: o próprio
+    protótipo já tem um componente pronto pra "poucas categorias com contagem", usado lá na
+    tela "Visão por segmento" pra top-estados: `.hbar-row` (barra horizontal simples em CSS,
+    sem lib nenhuma, com rótulo à esquerda, barra ao centro, contagem+% à direita). Troquei o
+    canvas Chart.js do pipeline por esse mesmo componente: `construir_barras_horizontais()`
+    (novo, em `core/dashviz.py`) calcula largura% proporcional ao máximo e % do total por
+    etapa; `.hbar-row`/`.hbar` (novo, em `static/css/base.css`) estilizam; `core/views.py`
+    monta `contexto["barras_pipeline"]` a partir de `Participacao.Etapa.choices` com as
+    cores de `COR_ETAPA` (novo dict, uma cor por etapa do funil); `templates/core/home.html`
+    itera `barras_pipeline.barras`. Como essa era a última coisa em `home.html` que ainda
+    dependia de Chart.js, removi o `{% block scripts %}` inteiro (carregamento de
+    `chart.umd.js`/`charts.js` e o script de inicialização) — a página não usa mais Chart.js
+    em nenhum ponto. `dashboard_segmento.html` continua usando Chart.js normalmente (fora do
+    escopo desse pedido).
+  - Testado visualmente com Playwright (screenshot completo da home + recorte do mapa antes
+    e depois de forçar intensidade alta em SP) — ambas as correções confirmadas.
+  - **Segue sem commitar** — mesmo pedido do usuário de revisar antes. `git status` agora
+    também inclui `core/views.py`, `templates/core/home.html` e `static/css/base.css` com as
+    mudanças desta rodada em cima das da rodada anterior.
+- **2026-08-10 (mesma sessão, reescrita pra interatividade real)** — Usuário testou de novo
+  e foi direto ao ponto real do problema, que as duas rodadas anteriores não tinham resolvido:
+  "o gráfico por estado não consegue selecionar filtrar os outros dados, o diagrama de venn
+  ficou ruim demais a usabilidade... quero igual [ao protótipo]". Reli `renderDashPart` e
+  `renderVenn` do protótipo com atenção no que eu tinha deixado de fora da primeira vez: lá,
+  **cada elemento clicável (tile do mapa, legenda de gênero/capital, barra de classe/faixa)
+  aplica um filtro (`filtros={uf,gen,cls,fx,cid}`) que refiltra e redesenha o dashboard
+  inteiro na hora, no cliente**, com uma barra de chips mostrando os filtros ativos e um
+  botão "limpar tudo" — e o Venn recalcula a sobreposição em cima desse mesmo recorte
+  filtrado. A versão que eu tinha construído nas duas rodadas anteriores era só HTML estático
+  gerado no servidor (nada clicável) e o Venn recarregava a página inteira via querystring
+  a cada troca de segmento — daí a reclamação de usabilidade ruim, era literal: o Venn do
+  jeito que estava dava um reload cheio a cada clique.
+  - **Mudança de arquitetura pra essa seção**: em vez de montar HTML no servidor a cada
+    request, `core/views.py::home()` agora serializa uma vez por request os campos que o
+    dashboard usa pra filtrar — `core/dashviz.py::dados_participantes_dashboard()` devolve
+    uma lista de `{uf, gen, cls, fx, cid, segs}` por participante (mesmo formato de registro
+    do `base1000` do protótipo) — e manda isso pro template via `json_script`. Todo o resto
+    (contagem, filtro, cartograma, rosca, barra empilhada, barras verticais e o diagrama de
+    Venn com `svgVenn2`/`svgVenn3`) foi **portado pra `static/js/dashboard.js`**, reescrito
+    em JS quase linha a linha a partir do protótipo (`TILES`, `filtros`, `toggleF`,
+    `limparFiltros`, `renderDashPart`→`render()`, `renderVenn`, `svgVenn2`/`svgVenn3` — até a
+    fórmula de luminância pro contraste do mapa, corrigida na rodada anterior, foi só
+    traduzida de Python pra JS). `dashviz.py` ficou bem mais enxuto: perdeu tudo que virou
+    JS (`mapa_estados`, `construir_stackbar`, `construir_barras_verticais`, `montar_venn`,
+    `svg_venn2/3`, `TILES_UF`, `COR_CAPITAL`, `COR_GENERO`, `COR_SEGMENTO`) e ficou só com o
+    que ainda é montado no servidor: a serialização acima, e a "Situação dos participantes" +
+    "Pipeline de captação" (que continuam server-side porque não são interativos nem no
+    protótipo).
+  - CSS: adicionei `.filters-bar`/`.fchip`/`.fclear` (barra de chips de filtro) e os estados
+    `.tile.sel`/`.lg.sel`/`.vbar.sel` (destaque de seleção) em `static/css/base.css` — cópia
+    direta das mesmas classes do protótipo, que já existiam parcialmente aqui mas sem o
+    estado `.sel` nem o componente de chips.
+  - Testado com Playwright clicando de verdade nos elementos (não só olhando screenshot
+    estático): clicar na legenda "Feminino" filtrou o mapa, a rosca de capitais, classe
+    social e faixa etária todos juntos e instantaneamente (sem reload — confirmado pela
+    ausência de navegação no Playwright), mostrou o chip "Gênero: Feminino ✕" na barra de
+    filtros, e clicar de novo desmarcou. Sem erros no console do navegador.
+  - **Segue sem commitar**, mesmo pedido de revisão prévia. `git status`: `core/dashviz.py`
+    (reescrito), `core/views.py`, `templates/core/home.html`, `static/css/base.css`
+    (modificados), `static/js/dashboard.js` (novo).
+- **2026-08-10 (mesma sessão, "Visão por segmento")** — Usuário pediu pra fazer "a mesma
+  coisa" na tela "Visão por segmento": ela ainda era a versão antiga, 100% Chart.js, com
+  troca de segmento recarregando a página inteira via `?segmento=` — o mesmo padrão que
+  acabou de ser trocado na Visão participantes por ser lento e pouco refinado.
+  - Reli `renderDashSeg` do protótipo (abas de segmento, 4 KPIs — participantes no
+    segmento/capital líder/gênero predominante/classe predominante —, comparativo entre
+    segmentos em barras clicáveis, top-6 estados em `.hbar-row`, pizza de profissão, e
+    gênero/classe/faixa etária específicos do segmento) e portei pra
+    `static/js/dashboard_segmento.js` no mesmo molde do `dashboard.js` da tela anterior:
+    nenhuma requisição ao servidor ao trocar de segmento, só refiltra o array local e
+    redesenha.
+  - Boa notícia: **não precisou de nenhum dado novo do servidor** — o mesmo registro que já
+    ia pra Visão participantes (`uf/gen/cls/fx/cid/segs`) serve as duas telas, porque "estar
+    num segmento" já é só `p.segs.includes(segSel)`. Só adicionei um campo a mais,
+    `prof` (a profissão de texto livre do cadastro), em
+    `dados_participantes_dashboard()`. Resultado: `core/views.py::dashboard_segmento()`
+    caiu de ~35 linhas com 3 helpers auxiliares (`_grafico_ordenado`, `_grafico_top`,
+    `_grafico_faixa_etaria`, todos removidos) pra 6 linhas.
+  - **Profissão é texto livre no cadastro** (não é um campo de opções fixas como no
+    protótipo, que usa uma lista fake de 8 categorias com cor própria cada). Adaptei pra
+    dado real: agrupa as 7 profissões mais frequentes no segmento + um bucket "Outro" pro
+    resto (mesma ideia do protótipo, só que calculado, não hardcoded), com uma paleta fixa
+    de 8 cores por posição de rank.
+  - CSS: faltavam `.chip` (selo redondo com ícone dentro do KPI), `display:flex` em
+    `.kpi-top` (pra alinhar o chip com o texto) e `.kpi .foot` (linha de rodapé do card) —
+    completados, cópia direta do protótipo. Também `.donut.pie::after{display:none}` pra
+    pizza de profissão não ganhar o buraco/texto central do donut comum.
+  - Testado com Playwright: 3 participantes reais associados a projetos do segmento
+    "Banco" (via `Participacao`) apareceram corretamente em todos os painéis — capital
+    líder deu "—" porque nenhum dos três mora numa das 5 capitais principais (comportamento
+    correto, não bug). Troquei de aba e conferi que recalcula tudo sem reload e sem erro no
+    console.
+  - Com isso, `static/js/vendor/chart.umd.js` e `static/js/charts.js` ficaram sem nenhum uso
+    em lugar nenhum do app (a última tela que ainda usava Chart.js era esta). Não apaguei os
+    arquivos agora — não fazia parte do pedido — mas fica registrado que são candidatos a
+    remoção numa limpeza futura.
+  - **Segue sem commitar.** `git status` agora inclui também
+    `templates/core/dashboard_segmento.html` (reescrito) e `static/js/dashboard_segmento.js`
+    (novo), além do que já estava pendente da rodada da Visão participantes.
+- **2026-08-10 (mesma sessão, formulários de Novo projeto / Novo participante)** — Usuário
+  comparou os formulários de criação com o protótipo e apontou que ficaram muito menores/
+  menos visíveis. Causa: os dois templates (`templates/projetos/form.html` e
+  `templates/pessoas/form.html`) eram um loop genérico `{% for field in form %}` dentro de
+  um `.panel` com `max-width` fixo (720px / 680px) — sem nenhum agrupamento visual. O
+  protótipo usa `<fieldset><legend>` pra seccionar os campos ("Dados da pesquisa" / "Perfil
+  desejado"; "Dados pessoais" / "Contato e endereço" / "Perfil para segmentação" / ...) e o
+  painel não tem limite de largura, então cada campo fica bem mais largo e o formulário
+  inteiro mais fácil de escanear.
+  - Reescrevi os dois templates com a mesma estrutura de `<fieldset>` do protótipo — campo a
+    campo, explicitamente (`form.nome`, `form.cliente`, etc.), já que agrupar por seção não
+    dá pra fazer com o loop genérico. Pra não repetir o bloco de label+campo+erro em cada
+    campo, criei um include reutilizável, `templates/core/_campo_form.html`
+    (`{% include "core/_campo_form.html" with campo=form.nome %}`), no mesmo espírito do
+    padrão que a tela "Meu perfil" já usava com `<fieldset>` por form.
+  - Removi o `max-width` do `.panel` — sem limite nenhum, exatamente como o protótipo (a
+    largura real vem só do container `.content`, que já ocupa a área útil ao lado do menu).
+  - "Novo projeto" ficou com "Dados da pesquisa" (nome, cliente, metodologia, status,
+    segmento, datas de campo, incentivo, valor por perfil, vagas, descrição) e "Perfil
+    desejado" (idade mín/máx, gênero, região, faixa de renda, critérios livres) — Status e
+    Segmento entraram em "Dados da pesquisa" mesmo não existindo no formulário simplificado
+    do protótipo, porque são campos reais do nosso modelo (Segmento inclusive alimenta os
+    dois dashboards reescritos nas rodadas anteriores).
+  - "Novo participante" ficou com "Dados pessoais", "Contato e endereço", "Perfil para
+    segmentação" (as três do protótipo) mais duas seções que o protótipo tem só no modal
+    completo, mas que o nosso formulário de página cheia também precisa: "Situação e
+    pagamento do incentivo" (oculta o rótulo de pagamento e os dois campos de pagamento
+    quando `pode_ver_pagamento=False`, via `{% if form.forma_pagamento %}` — o campo some do
+    form no `__init__` quando o usuário não tem a permissão `pagamento.ver`, e o template só
+    precisa checar se ele existe) e "Consentimento LGPD".
+  - Testado com Playwright em `/projetos/novo/` e `/participantes/novo/`: layout batendo
+    com o protótipo (fieldsets com legenda e badge, formulário ocupando a largura toda,
+    botões Cancelar/Salvar alinhados à direita, "‹ Voltar" no canto do título), sem erros no
+    console.
+  - **Segue sem commitar.** `git status` agora também inclui `templates/projetos/form.html`
+    e `templates/pessoas/form.html` (reescritos) e `templates/core/_campo_form.html` (novo).
+- **2026-08-10 (mesma sessão, formulário de Usuários)** — Usuário pediu pra aplicar a mesma
+  correção de tamanho no formulário de usuários (`templates/accounts/usuario_form.html`,
+  usado tanto pra cadastro quanto pra edição — mesmo `max-width:560px` e loop genérico das
+  outras duas telas). O protótipo não tem uma tela de gestão de usuários de verdade (login
+  lá é só um seletor "entrar como" fake, sem CRUD), então não havia markup pra copiar aqui —
+  apliquei o mesmo padrão de `<fieldset>`/`_campo_form.html`/painel sem `max-width` já
+  estabelecido nas duas rodadas anteriores, com seções que fazem sentido pro nosso modelo:
+  "Acesso" (usuário, senha provisória, confirmação), "Dados" (nome, sobrenome, e-mail,
+  telefone) e "Permissões" (nível de acesso, + "usuário ativo" na edição).
+  - O mesmo template atende `UsuarioCreateForm` (cadastro) e `UsuarioEditForm` (edição), que
+    têm campos diferentes — `username`/`password1`/`password2` só existem no cadastro,
+    `is_active` só na edição. Resolvido com os mesmos guards `{% if form.username %}` /
+    `{% if form.is_active %}` já usados no formulário de participante pra esconder os campos
+    de pagamento condicionalmente — aqui escondem a fieldset inteira "Acesso" na edição, e
+    revelam o checkbox "Usuário ativo" só nela.
+  - Testado com Playwright em `/accounts/usuarios/novo/` (mostra "Acesso" com usuário/senha)
+    e `/accounts/usuarios/5/editar/` (esconde "Acesso", mostra "Usuário ativo" marcado) — os
+    dois sem erro no console.
+  - **Segue sem commitar.** `git status` agora também inclui `templates/accounts/usuario_form.html`.

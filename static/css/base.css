@@ -130,8 +130,10 @@ input,select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink)}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin-bottom:26px}
 .kpi{background:var(--card);border-radius:var(--r);padding:16px 18px 12px;box-shadow:var(--shadow)}
-.kpi-top{font-size:.82rem;font-weight:600;color:var(--ink)}
+.kpi-top{display:flex;align-items:center;gap:9px;font-size:.82rem;font-weight:600;color:var(--ink)}
+.chip{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;flex:none}
 .kpi .v{font-family:var(--disp);font-weight:800;font-size:1.9rem;color:var(--ink);margin:8px 0 2px}
+.kpi .foot{border-top:1px solid var(--line);padding-top:8px;font-size:.74rem;color:var(--mut)}
 
 .panel{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .panel + .panel{margin-top:18px}
@@ -227,6 +229,63 @@ legend{font-family:var(--disp);font-weight:700;font-size:.9rem;color:var(--ink);
 .chart-canvas-wrap.tall{height:300px}
 .chart-canvas-wrap.short{height:210px}
 @media (max-width:960px){.dp-grid{grid-template-columns:1fr}}
+
+/* ============ FILTROS ATIVOS (Visão participantes) ============ */
+.filters-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 16px;min-height:30px}
+.filters-bar .lbl{font-size:.76rem;color:var(--mut);font-weight:600}
+.fchip{display:inline-flex;align-items:center;gap:7px;background:var(--violet);color:#fff;
+  border:none;border-radius:99px;padding:5px 12px;font-size:.74rem;font-weight:600;cursor:pointer}
+.fchip:hover{background:var(--violet-deep)}
+.fchip small{opacity:.75;font-weight:500}
+.fclear{background:none;border:none;color:var(--violet-deep);font-size:.76rem;font-weight:700;
+  text-decoration:underline;cursor:pointer}
+
+/* ============ CARTOGRAMA (participantes por estado) ============ */
+.map{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;max-width:430px;margin:4px auto 0}
+.tile{aspect-ratio:1;border-radius:8px;background:#EFEDF7;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;border:2px solid transparent;transition:transform .12s;line-height:1.15}
+.tile b{font-size:.62rem;font-weight:800}
+.tile span{font-size:.56rem;font-weight:600;opacity:.9}
+.tile:hover{transform:scale(1.07)}
+.tile.sel{border-color:var(--ink)}
+
+/* ============ ROSCA (donut) com texto no centro ============ */
+.donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+.donut{width:180px;height:180px;border-radius:50%;position:relative;flex:none;background:#F1E4E8}
+.donut::after{content:attr(data-center);position:absolute;inset:26%;background:var(--card);border-radius:50%;
+  display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:1.05rem;color:var(--ink);
+  text-align:center;white-space:pre-line;line-height:1.25}
+.donut.pie::after{display:none}
+.donut-legend{display:flex;flex-direction:column;gap:7px;min-width:180px}
+
+/* ============ BARRA EMPILHADA (stackbar) + legenda ============ */
+.stackbar{display:flex;height:16px;border-radius:99px;overflow:hidden;margin-bottom:12px;background:#EFEDF7}
+.stackbar i{display:block;height:100%;transition:width .25s}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.lg{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;
+  padding:5px 11px;font-size:.74rem;font-weight:600;color:var(--text);background:#fff;cursor:pointer}
+.lg .sw{width:9px;height:9px;border-radius:3px;flex:none}
+.lg .ct{color:var(--mut);font-weight:600}
+.lg.sel{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
+
+/* ============ BARRAS VERTICAIS (classe social, faixa etária) ============ */
+.vbars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:4px}
+.vbar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px;
+  cursor:pointer;border:none;background:none;padding:0;font:inherit}
+.vbar .ct{font-size:.7rem;font-weight:700;color:var(--ink)}
+.vbar b{width:100%;max-width:46px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#FF6E8C,var(--violet));
+  min-height:4px;transition:height .25s;display:block}
+.vbar span{font-size:.66rem;color:var(--mut);font-weight:600;text-align:center}
+.vbar.sel b{background:linear-gradient(180deg,var(--violet-deep),var(--violet-ink))}
+.vbar.sel span{color:var(--violet-deep)}
+
+/* ============ BARRAS HORIZONTAIS (pipeline, top-N compactos) ============ */
+.hbar-row{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:10px;margin-bottom:10px}
+.hbar-row:last-child{margin-bottom:0}
+.hbar-row .lb{font-size:.78rem;font-weight:600;color:var(--ink)}
+.hbar{height:12px;background:#EFEDF7;border-radius:99px;overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:99px;transition:width .25s}
+.hbar-row .ct{font-size:.71rem;color:var(--mut);text-align:right;font-weight:600;white-space:nowrap}
 
 /* ============ WIZARD DE IMPORTAÇÃO ============ */
 .wiz-steps{display:flex;align-items:flex-start;justify-content:center;gap:0;margin-bottom:26px;flex-wrap:wrap}

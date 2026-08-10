@@ -2,24 +2,53 @@
 {% block titulo %}{{ titulo|default:"Novo usuário" }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Administração / <b>{{ titulo|default:"Novo usuário" }}</b>{% endblock %}
 {% block conteudo %}
-<div class="view-title"><div><h2>{{ titulo|default:"Novo usuário" }}</h2><p class="sub">Nível controlado pelo painel de permissões</p></div></div>
-<div class="panel" style="padding:20px 24px;max-width:560px">
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ titulo|default:"Novo usuário" }}</h2><p class="sub">Nível controlado pelo painel de permissões</p></div>
+  <a class="btn btn-ghost" href="{% url 'accounts:usuarios_lista' %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px">
   <form method="post">
     {% csrf_token %}
-    {% for field in form %}
-      {% if field.field.widget.input_type == "checkbox" %}
-      <div class="check">{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
-      {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
-      {% else %}
-      <div class="field">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<p class="hint">{{ field.help_text|safe }}</p>{% endif %}
-        {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    {% if form.username %}
+    <fieldset>
+      <legend>Acesso</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.username %}
       </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.password1 %}
+        {% include "core/_campo_form.html" with campo=form.password2 %}
+      </div>
+    </fieldset>
+    {% endif %}
+    <fieldset>
+      <legend>Dados</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.first_name %}
+        {% include "core/_campo_form.html" with campo=form.last_name %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.email %}
+        {% include "core/_campo_form.html" with campo=form.telefone %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Permissões{% if form.is_active %} e status{% endif %}</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.nivel %}
+      </div>
+      {% if form.is_active %}
+      <div class="check">
+        {{ form.is_active }}
+        <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+      </div>
+      {% for erro in form.is_active.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
       {% endif %}
-    {% endfor %}
-    <button class="btn btn-primary" type="submit">Salvar usuário</button>
+    </fieldset>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <a class="btn btn-ghost" href="{% url 'accounts:usuarios_lista' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar usuário</button>
+    </div>
   </form>
-</div>
+</div></div>
 {% endblock %}

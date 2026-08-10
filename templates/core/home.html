@@ -21,62 +21,80 @@
 </div>
 
 {% if total_participantes %}
-<div class="sec-head"><h2>Visão participantes</h2><span class="sub">Distribuição da base analítica por perfil e localização</span></div>
+<div class="sec-head"><h2>Visão participantes</h2>
+  <span class="sub">Clique em qualquer estado, barra ou legenda para filtrar a base</span></div>
+<div class="filters-bar" id="fchips"><span class="lbl">Nenhum filtro ativo — clique nos gráficos para segmentar a base.</span></div>
 <div class="dp-grid">
   <div class="dp-col">
     <div class="panel">
-      <div class="panel-head"><h3 style="font-size:.95rem">Participantes por estado</h3><span class="chart-note">top 10 UFs</span></div>
-      <div class="chart-body"><div class="chart-canvas-wrap tall"><canvas id="chartUf"></canvas></div></div>
+      <div class="panel-head"><h3 style="font-size:.95rem">Participantes por estado</h3><span class="chart-note">intensidade = quantidade</span></div>
+      <div class="chart-body"><div class="map" id="mapBR"></div></div>
     </div>
     <div class="panel">
-      <div class="panel-head"><h3 style="font-size:.95rem">Principais cidades</h3><span class="chart-note">top 5</span></div>
-      <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartCidade"></canvas></div></div>
+      <div class="panel-head"><h3 style="font-size:.95rem">5 principais capitais</h3><span class="chart-note">clique para filtrar</span></div>
+      <div class="chart-body"><div class="donut-wrap" id="chCaps"></div></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h3 style="font-size:.95rem">Situação dos participantes</h3></div>
-      <div class="chart-body"><div class="chart-canvas-wrap"><canvas id="chartSituacao"></canvas></div></div>
+      <div class="chart-body">
+        <div class="donut-wrap">
+          <div class="donut" data-center="{{ donut_situacao.centro }}" {% if donut_situacao.gradiente %}style="background:{{ donut_situacao.gradiente }}"{% endif %}></div>
+          <div class="donut-legend">
+            {% for item in donut_situacao.legenda %}
+            <span class="lg"><span class="sw" style="background:{{ item.cor }}"></span>{{ item.label }}
+              <span class="ct">{{ item.count }} · {{ item.pct }}%</span></span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="dp-col">
     <div class="panel">
       <div class="panel-head"><h3 style="font-size:.95rem">Gênero</h3></div>
-      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartGenero"></canvas></div></div>
+      <div class="chart-body" id="chGen"></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h3 style="font-size:.95rem">Classe social (faixa de renda)</h3></div>
-      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartRenda"></canvas></div></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h3 style="font-size:.95rem">Escolaridade</h3></div>
-      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartEscolaridade"></canvas></div></div>
+      <div class="chart-body"><div class="vbars" id="chCls"></div></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h3 style="font-size:.95rem">Faixa etária</h3></div>
-      <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartIdade"></canvas></div></div>
+      <div class="chart-body"><div class="vbars" id="chFx"></div></div>
     </div>
   </div>
 </div>
 
-{{ graf_uf|json_script:"dados-uf" }}
-{{ graf_cidade|json_script:"dados-cidade" }}
-{{ graf_situacao|json_script:"dados-situacao" }}
-{{ graf_genero|json_script:"dados-genero" }}
-{{ graf_renda|json_script:"dados-renda" }}
-{{ graf_escolaridade|json_script:"dados-escolaridade" }}
-{{ graf_idade|json_script:"dados-idade" }}
+<div class="panel" style="margin-top:18px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Sobreposição entre segmentos</h3>
+    <span class="chart-note">selecione de 2 a 3 segmentos para ver quem atua em mais de um</span></div>
+  <div class="chart-body">
+    <div class="seg-tabs" id="vennPills"></div>
+    <div id="vennBox"></div>
+    <p class="chart-note" id="vennFoot" style="text-align:center;margin-top:12px"></p>
+  </div>
+</div>
+{{ dash_participantes_json|json_script:"dados-participantes" }}
 {% endif %}
 
-{% if graf_pipeline %}
+{% if barras_pipeline %}
 <div class="sec-head"><h2>Pipeline de captação</h2>
   <a class="btn btn-ghost btn-sm" href="{% url 'participacoes:kanban' %}">Ver kanban ›</a></div>
 <div class="panel">
   <div class="panel-head"><h3 style="font-size:.95rem">Participações por etapa</h3></div>
-  <div class="chart-body"><div class="chart-canvas-wrap short"><canvas id="chartPipeline"></canvas></div></div>
+  <div style="padding:16px 18px">
+    {% for barra in barras_pipeline.barras %}
+    <div class="hbar-row">
+      <span class="lb">{{ barra.label }}</span>
+      <div class="hbar"><i style="width:{{ barra.largura }}%;background:{{ barra.cor }}"></i></div>
+      <span class="ct">{{ barra.count }} · {{ barra.pct }}%</span>
+    </div>
+    {% endfor %}
+  </div>
 </div>
-{{ graf_pipeline|json_script:"dados-pipeline" }}
 {% endif %}
 
-{% if total_participantes is None and graf_pipeline is None %}
+{% if total_participantes is None and barras_pipeline is None %}
 <div class="panel" style="padding:24px;text-align:center">
   <p class="empty">Seu nível de acesso não tem visualizações para mostrar aqui.</p>
 </div>
@@ -84,23 +102,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/vendor/chart.umd.js' %}" defer></script>
-<script src="{% static 'js/charts.js' %}" defer></script>
-<script>
-/* Atenção: o atributo "defer" não tem efeito em <script> inline (sem src) —
-   por isso a espera pelo DOMContentLoaded é explícita aqui, garantindo que
-   chart.umd.js e charts.js (esses sim "defer") já rodaram antes desta linha. */
-document.addEventListener("DOMContentLoaded", function () {
-  if (!QV.configurarPadroes()) return;
-  var P = QV.PALETA;
-  QV.graficoBarraH("chartUf", "dados-uf");
-  QV.graficoRosca("chartCidade", "dados-cidade");
-  QV.graficoRosca("chartSituacao", "dados-situacao", [P.ambar, P.verde, "#C21807"]);
-  QV.graficoRosca("chartGenero", "dados-genero");
-  QV.graficoBarraV("chartRenda", "dados-renda");
-  QV.graficoBarraV("chartEscolaridade", "dados-escolaridade");
-  QV.graficoBarraV("chartIdade", "dados-idade");
-  QV.graficoBarraH("chartPipeline", "dados-pipeline", [P.azul, P.violeta, P.ambar, P.rosa, P.verde]);
-});
-</script>
+{% if dash_participantes_json %}
+<script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endif %}
 {% endblock %}

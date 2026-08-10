@@ -2,26 +2,66 @@
 {% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Banco de Pessoas / <b>{{ titulo }}</b>{% endblock %}
 {% block conteudo %}
-<div class="view-title"><div><h2>{{ titulo }}</h2></div></div>
-<div class="panel" style="padding:20px 24px;max-width:680px">
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ titulo }}</h2></div>
+  <a class="btn btn-ghost" href="{% url 'pessoas:lista' %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px">
   <form method="post">
     {% csrf_token %}
-    <div class="form-row">
-      {% for field in form %}
-        {% if field.field.widget.input_type == "checkbox" %}
-        <div class="check">{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
-        {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
-        {% else %}
-        <div class="field">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-          {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
-        </div>
+    <fieldset>
+      <legend>Dados pessoais <span class="badge b-green tag">criptografado em repouso</span></legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.nome %}
+        {% include "core/_campo_form.html" with campo=form.cpf %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.data_nascimento %}
+        {% include "core/_campo_form.html" with campo=form.genero %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Contato e endereço</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.email %}
+        {% include "core/_campo_form.html" with campo=form.telefone %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.cidade %}
+        {% include "core/_campo_form.html" with campo=form.uf %}
+        {% include "core/_campo_form.html" with campo=form.cep %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Perfil para segmentação</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.escolaridade %}
+        {% include "core/_campo_form.html" with campo=form.profissao %}
+        {% include "core/_campo_form.html" with campo=form.faixa_renda %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Situação{% if form.forma_pagamento %} e pagamento do incentivo <span class="badge b-amber tag">restrito — Financeiro</span>{% endif %}</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.situacao %}
+        {% if form.forma_pagamento %}
+        {% include "core/_campo_form.html" with campo=form.forma_pagamento %}
+        {% include "core/_campo_form.html" with campo=form.chave_pix %}
         {% endif %}
-      {% endfor %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Consentimento LGPD <span class="badge b-green tag">obrigatório</span></legend>
+      <div class="check">
+        {{ form.consentimento_lgpd }}
+        <label for="{{ form.consentimento_lgpd.id_for_label }}">{{ form.consentimento_lgpd.label }}</label>
+      </div>
+      {% for erro in form.consentimento_lgpd.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    </fieldset>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <a class="btn btn-ghost" href="{% url 'pessoas:lista' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar participante</button>
     </div>
-    <p style="margin-top:16px"><button class="btn btn-primary" type="submit">Salvar participante</button></p>
   </form>
-</div>
+</div></div>
 {% endblock %}
