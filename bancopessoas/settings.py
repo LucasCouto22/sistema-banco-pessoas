@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Railway define essa variável automaticamente em todo serviço publicado —
 # é o jeito mais simples de saber "isso está rodando em produção ou não"
 # sem precisar configurar mais nada manualmente.
-IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT'))
+IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
 RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 
 
