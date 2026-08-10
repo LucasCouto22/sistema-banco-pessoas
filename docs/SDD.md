@@ -56,6 +56,60 @@ associar a um projeto, avaliar, revelar PII com registro de auditoria, e os bloq
 permissão por nível) foram executados manualmente contra o banco Postgres remoto real
 durante a Fase 1 e passaram.
 
+### Deploy em produção (Railway)
+
+Desde 2026-08-09 o projeto está preparado para rodar no Railway (o usuário já tinha o
+serviço criado, ligado a este repositório no GitHub, mas o primeiro deploy falhou porque
+**nenhum código Django tinha sido commitado ainda** — só existia o "Initial commit"
+original. Isso foi corrigido: todo o app foi commitado e enviado pra `origin/main`.
+
+Arquivos/config adicionados especificamente para o deploy:
+
+- **`Procfile`** — `web: python manage.py migrate --noinput && python manage.py collectstatic
+  --noinput && gunicorn bancopessoas.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+  --log-file -`. Roda migração e coleta de estáticos a cada deploy (idempotente — as
+  migrações de seed usam `get_or_create`, então rodar de novo não duplica nada) antes de
+  subir o servidor.
+- **`.python-version`** (`3.13`) — pro Nixpacks (builder do Railway) usar a mesma versão de
+  Python do ambiente de desenvolvimento.
+- **`requirements.txt`** — adicionado `gunicorn` (servidor WSGI de produção) e `whitenoise`
+  (serve os arquivos estáticos direto pela aplicação Django, sem precisar de um serviço de
+  storage/CDN separado — suficiente pro tamanho deste projeto).
+- **`bancopessoas/settings.py`** — detecta se está rodando no Railway via
+  `RAILWAY_ENVIRONMENT`/`RAILWAY_PROJECT_ID` (variáveis que o Railway sempre define) e ajusta
+  sozinho, sem precisar configurar nada manualmente na aba Variables:
+  - `DEBUG` — `True` localmente (como sempre foi), `False` no Railway por padrão.
+  - `ALLOWED_HOSTS` — inclui automaticamente `RAILWAY_PUBLIC_DOMAIN` quando existir; antes
+    disso (ou se ainda não gerou domínio), libera `.up.railway.app` como rede de segurança.
+  - `SECURE_PROXY_SSL_HEADER` + `SECURE_SSL_REDIRECT` — o Railway termina o HTTPS na borda e
+    repassa pra aplicação em HTTP puro com um cabeçalho indicando o protocolo original; sem
+    isso o Django acha que toda requisição é insegura.
+  - Arquivos estáticos: `STATIC_ROOT` + `STORAGES["staticfiles"]` apontando pro
+    `WhiteNoiseMiddleware` (adicionado logo depois do `SecurityMiddleware`), com
+    `CompressedManifestStaticFilesStorage` (comprime e versiona os arquivos por hash).
+  - **Decisão do usuário**: a senha do banco e a `SECRET_KEY` **continuam fixas no código**
+    (não foram movidas pra variável de ambiente) — pergunta feita explicitamente antes do
+    primeiro push, o usuário optou por manter como estava desde a Fase 1.
+- **Bug real encontrado ao testar `collectstatic` localmente antes de subir**: o
+  `chart.umd.js` vendorizado (Fase 2) tem uma referência a um arquivo de sourcemap
+  (`chart.umd.js.map`) que nunca foi baixado — o `WhiteNoiseMiddleware`, ao processar os
+  arquivos estáticos, tenta resolver essa referência e falha se o arquivo não existir,
+  quebrando o `collectstatic` (e portanto o deploy inteiro, já que ele roda no `Procfile`
+  antes do servidor subir). Corrigido removendo a linha `//# sourceMappingURL=...` do fim do
+  arquivo (só afeta debug no DevTools, não a execução) — testei rodando `collectstatic`
+  localmente antes de commitar, exatamente pra pegar esse tipo de coisa antes do Railway.
+
+**O que o usuário ainda precisa fazer manualmente na interface do Railway** (não dá pra
+fazer isso por aqui, não tenho acesso à conta/CLI do Railway):
+1. Conferir se o novo deploy (disparado automaticamente pelo push) terminou com sucesso na
+   aba Deployments.
+2. Gerar o domínio público do serviço — aba **Settings → Networking → Generate Domain** (o
+   print que o usuário mandou mostrava "Unexposed service", ou seja, isso ainda não tinha
+   sido feito).
+3. Se quiser trocar a senha do superusuário `super` (criado durante a Fase 1) antes de
+   divulgar o link publicamente, pode fazer isso depois pelo próprio `/admin/` ou por
+   `manage.py changepassword` (precisaria rodar localmente, apontando pro mesmo banco).
+
 ## 3. Decisões técnicas
 
 - **Django 6.1** + **psycopg 3** (`psycopg[binary]`), Python 3.13.3.
@@ -503,3 +557,21 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
   padrão) não vê a seção de Alertas mas consegue acessar `/accounts/perfil/` normalmente
   (toda conta pode editar o próprio perfil, isso não depende de permissão nenhuma); a página
   de trocar senha mostrou os labels e os avisos dos validadores 100% em português.
+- **2026-08-09** — Preparação para deploy no Railway. O usuário já tinha o serviço criado e
+  ligado ao GitHub, mas o build falhou porque nenhum código Django tinha sido commitado
+  ainda (só o "Initial commit" original, sem o app). Adicionados `Procfile`,
+  `.python-version`, `gunicorn`+`whitenoise` no `requirements.txt`, e configuração de
+  produção em `settings.py` (detecção automática de ambiente Railway, `DEBUG`/
+  `ALLOWED_HOSTS` dinâmicos, cabeçalho de proxy HTTPS, WhiteNoise pros estáticos) — detalhes
+  completos na seção "Deploy em produção (Railway)" acima. Testei `collectstatic` localmente
+  antes de subir e achei um bug real: o `chart.umd.js` vendorizado referenciava um sourcemap
+  que não existe, o que quebrava o WhiteNoise (e teria quebrado o deploy inteiro,
+  silenciosamente, já que `collectstatic` roda dentro do `Procfile`) — corrigido removendo a
+  referência. Perguntei ao usuário se quereria mover a senha do banco/`SECRET_KEY` pra
+  variável de ambiente agora que o repositório vai ficar de fato acessível no GitHub; ele
+  optou por manter fixo no código, como já era desde a Fase 1 — respeitei a decisão e só
+  registrei o risco de novo. Commitei tudo (141 arquivos, primeiro commit real da aplicação)
+  e enviei pro `origin/main`, que dispara o redeploy automático no Railway via a integração
+  GitHub já existente. Falta o usuário conferir se o build passou e gerar o domínio público
+  (Settings → Networking → Generate Domain) — não tenho acesso à conta do Railway para fazer
+  isso por ele.
