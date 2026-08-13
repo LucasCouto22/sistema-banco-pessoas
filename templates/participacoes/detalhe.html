@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load static perms_extras %}
+{% block titulo %}{{ participacao.participante.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Participações / <b>{{ participacao.participante.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ participacao.participante.nome }}</h2>
+    <p class="sub">{{ participacao.perfil.projeto.nome }} · {{ participacao.perfil.nome }} — <span class="badge b-blue">{{ participacao.get_etapa_display }}</span></p></div>
+  <div style="display:flex;gap:8px">
+    {% if pode_avaliar %}
+    <button class="btn btn-ghost" type="button" onclick="QVModal.abrir('mAvaliar')">{% if avaliacao %}Editar avaliação{% else %}Avaliar{% endif %}</button>
+    {% endif %}
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top">Status</div><div class="v" style="font-size:1.1rem">{{ participacao.get_status_display|default:"—" }}</div></div>
+  <div class="kpi"><div class="kpi-top">Responsável</div><div class="v" style="font-size:1.1rem">{{ participacao.responsavel|nome_usuario }}</div></div>
+  <div class="kpi"><div class="kpi-top">Na etapa desde</div><div class="v" style="font-size:1.1rem">{{ participacao.etapa_atualizada_em|date:"d/m/Y" }}</div></div>
+</div>
+{% if participacao.observacao %}
+<div class="panel" style="padding:16px 20px;margin-bottom:16px">{{ participacao.observacao|linebreaksbr }}</div>
+{% endif %}
+
+<div class="panel" style="margin-bottom:16px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Avaliação</h3></div>
+  <div style="padding:16px 20px">
+    {% if avaliacao %}
+    <div class="kpis" style="margin-bottom:0">
+      <div class="kpi"><div class="kpi-top">Comunicação</div><div class="v" style="font-size:1.3rem;color:var(--amber)">
+        {% for i in "12345" %}{% if forloop.counter <= avaliacao.comunicacao %}★{% else %}☆{% endif %}{% endfor %}</div></div>
+      <div class="kpi"><div class="kpi-top">Pontualidade</div><div class="v" style="font-size:1.3rem;color:var(--amber)">
+        {% for i in "12345" %}{% if forloop.counter <= avaliacao.pontualidade %}★{% else %}☆{% endif %}{% endfor %}</div></div>
+      <div class="kpi"><div class="kpi-top">Repertório</div><div class="v" style="font-size:1.3rem;color:var(--amber)">
+        {% for i in "12345" %}{% if forloop.counter <= avaliacao.repertorio %}★{% else %}☆{% endif %}{% endfor %}</div></div>
+      <div class="kpi"><div class="kpi-top">Nota final (média)</div><div class="v">{{ avaliacao.nota_geral }}</div></div>
+    </div>
+    {% if avaliacao.comentario %}<p class="hint" style="margin-top:12px">{{ avaliacao.comentario }}</p>{% endif %}
+    {% else %}
+    <p class="empty">Ainda não avaliada.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if request.user|tem_permissao:"respostas.ver" %}
+<div class="panel" style="margin-bottom:16px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Respostas de formulário</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Formulário</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for item in formularios_do_projeto %}
+      <tr>
+        <td class="cell-main">{{ item.formulario.nome }}</td>
+        <td>{% if item.resposta %}<span class="badge b-green">Respondido</span>{% else %}<span class="badge b-gray">Pendente</span>{% endif %}</td>
+        <td style="text-align:right">
+          {% if pode_preencher_respostas %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'formularios:responder_formulario' participacao.pk item.formulario.pk %}">{% if item.resposta %}Editar respostas{% else %}Responder{% endif %}</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="3" class="empty">Este perfil não tem formulário associado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+{% if pode_avaliar %}
+<div class="overlay" id="mAvaliar">
+  <div class="modal slim">
+    <div class="modal-head"><h3>{% if avaliacao %}Editar avaliação de{% else %}Avaliar{% endif %} {{ participacao.participante.nome }}</h3>
+      <button class="modal-x" type="button" onclick="QVModal.fechar('mAvaliar')">×</button></div>
+    <form method="post" action="{% url 'participacoes:avaliar' participacao.pk %}">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-row">
+          {% include "core/_campo_estrelas.html" with campo=avaliacao_form.comunicacao %}
+          {% include "core/_campo_estrelas.html" with campo=avaliacao_form.pontualidade %}
+        </div>
+        <div class="form-row" style="margin-top:14px">
+          {% include "core/_campo_estrelas.html" with campo=avaliacao_form.repertorio %}
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label for="{{ avaliacao_form.comentario.id_for_label }}">{{ avaliacao_form.comentario.label }}</label>
+          {{ avaliacao_form.comentario }}
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" onclick="QVModal.fechar('mAvaliar')">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar avaliação</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if pode_avaliar %}
+<script src="{% static 'js/modal.js' %}" defer></script>
+{% endif %}
+{% endblock %}

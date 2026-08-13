@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}{{ formulario.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Formulários / <b>{{ formulario.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ formulario.nome }}</h2>
+    <p class="sub">Prévia de como as perguntas aparecem pra quem for responder</p></div>
+  <div style="display:flex;gap:8px">
+    {% if request.user|tem_permissao:"formularios.gerenciar" %}
+    <a class="btn btn-ghost" href="{% url 'formularios:formulario_editar' formulario.pk %}">Editar</a>
+    {% endif %}
+    <a class="btn btn-ghost" href="{% url 'formularios:formularios_lista' %}">‹ Voltar</a>
+  </div>
+</div>
+<div class="panel"><div style="padding:20px 22px">
+  {% if formulario.descricao %}<p class="hint" style="margin-bottom:16px">{{ formulario.descricao }}</p>{% endif %}
+  {% if formulario.inclui_campos_fixos %}
+  <div class="lock-note" style="margin-bottom:16px">
+    Este formulário também inclui os campos fixos do participante (nome, contato, etc.) —
+    eles não aparecem nesta prévia porque já são preenchidos no cadastro do participante,
+    não aqui.
+  </div>
+  {% endif %}
+  {% if linhas %}
+  <div class="form-row" style="grid-template-columns:1fr">
+    {% for fv, campo in linhas %}
+    <div class="field">
+      <label>{{ campo.label }}{% if fv.variavel.obrigatoria %} *{% endif %}</label>
+      {{ campo }}
+      <p class="hint">tipo: {{ fv.variavel.tipo_resposta.descricao }}{% if fv.variavel.obrigatoria %} · obrigatória{% endif %}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Este formulário ainda não tem nenhuma variável associada.</p>
+  {% endif %}
+</div></div>
+{% endblock %}

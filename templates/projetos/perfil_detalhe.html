@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}{{ perfil.nome }} · {{ perfil.projeto.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Projetos / {{ perfil.projeto.nome }} / <b>{{ perfil.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ perfil.nome }}</h2>
+    <p class="sub">{{ perfil.projeto.nome }}{% if perfil.formulario %} · {{ perfil.formulario.nome }}{% endif %}</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if pode_editar %}
+    <a class="btn btn-ghost" href="{% url 'projetos:perfil_link' perfil.pk %}">Link de cadastro</a>
+    <a class="btn btn-ghost" href="{% url 'projetos:perfil_editar' perfil.pk %}">Editar</a>
+    <a class="btn btn-ghost" style="border-color:#F7C9C0;color:#B03225" href="{% url 'projetos:perfil_excluir' perfil.pk %}">Excluir</a>
+    {% endif %}
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top">Participantes</div><div class="v">{{ perfil.ocupadas }}</div></div>
+  <div class="kpi"><div class="kpi-top">Formulário</div><div class="v" style="font-size:1.1rem">{{ perfil.formulario|default:"—" }}</div></div>
+</div>
+{% if pode_associar %}
+<div class="panel" style="padding:16px 20px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+  <a class="btn btn-primary btn-sm" href="{% url 'participacoes:nova' %}?perfil={{ perfil.pk }}">＋ Associar pessoa</a>
+  <a class="btn btn-soft btn-sm" href="{% url 'projetos:perfil_associar_lote' perfil.pk %}">⬆ Associar em lote (Excel)</a>
+</div>
+{% endif %}
+<div class="panel">
+  <div class="panel-head"><h3 style="font-size:.95rem">Participantes vinculados</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Participante</th><th>Etapa</th><th>Status</th><th>Responsável</th></tr></thead>
+    <tbody>
+    {% for part in participacoes %}
+      <tr onclick="window.location='{% url 'participacoes:detalhe' part.pk %}'" style="cursor:pointer">
+        <td class="cell-main">{{ part.participante.nome }}</td>
+        <td>{{ part.get_etapa_display }}</td>
+        <td>{{ part.get_status_display|default:"—" }}</td>
+        <td>{{ part.responsavel|nome_usuario }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="empty">Nenhum participante associado ainda.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

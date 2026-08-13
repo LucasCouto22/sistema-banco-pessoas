@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from pessoas.models import Participante
-from projetos.models import Projeto
+from projetos.models import Perfil
 
 
 class Participacao(models.Model):
@@ -30,7 +30,7 @@ class Participacao(models.Model):
     ]
 
     participante = models.ForeignKey(Participante, on_delete=models.CASCADE, related_name="participacoes")
-    projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name="participacoes")
+    perfil = models.ForeignKey(Perfil, on_delete=models.CASCADE, related_name="participacoes")
     etapa = models.CharField(max_length=30, choices=Etapa.choices, default=Etapa.ANALISE_PERFIL)
     status = models.CharField(max_length=20, choices=Status.choices, blank=True)
     responsavel = models.ForeignKey(
@@ -47,11 +47,11 @@ class Participacao(models.Model):
     class Meta:
         ordering = ["-criado_em"]
         constraints = [
-            models.UniqueConstraint(fields=["participante", "projeto"], name="uniq_participante_projeto")
+            models.UniqueConstraint(fields=["participante", "perfil"], name="uniq_participante_perfil")
         ]
 
     def __str__(self):
-        return f"{self.participante} · {self.projeto} · {self.get_etapa_display()}"
+        return f"{self.participante} · {self.perfil} · {self.get_etapa_display()}"
 
     def avancar_etapa(self):
         idx = self.ETAPAS_ORDEM.index(self.etapa)
@@ -67,7 +67,6 @@ class Avaliacao(models.Model):
     comunicacao = models.PositiveSmallIntegerField()
     pontualidade = models.PositiveSmallIntegerField()
     repertorio = models.PositiveSmallIntegerField()
-    nota_geral = models.PositiveSmallIntegerField()
     comentario = models.TextField(blank=True)
     avaliado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="avaliacoes_feitas"
@@ -76,3 +75,11 @@ class Avaliacao(models.Model):
 
     def __str__(self):
         return f"Avaliação de {self.participacao} — nota {self.nota_geral}"
+
+    @property
+    def nota_geral(self):
+        """Nota final não é digitada — é sempre a média dos 3 quesitos.
+        Uma casa decimal, então uma combinação como 5+4+4 vira "4.3", não
+        arredonda pra um número inteiro que esconderia a diferença entre,
+        por exemplo, 4+4+4 e 5+4+3 (as duas dariam "4" se arredondasse)."""
+        return round((self.comunicacao + self.pontualidade + self.repertorio) / 3, 1)

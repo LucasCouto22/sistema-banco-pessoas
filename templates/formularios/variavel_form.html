@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Variáveis / <b>{{ titulo }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ titulo }}</h2></div>
+  <a class="btn btn-ghost" href="{% url 'formularios:variaveis_lista' %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px">
+  <form method="post">
+    {% csrf_token %}
+    <fieldset>
+      <legend>Dados da variável</legend>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.nome %}
+        <div class="field">
+          <label for="{{ form.tipo_resposta.id_for_label }}">{{ form.tipo_resposta.label }}</label>
+          <select name="{{ form.tipo_resposta.html_name }}" id="{{ form.tipo_resposta.id_for_label }}">
+            <option value="">Selecione…</option>
+            {% for tr in tipos_resposta %}
+            <option value="{{ tr.pk }}" data-codigo="{{ tr.codigo }}" {% if form.tipo_resposta.value|stringformat:"s" == tr.pk|stringformat:"s" %}selected{% endif %}>{{ tr.descricao }}</option>
+            {% endfor %}
+          </select>
+          {% for erro in form.tipo_resposta.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="check">{{ form.obrigatoria }}<label for="{{ form.obrigatoria.id_for_label }}">{{ form.obrigatoria.label }}</label></div>
+        {% if form.ativa %}
+        <div class="check">{{ form.ativa }}<label for="{{ form.ativa.id_for_label }}">{{ form.ativa.label }}</label></div>
+        {% endif %}
+      </div>
+    </fieldset>
+    <fieldset id="bloco-opcoes">
+      <legend>Opções de resposta</legend>
+      <p class="hint" style="margin-bottom:10px">Só aparece pra tipos de resposta com lista fechada (seleção única, radio, múltipla escolha).</p>
+      {{ formset.management_form }}
+      {% for opcao_form in formset %}
+      <div class="form-row" style="grid-template-columns:1fr auto">
+        <div class="field" style="margin-bottom:0">
+          {% if forloop.first %}<label>Opção</label>{% endif %}
+          {{ opcao_form.valor }}
+          {{ opcao_form.id }}
+          {% for erro in opcao_form.valor.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+        </div>
+        <div class="check" style="align-self:center;{% if forloop.first %}margin-top:22px{% endif %}">
+          {{ opcao_form.DELETE }}<label for="{{ opcao_form.DELETE.id_for_label }}">Remover</label>
+        </div>
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <a class="btn btn-ghost" href="{% url 'formularios:variaveis_lista' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar variável</button>
+    </div>
+  </form>
+</div></div>
+{{ tipos_resposta_por_id|json_script:"tipos-resposta-codigo" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/variavel_form.js' %}" defer></script>
+{% endblock %}

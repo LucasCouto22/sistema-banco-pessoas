@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}{{ formulario.nome }} · {{ participacao.participante.nome }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Participações / {{ participacao.participante.nome }} / <b>{{ formulario.nome }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ formulario.nome }}</h2>
+    <p class="sub">{{ participacao.participante.nome }} — {{ participacao.perfil.projeto.nome }} · {{ participacao.perfil.nome }}</p></div>
+  <a class="btn btn-ghost" href="{% url 'participacoes:detalhe' participacao.pk %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px">
+  {% if formulario.descricao %}<p class="hint" style="margin-bottom:16px">{{ formulario.descricao }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% if linhas %}
+    <div class="form-row" style="grid-template-columns:1fr">
+      {% for fv, campo in linhas %}
+      <div class="field">
+        <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if fv.variavel.obrigatoria %} *{% endif %}</label>
+        {{ campo }}
+        {% for erro in campo.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Este formulário ainda não tem nenhuma variável ativa associada.</p>
+    {% endif %}
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+      <a class="btn btn-ghost" href="{% url 'participacoes:detalhe' participacao.pk %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar respostas</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

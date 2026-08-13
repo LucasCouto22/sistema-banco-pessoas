@@ -18,6 +18,7 @@ class Projeto(models.Model):
 
     nome = models.CharField(max_length=150)
     cliente = models.CharField(max_length=150)
+    marca = models.CharField(max_length=150, blank=True, help_text="Ex.: Adidas.")
     metodologia = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECRUTANDO)
     segmento = models.CharField(max_length=20, choices=Segmento.choices, blank=True)
@@ -52,7 +53,11 @@ class Projeto(models.Model):
 
     @property
     def ocupadas(self):
-        return self.participacoes.count()
+        # Participacao liga em Perfil, não direto em Projeto — import local
+        # pra não criar ciclo (participacoes já importa projetos).
+        from participacoes.models import Participacao
+
+        return Participacao.objects.filter(perfil__projeto=self).count()
 
     @property
     def ocupacao_percentual(self):
@@ -78,3 +83,35 @@ class Projeto(models.Model):
         if self.perfil_criterios_livres:
             partes.append(self.perfil_criterios_livres)
         return " · ".join(partes)
+
+
+class Perfil(models.Model):
+    """Um projeto tem de 1 a N perfis (ex.: "Mulheres 18-25", "Homens 25-40") —
+    é o perfil, não mais o projeto direto, que carrega o formulário de coleta
+    e recebe os participantes. `formulario` referencia `formularios.Formulario`
+    por string (não por import direto) porque `formularios/models.py` já
+    importa `Projeto` daqui — importar `Formulario` de volta criaria um ciclo."""
+
+    projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name="perfis")
+    nome = models.CharField(max_length=150)
+    formulario = models.ForeignKey(
+        "formularios.Formulario",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="perfis",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["projeto", "nome"]
+        constraints = [
+            models.UniqueConstraint(fields=["projeto", "nome"], name="uniq_projeto_perfil_nome")
+        ]
+
+    def __str__(self):
+        return f"{self.projeto.nome} — {self.nome}"
+
+    @property
+    def ocupadas(self):
+        return self.participacoes.count()

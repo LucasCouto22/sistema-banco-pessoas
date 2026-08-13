@@ -6,13 +6,29 @@
 {% include "pessoas/_wizard_steps.html" %}
 <div class="panel" style="padding:24px;max-width:640px;margin:0 auto">
   <div class="wiz-import-bar">
-    <a class="btn btn-ghost btn-sm" href="{% url 'pessoas:wizard_modelo_csv' %}">⬇ Baixar modelo CSV</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'pessoas:wizard_modelo_csv' %}">⬇ Baixar modelo (XLSX)</a>
   </div>
   <p class="hint" style="margin-bottom:16px">
     Colunas aceitas: Nome completo, CPF, Data de nascimento (AAAA-MM-DD), Gênero, E-mail,
-    Telefone, Cidade, UF, CEP, Escolaridade, Profissão, Faixa de renda. O consentimento LGPD
-    de cada participante será confirmado na próxima etapa (revisão).
+    Telefone, Cidade, UF, CEP, Escolaridade, Profissão, Especialidade (só quando a
+    profissão tiver, ex.: Médico → Cardiologista), Faixa de renda. Aceita arquivo .xlsx ou
+    .csv. O consentimento LGPD de cada participante será confirmado na próxima etapa
+    (revisão).
   </p>
+  {% if formulario %}
+  <p class="hint" style="margin-bottom:16px">
+    O perfil escolhido tem o formulário <b>{{ formulario.nome }}</b> — o modelo já vem com
+    uma coluna a mais pra cada pergunta dele (colunas com * são obrigatórias).
+  </p>
+  {% endif %}
+  {% if legado %}
+  <div class="lock-note" style="margin-bottom:16px">
+    <b>Lote legado</b> — os dados desta planilha vão ser aceitos como vierem, sem exigir
+    campos obrigatórios completos. Só é conferido se cada linha já é alguém cadastrado (por
+    CPF, e-mail ou telefone); cadastro que ficar com dado faltando é marcado pra atualizar
+    depois.
+  </div>
+  {% endif %}
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="field">

@@ -14,7 +14,41 @@
 </div>
 <div class="panel">
   <div class="panel-head">
-    <form method="get" class="search"><input type="text" name="q" value="{{ q }}" placeholder="Buscar por nome, CPF ou código…" aria-label="Buscar participantes"></form>
+    <form method="get" class="filtros">
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nome, CPF ou código…" aria-label="Buscar participantes">
+      <select name="situacao" aria-label="Filtrar por situação">
+        <option value="">Todas as situações</option>
+        {% for valor, rotulo in situacoes %}
+        <option value="{{ valor }}" {% if filtro_situacao == valor %}selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <select name="faixa_renda" aria-label="Filtrar por classe social">
+        <option value="">Todas as classes sociais</option>
+        {% for valor, rotulo in faixas_renda %}
+        <option value="{{ valor }}" {% if filtro_faixa_renda == valor %}selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <select name="uf" aria-label="Filtrar por UF">
+        <option value="">Todos os estados</option>
+        {% for valor, rotulo in ufs %}
+        <option value="{{ valor }}" {% if filtro_uf == valor %}selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <select name="incompleto" aria-label="Filtrar por cadastro incompleto">
+        <option value="">Todos os cadastros</option>
+        <option value="1" {% if filtro_incompleto == "1" %}selected{% endif %}>Só cadastro incompleto</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit">Filtrar</button>
+      {% if q or filtro_situacao or filtro_faixa_renda or filtro_uf or filtro_incompleto %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'pessoas:lista' %}">Limpar</a>
+      {% endif %}
+    </form>
+    {% if pode_exportar %}
+    <div style="display:flex;gap:8px">
+      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'pdf' %}?{{ request.GET.urlencode }}">⬇ PDF</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'xlsx' %}?{{ request.GET.urlencode }}">⬇ XLSX</a>
+    </div>
+    {% endif %}
   </div>
   <div class="tbl-wrap"><table>
     <thead><tr>
@@ -29,7 +63,7 @@
           <div style="display:flex;align-items:center;gap:9px">
             <span class="av {{ p.cor_avatar }}">{{ p.iniciais }}</span>
             <div>
-              <div class="cell-main">{{ p.nome }}</div>
+              <div class="cell-main">{{ p.nome }}{% if p.cadastro_incompleto %} <span class="badge b-amber" title="Cadastro incompleto — precisa de atualização">Incompleto</span>{% endif %}</div>
               <div class="cell-sub">{{ p.cidade }}/{{ p.uf }}</div>
             </div>
           </div>

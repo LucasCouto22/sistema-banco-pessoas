@@ -10,9 +10,9 @@
     <div class="col-head"><h4>{{ col.label }}</h4><span class="count">{{ col.itens|length }}</span></div>
     {% for item in col.itens %}
     <div class="pcard">
-      <div class="nm">{{ item.participante.nome }}</div>
+      <a class="nm" href="{% url 'participacoes:detalhe' item.pk %}" style="text-decoration:none;color:inherit">{{ item.participante.nome }}</a>
       <div class="cod">{{ item.participante.codigo }}</div>
-      <div class="proj-tag">{{ item.projeto.nome }}</div>
+      <div class="proj-tag">{{ item.perfil.projeto.nome }} · {{ item.perfil.nome }}</div>
       {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
       <div class="pcard-foot">
         <form method="post" action="{% url 'participacoes:avancar' item.pk %}">

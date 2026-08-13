@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block titulo %}Cadastro manual · Qualy Vortice{% endblock %}
 {% block crumbs %}Banco de Pessoas / <b>Cadastro manual</b>{% endblock %}
 {% block conteudo %}
@@ -31,4 +32,8 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/profissao_especialidade.js' %}" defer></script>
 {% endblock %}

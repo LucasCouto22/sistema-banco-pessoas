@@ -20,7 +20,7 @@ def home(request):
     contexto = {}
 
     if request.user.tem_permissao("participantes.ver"):
-        participantes = Participante.objects.all()
+        participantes = Participante.objects.select_related("profissao")
         total = participantes.count()
         contexto.update(
             {

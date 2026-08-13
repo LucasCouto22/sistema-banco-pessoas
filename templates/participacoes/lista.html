@@ -1,35 +1,124 @@
 {% extends "base.html" %}
-{% load perms_extras %}
+{% load static perms_extras %}
 {% block titulo %}Participações · Qualy Vortice{% endblock %}
 {% block crumbs %}Participações / <b>Lista</b>{% endblock %}
 {% block conteudo %}
 <div class="view-title">
   <div><h2>Participações</h2><p class="sub">Histórico de participantes em projetos</p></div>
   {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
-  <a class="btn btn-primary" href="{% url 'participacoes:nova' %}">＋ Associar a projeto</a>
+  <a class="btn btn-primary" href="{% url 'participacoes:nova' %}">＋ Associar a perfil</a>
   {% endif %}
 </div>
 <div class="panel">
+  <div class="panel-head">
+    <form method="get" class="filtros">
+      <input type="text" name="nome" value="{{ filtro_nome }}" placeholder="Buscar por nome…" aria-label="Buscar por nome">
+      <select name="projeto" aria-label="Filtrar por projeto">
+        <option value="">Todos os projetos</option>
+        {% for projeto in projetos %}
+        <option value="{{ projeto.pk }}" {% if filtro_projeto == projeto.pk|stringformat:"s" %}selected{% endif %}>{{ projeto.nome }}</option>
+        {% endfor %}
+      </select>
+      <select name="etapa" aria-label="Filtrar por etapa">
+        <option value="">Todas as etapas</option>
+        {% for valor, rotulo in etapas %}
+        <option value="{{ valor }}" {% if filtro_etapa == valor %}selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <select name="nota" aria-label="Filtrar por nota">
+        <option value="">Todas as notas</option>
+        <option value="5" {% if filtro_nota == "5" %}selected{% endif %}>5 ou mais</option>
+        <option value="4" {% if filtro_nota == "4" %}selected{% endif %}>4 ou mais</option>
+        <option value="3" {% if filtro_nota == "3" %}selected{% endif %}>3 ou mais</option>
+        <option value="2" {% if filtro_nota == "2" %}selected{% endif %}>2 ou mais</option>
+        <option value="1" {% if filtro_nota == "1" %}selected{% endif %}>1 ou mais</option>
+        <option value="sem_avaliacao" {% if filtro_nota == "sem_avaliacao" %}selected{% endif %}>Sem avaliação</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit">Filtrar</button>
+      {% if filtro_nome or filtro_projeto or filtro_etapa or filtro_nota %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'participacoes:lista' %}">Limpar</a>
+      {% endif %}
+    </form>
+    <div style="display:flex;gap:8px">
+      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'pdf' %}?{{ request.GET.urlencode }}">⬇ PDF</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'xlsx' %}?{{ request.GET.urlencode }}">⬇ XLSX</a>
+    </div>
+  </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Participante</th><th>Projeto</th><th>Etapa</th><th>Status</th><th>Responsável</th><th></th></tr></thead>
+    <thead><tr><th>Participante</th><th>Projeto</th><th>Perfil</th><th>Etapa</th><th>Status</th><th>Responsável</th><th>Nota</th><th></th></tr></thead>
     <tbody>
     {% for part in participacoes %}
       <tr>
         <td class="cell-main">{{ part.participante.nome }}</td>
-        <td>{{ part.projeto.nome }}</td>
+        <td>{{ part.perfil.projeto.nome }}</td>
+        <td>{{ part.perfil.nome }}</td>
         <td><span class="badge b-blue">{{ part.get_etapa_display }}</span></td>
         <td>{{ part.get_status_display|default:"—" }}</td>
         <td>{{ part.responsavel|nome_usuario }}</td>
-        <td>
+        <td>{{ part.avaliacao.nota_geral|default:"—" }}</td>
+        <td style="display:flex;gap:6px;justify-content:flex-end">
+          <a class="btn btn-ghost btn-sm" href="{% url 'participacoes:detalhe' part.pk %}">Ver</a>
           {% if request.user|tem_permissao:"avaliacao.criar" %}
-          <a class="btn btn-soft btn-sm" href="{% url 'participacoes:avaliar' part.pk %}">Avaliar</a>
+          <button
+            type="button"
+            class="btn btn-soft btn-sm"
+            onclick="abrirModalAvaliar(this)"
+            data-url="{% url 'participacoes:avaliar' part.pk %}"
+            data-participante="{{ part.participante.nome }}"
+            data-edicao="{% if part.avaliacao %}1{% else %}0{% endif %}"
+            data-comunicacao="{{ part.avaliacao.comunicacao|default:'' }}"
+            data-pontualidade="{{ part.avaliacao.pontualidade|default:'' }}"
+            data-repertorio="{{ part.avaliacao.repertorio|default:'' }}"
+            data-comentario="{{ part.avaliacao.comentario|default:'' }}"
+          >{% if part.avaliacao %}Editar{% else %}Avaliar{% endif %}</button>
           {% endif %}
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="6" class="empty">Nenhuma participação encontrada.</td></tr>
+      <tr><td colspan="8" class="empty">Nenhuma participação encontrada.</td></tr>
     {% endfor %}
     </tbody>
   </table></div>
 </div>
+
+{% if request.user|tem_permissao:"avaliacao.criar" %}
+<div class="overlay" id="mAvaliar">
+  <div class="modal slim">
+    <div class="modal-head"><h3 id="avTitulo">Avaliar participação</h3>
+      <button class="modal-x" type="button" onclick="QVModal.fechar('mAvaliar')">×</button></div>
+    <form method="post" id="formAvaliar">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Comunicação</label>
+            {% include "core/_estrelas_input.html" with nome="comunicacao" prefixo="estCom" %}</div>
+          <div class="field"><label>Pontualidade</label>
+            {% include "core/_estrelas_input.html" with nome="pontualidade" prefixo="estPon" %}</div>
+        </div>
+        <div class="form-row" style="margin-top:14px">
+          <div class="field"><label>Repertório</label>
+            {% include "core/_estrelas_input.html" with nome="repertorio" prefixo="estRep" %}</div>
+          <div class="field"><label>Nota final (média)</label>
+            <div style="font-family:var(--disp);font-weight:800;font-size:1.5rem;color:var(--ink)" id="notaFinalPreview">—</div></div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label>Comentário</label>
+          <textarea name="comentario" id="avComentario" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" onclick="QVModal.fechar('mAvaliar')">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar avaliação</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if request.user|tem_permissao:"avaliacao.criar" %}
+<script src="{% static 'js/modal.js' %}" defer></script>
+<script src="{% static 'js/avaliar_modal.js' %}" defer></script>
+{% endif %}
 {% endblock %}

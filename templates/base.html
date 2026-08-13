@@ -1,10 +1,10 @@
-{% load static perms_extras %}<!DOCTYPE html>
+{% load static perms_extras static_v %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block titulo %}Qualy Vortice{% endblock %}</title>
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/base.css' %}">
 <script src="{% static 'js/pii.js' %}" defer></script>
 </head>
 <body>
@@ -41,6 +41,20 @@
         {% endif %}
         {% if request.user|tem_permissao:"participantes.gerenciar" %}
         <a class="nav-item {% if request.resolver_match.url_name == 'wizard_projeto' %}active{% endif %}" href="{% url 'pessoas:wizard_projeto' %}">Novos participantes</a>
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}
+
+    {% if request.user|tem_permissao:"variaveis.ver" or request.user|tem_permissao:"formularios.ver" %}
+    <details class="nav-group" {% if request.resolver_match.app_name == "formularios" %}open{% endif %}>
+      <summary>Configurações de Formulários <span class="chev">▾</span></summary>
+      <div class="nav-sub">
+        {% if request.user|tem_permissao:"variaveis.ver" %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'variaveis_lista' or request.resolver_match.url_name == 'variavel_novo' or request.resolver_match.url_name == 'variavel_editar' or request.resolver_match.url_name == 'variavel_excluir' %}active{% endif %}" href="{% url 'formularios:variaveis_lista' %}">Variáveis</a>
+        {% endif %}
+        {% if request.user|tem_permissao:"formularios.ver" %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'formularios_lista' or request.resolver_match.url_name == 'formulario_novo' or request.resolver_match.url_name == 'formulario_editar' or request.resolver_match.url_name == 'formulario_excluir' %}active{% endif %}" href="{% url 'formularios:formularios_lista' %}">Formulários</a>
         {% endif %}
       </div>
     </details>

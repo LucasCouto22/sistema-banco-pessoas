@@ -296,6 +296,32 @@ Ordem sugerida (negociável com o usuário a cada item):
    Chart.js não tem isso nativamente. **Atualização de 2026-08-10: implementado depois**, ver
    entrada de log correspondente — não usa Chart.js, é SVG puro, igual ao protótipo.
 
+### Fase 4 — Variáveis dinâmicas, formulários e projetos (em andamento)
+
+Usuário trouxe um plano de ação pronto (genérico, escrito sem conhecimento do projeto real —
+citava "ORM que você usa, ex: Entity Framework Core" como placeholder) pra permitir cadastrar
+**variáveis** (campos configuráveis com tipo de resposta), combiná-las em **formulários**,
+associar formulários a **projetos**, e gravar **respostas** estruturadas por participação,
+preparando o terreno pra um scoring/matching futuro. Antes de implementar, adaptei o plano ao
+sistema real (evitando duplicar `Participante`/`Projeto`/`Participacao`, que já existem) e
+levantei 4 decisões de arquitetura com o usuário — respostas em
+`docs/SDD.md` §7 "2026-08-10 (variáveis dinâmicas)".
+
+Roadmap completo do plano original (numeração do próprio plano do usuário):
+1. ✅ **Banco de dados** — concluída em 2026-08-10.
+2. ✅ **CRUD de Variáveis** — concluída em 2026-08-10.
+3. ⏳ CRUD de Formulários (associar variáveis escolhidas, com ordem; retornar o "schema"
+   completo pronto pra renderizar).
+4. ⏳ CRUD de Projetos × Formulários (a ligação N:N já existe no banco desde a Etapa 1 —
+   falta só a tela).
+5. ⏳ Respostas — endpoint/tela pra submeter e listar respostas de uma participação a um
+   formulário.
+6. ✅ Tela de cadastro de variáveis — concluída em 2026-08-10 (junto com a Etapa 2).
+7. ⏳ Montador de formulário (seleção + reordenação das variáveis + preview).
+8. ⏳ Tela de criação de projeto × formulário(s).
+9. ⏳ Preenchimento do formulário (renderização dinâmica por `tipo_resposta`).
+10. ⏳ View "achatada" (`pessoas` + `respostas_variaveis`) pra alimentar scoring futuro.
+
 ### Fase 3 — polimento (backlog, sem data)
 
 - Testes automatizados (pytest-django) cobrindo o sistema de permissões e a validação de CPF.
@@ -793,3 +819,1156 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     e `/accounts/usuarios/5/editar/` (esconde "Acesso", mostra "Usuário ativo" marcado) — os
     dois sem erro no console.
   - **Segue sem commitar.** `git status` agora também inclui `templates/accounts/usuario_form.html`.
+- **2026-08-10 (variáveis dinâmicas — Etapa 1 + Etapa 2)** — Usuário trouxe um plano de ação
+  pronto (SQL genérico, "cole no Claude Code") pra um sistema de variáveis/formulários/
+  respostas dinâmicas. Antes de tocar em qualquer migration, apontei que o plano foi escrito
+  sem conhecimento do projeto real (citava até "ORM que você usa — ex: Entity Framework
+  Core" como placeholder) e que **"respostas (pessoa_id, projeto_id) UNIQUE" já existe** — é
+  exatamente `Participacao` (`participante`+`projeto`, já com `UniqueConstraint`). Levantei 4
+  decisões de arquitetura via pergunta direta ao usuário em vez de assumir:
+  - **Chave primária das tabelas novas: UUID** (o usuário preferiu isso à minha recomendação
+    de inteiro auto-incremento, que teria sido consistente com as ~15 tabelas existentes).
+    Efeito colateral real encontrado depois: como o UUID é gerado no **Python**
+    (`default=uuid.uuid4`), `instance.pk` já vem preenchido *antes* de salvar — diferente de
+    um `AutoField`, que só ganha valor após o INSERT. Isso quebrou a lógica ingênua "mostra o
+    campo X só se `instance.pk` existir" (usada pra esconder "Variável ativa" no formulário
+    de criação) — corrigido usando `instance._state.adding` (o jeito correto de perguntar
+    "isso ainda não tem linha no banco", independente da estratégia de PK).
+  - **`tipos_resposta`: tabela no banco**, não um `TextChoices` fixo (diferente de todo outro
+    catálogo do sistema — Gênero, Situação, Segmento, etc.). Documentado no docstring do
+    model `TipoResposta` que isso é uma faca de dois gumes: cadastrar um tipo novo não exige
+    deploy, mas também não ganha renderização/validação sozinho — quem cadastra é responsável
+    por saber que só os 8 códigos semeados (`texto`, `inteiro`, `decimal`, `booleano`, `data`,
+    `select`, `radio`, `multipla_escolha`) têm suporte real no formulário hoje.
+  - **Formulário × Projeto: N:N**, via tabela de ligação `ProjetoFormulario` (não FK direto)
+    — um projeto pode reunir mais de um formulário (ex.: screener + perfil detalhado) e um
+    formulário-modelo pode ser reaproveitado em vários projetos. Isso está pronto no banco
+    desde já (Etapa 1), mas **sem tela ainda** (Etapa 4 do roadmap).
+  - **Escopo desta leva: Etapa 1 (modelagem) + Etapa 2 (CRUD de Variáveis)** — o resto do
+    roadmap (Formulários, Projetos×Formulários, Respostas, telas 7–10) fica pra próximas
+    conversas, confirmando escopo antes de cada uma (como o próprio plano do usuário pediu).
+  - **Modelagem** (novo app `formularios`, `formularios/models.py`): `TipoResposta`,
+    `Variavel` (com `chave` auto-gerada a partir do `nome` via slug + sufixo numérico em caso
+    de colisão — mesmo padrão de `Participante._gerar_codigo()`), `VariavelOpcao`,
+    `Formulario`, `FormularioVariavel` (liga formulário↔variável, com ordem),
+    `ProjetoFormulario` (liga projeto↔formulário, N:N real), `RespostaFormulario` (liga
+    `Participacao`↔`Formulario`, `JSONField` pras respostas dinâmicas + índice GIN via
+    `django.contrib.postgres.indexes.GinIndex` — precisou adicionar `django.contrib.postgres`
+    a `INSTALLED_APPS`, não estava lá). Todas as FKs pra `Variavel`/`Formulario` em uso usam
+    `on_delete=PROTECT` — a forma de "excluir" uma variável/formulário em uso é desativá-la
+    (`ativa`/`ativo`), não apagar. `Projeto` e `Participacao` **não foram alterados** — a
+    ligação é só via FK reversa (`projeto.projeto_formularios`,
+    `participacao.respostas_formularios`), então nenhuma migration nos apps `projetos`/
+    `participacoes` foi necessária.
+  - **Permissões**: `variaveis.ver`/`variaveis.gerenciar`/`variaveis.excluir` seguindo o
+    padrão de 3 níveis já usado por `participantes.*`/`projetos.*` (migração de dados
+    `accounts/migrations/0007_seed_variaveis_permissoes.py`, mesmo formato das seeds
+    anteriores) — Administrador e Operador com as três, Visualizador só com `.ver`,
+    Freelancer sem nenhuma. Item "Variáveis" adicionado ao menu lateral dentro de "Banco de
+    Pessoas", ao lado de "Projetos".
+  - **CRUD de Variáveis** (`formularios/views.py`, `formularios/forms.py`,
+    `templates/formularios/`): lista (`/formularios/variaveis/`, tabela com nome/chave/tipo/
+    obrigatória/status), criar/editar num só template com `<fieldset>` (mesmo padrão dos
+    formulários de projeto/participante/usuário desta sessão), e excluir com confirmação
+    (bloqueia com mensagem amigável se a variável já estiver em uso — `ProtectedError`
+    capturado na view). O formulário de opções (só relevante pra `select`/`radio`/
+    `multipla_escolha`) usa um `inlineformset_factory` (mesmo mecanismo já usado no wizard de
+    importação em massa) — variável e opções são validadas e salvas juntas numa
+    `transaction.atomic()`, com uma regra de negócio própria: **tipo que exige opção não
+    salva sem pelo menos uma opção preenchida** (senão a variável ficaria inutilizável). O
+    campo "Opções de resposta" aparece/some no formulário via um JS pequeno
+    (`static/js/variavel_form.js`) que lê o `codigo` do tipo selecionado (mandado como JSON
+    pro cliente, não hardcoded no JS, pra não desalinhar com `CODIGOS_COM_OPCOES` do
+    servidor).
+  - Testado de ponta a ponta com Playwright contra o banco real: criar variável tipo texto
+    (bloco de opções escondido), criar variável tipo select com 2 opções (bloco visível,
+    salva certo), tentar criar select **sem** nenhuma opção (bloqueado com a mensagem de
+    erro esperada, não salva), editar pra desativar, excluir. Um detalhe curioso do processo
+    de teste: os primeiros scripts de teste clicavam sem querer no botão "Sair" da barra
+    lateral em vez de "Salvar" (os dois são `button[type="submit"]`, e o seletor não estava
+    específico o bastante) — não era bug da aplicação, só do script de teste; corrigido
+    escopando o clique ao formulário certo. Dados de teste (variáveis criadas durante os
+    testes) foram excluídos ao final.
+  - **Segue sem commitar** — mesma prática desta sessão inteira de só commitar quando o
+    usuário pedir. `git status`: app `formularios/` inteiro (novo), `accounts/permissions.py`,
+    `accounts/migrations/0007_seed_variaveis_permissoes.py` (novo), `bancopessoas/settings.py`
+    e `bancopessoas/urls.py` (registram o app novo), `templates/base.html` (item de menu).
+- **2026-08-10 (variáveis dinâmicas — reorganização de menu + Etapa 3)** — Antes de seguir
+  pro resto do roadmap, usuário pediu pra mover "Variáveis" (e o "Formulários" que ia nascer
+  na Etapa 3) pra dentro de um submenu novo, "Configurações de Formulários", abaixo de
+  "Banco de Pessoas" — até então "Variáveis" estava solta dentro do próprio grupo "Banco de
+  Pessoas". Em `templates/base.html`: tirei "Variáveis" de lá (revertendo a condição do
+  grupo "Banco de Pessoas" pro que era antes) e criei um novo `<details class="nav-group">`
+  "Configurações de Formulários" (abre sozinho quando `request.resolver_match.app_name ==
+  "formularios"`, mesmo padrão do grupo "Dashboards"), com "Variáveis" e "Formulários" dentro,
+  cada um com o próprio realce de item ativo por `url_name`.
+  - **Etapa 3 do roadmap — CRUD de Formulários** (`Formulario` já existia desde a Etapa 1,
+    só faltava a tela): lista em `/formularios/` (nome, se inclui os campos fixos do
+    participante, quantas variáveis tem, status), criar/editar num só template e excluir com
+    confirmação — mesmo padrão de `<fieldset>` já estabelecido. A parte de "escolher quais
+    variáveis entram, em que ordem" **não é um `ModelForm` comum** (é gerenciar a tabela de
+    ligação `FormularioVariavel`, que carrega um campo extra, `ordem`, além do M2M), então
+    usei um `formset_factory` simples (`VariavelSelecaoForm`: `variavel_id` oculto +
+    `incluir` (checkbox) + `ordem` (número)) — uma linha por variável **ativa** existente,
+    pré-marcada com o estado atual quando editando. `formularios/forms.py::
+    montar_formset_variaveis()` casa cada `Variavel` com seu subformulário numa lista de
+    tuplas, pra o template iterar num `{% for variavel, subform in linhas %}` só. Salvar
+    sincroniza a tabela de ligação inteira numa transação: apaga as associações desmarcadas,
+    faz `update_or_create` nas marcadas com a `ordem` enviada. Reordenação por
+    arrastar-e-soltar (pedida no plano original só na Etapa 7, como polimento de UX) **não**
+    entrou aqui — por ora a ordem é um campo numérico comum, que já resolve o "com ordem" da
+    Etapa 3.
+  - Permissões: `formularios.ver`/`.gerenciar`/`.excluir`, mesma migração-padrão
+    (`accounts/migrations/0008_seed_formularios_permissoes.py`), mesma matriz de
+    `variaveis.*` (Administrador e Operador com as três, Visualizador só `.ver`).
+  - Testado com Playwright: reorganização do menu confirmada visualmente (submenu
+    "Configurações de Formulários" com os dois itens, abre e realça certo); criei 2
+    variáveis, montei um formulário marcando as duas com ordens 1 e 2, salvei, reabri pra
+    editar e conferi que os checkboxes e as ordens persistiram exatamente como gravadas.
+    Dados de teste excluídos ao final (o formulário primeiro, pra liberar as variáveis do
+    `PROTECT`).
+  - **Segue sem commitar.** `git status` agora também inclui `templates/formularios/
+    formularios_lista.html`, `formulario_form.html`, `formulario_excluir.html` (novos),
+    `formularios/forms.py`/`views.py`/`urls.py` (modificados) e
+    `accounts/migrations/0008_seed_formularios_permissoes.py` (novo).
+  - Próximas etapas do roadmap (confirmar escopo antes de cada uma, como já vinha sendo
+    feito): Etapa 4 (associar Formulários a Projetos — o banco já suporta N:N via
+    `ProjetoFormulario`, falta só a tela), Etapa 5 (Respostas).
+- **2026-08-10 (variáveis dinâmicas — Etapa 4)** — Associar Formulários a Projetos. Reusei o
+  mesmo mecanismo da Etapa 3 (`formset_factory` com `incluir`+`ordem` por linha, uma linha
+  por item disponível) só que na direção Projeto→Formulário: `FormularioSelecaoForm`/
+  `montar_formset_formularios()` em `formularios/forms.py`, espelhando
+  `VariavelSelecaoForm`/`montar_formset_variaveis()` quase campo a campo.
+  - Nova view `formularios:projeto_formularios` (`/formularios/projetos/<id_do_projeto>/`,
+    permissão `projetos.gerenciar` — decidi que "quais formulários este projeto usa" é
+    configuração do projeto, não do catálogo de formulários, então a permissão certa é a do
+    projeto, não `formularios.gerenciar`) fica no app `formularios` (é lá que `Formulario` e
+    `ProjetoFormulario` moram), mas é alcançada a partir da tela do projeto — sem gerar mais
+    um item de menu, é sempre "de dentro" de um projeto específico.
+  - `templates/projetos/detalhe.html` ganhou um painel novo, "Formulários associados"
+    (nome, se inclui campos fixos, quantas variáveis — mesmas colunas da lista de
+    Formulários), com um botão "Gerenciar formulários" que só aparece pra quem já vê os
+    botões "Editar"/"Excluir" do projeto (`pode_editar`). `Projeto`/`projetos/views.py` não
+    precisaram de nenhuma mudança — o painel lê direto `projeto.projeto_formularios.all`
+    (FK reversa que já existia desde a Etapa 1, ordenada por `ordem` via `Meta.ordering` do
+    `ProjetoFormulario`).
+  - Testado com Playwright: criei um formulário, associei ao projeto de teste existente
+    ("Teste Bancos Digitais") marcando a caixa e definindo ordem, salvei, confirmei que o
+    painel "Formulários associados" na tela do projeto mostra a linha certa e a mensagem de
+    sucesso apareceu. Limpeza ao final teve uma pegadinha: `ProjetoFormulario.formulario` é
+    `PROTECT` (decisão da Etapa 1 — não se apaga um formulário em uso), então excluir o
+    formulário de teste direto deu `ProtectedError`; precisei apagar a ligação
+    (`ProjetoFormulario`) primeiro e o formulário depois — comportamento correto do sistema,
+    não um bug (é exatamente a mesma trava que protege contra apagar uma variável em uso).
+  - **Segue sem commitar.** `git status` agora também inclui `templates/formularios/
+    projeto_formularios.html` (novo), `templates/projetos/detalhe.html`,
+    `formularios/forms.py`/`views.py`/`urls.py` (modificados).
+  - Falta a **Etapa 5 (Respostas)** — a mais decisão-pesada do roadmap (como um operador
+    efetivamente "responde" um formulário pra uma participação, tela de preenchimento,
+    listagem de respostas por projeto). Confirmar escopo antes de começar, como o usuário já
+    vinha pedindo desde o plano original.
+- **2026-08-10 (variáveis dinâmicas — Etapa 5, Respostas)** — Perguntei 2 decisões antes de
+  começar: **onde preencher** (o usuário escolheu: na própria tela da Participação, não um
+  fluxo separado) e **o que fazer com tipo de resposta sem renderização própria** (escolheu:
+  cai em texto livre, não bloqueia).
+  - **Achado real ao investigar**: não existia tela de detalhe de Participação nenhuma —
+    o app `participacoes` só tinha lista, kanban, "nova" e "avaliar" (um form solo). Pra
+    cumprir a decisão do usuário ("na tela da Participação") precisei criar essa tela
+    primeiro: `participacoes:detalhe` (`/participacoes/<pk>/`, nova view + novo template
+    `templates/participacoes/detalhe.html`) — participante/projeto/etapa, avaliação (se
+    houver), e o painel novo "Respostas de formulário". Também troquei o redirect de
+    `avaliar()` pra cair aqui em vez de voltar pra lista, e linkei "Ver" na lista e o nome
+    do card no kanban pra essa tela nova.
+  - **Formulário de resposta dinâmico** (`formularios/respostas.py`, novo módulo): monta um
+    `forms.Form` **em tempo real** — uma pergunta por `FormularioVariavel` do formulário,
+    na ordem cadastrada — via `type("...", (forms.Form,), campos)` (padrão Django normal pra
+    formulário dinâmico, não é gambiarra). Um campo por tipo de resposta: `IntegerField`
+    (inteiro), `DecimalField` (decimal), `DateField` (data), `ChoiceField`/`RadioSelect`/
+    `MultipleChoiceField` (select/radio/múltipla escolha, com as opções cadastradas na
+    variável), `TypedChoiceField` com radio Sim/Não pro booleano (decisão de correção: um
+    `BooleanField` comum e obrigatório forçaria "Sim" como única resposta válida — errado
+    pra uma pergunta Sim/Não, onde "Não" é resposta tão definitiva quanto "Sim"), e
+    `CharField`/`Textarea` pra texto **e pra qualquer tipo sem suporte específico** (a
+    decisão do usuário). As respostas gravam em `RespostaFormulario.respostas_variaveis`
+    (JSONB) com a **chave da variável** como chave do JSON — bate exatamente com o exemplo
+    do plano original (`{"rotina_skincare": "diaria", ...}`).
+  - **Bug real encontrado e corrigido pelo teste**: o campo de data vinha salvo certo, mas
+    ao reabrir pra editar aparecia **vazio**. Causa: `forms.DateInput(attrs={"type":
+    "date"})` sem um `format` explícito usa o formato localizado (pt-br → dd/mm/aaaa) pra
+    desenhar o valor inicial — só que um `<input type="date">` HTML5 só aceita
+    `aaaa-mm-dd`; o navegador recebe um valor num formato que não reconhece e mostra o
+    campo em branco, mesmo com o dado salvo certinho no banco. Corrigido forçando
+    `format="%Y-%m-%d"` no widget. Serialização de Decimal/date pro JSON também precisou de
+    ajuste: `RespostaFormulario.respostas_variaveis` ganhou `encoder=DjangoJSONEncoder`
+    (o encoder padrão do `JSONField` não sabe serializar esses tipos sozinho).
+  - Segurança: a view `responder_formulario` confere que o formulário realmente está
+    associado ao projeto daquela participação (via `ProjetoFormulario`) antes de deixar
+    responder — sem isso, dava pra montar a URL na mão e responder um formulário de
+    qualquer outro projeto.
+  - Permissões novas: `respostas.ver` (ver o painel/status) e `respostas.preencher`
+    (responder/editar), mesmo padrão de seed (`accounts/migrations/
+    0009_seed_respostas_permissoes.py`) — Administrador e Operador com as duas,
+    Visualizador só `.ver`, Freelancer sem nenhuma (pode reconsiderar depois, é editável no
+    Painel de Permissões).
+  - Testado com Playwright de ponta a ponta contra o banco real: criei 6 variáveis (uma de
+    cada tipo com suporte — texto, inteiro, decimal, booleano, data, select), montei um
+    formulário com as seis, associei ao projeto de teste, abri a participação, respondi
+    tudo, salvei, reabri pra editar e conferi que **todos os 6 valores** vieram
+    pré-preenchidos exatamente como gravados (incluindo o de data, depois da correção).
+    Dados de teste excluídos ao final — inclusive um formulário e uma variável de teste
+    esquecidos de uma rodada anterior desta mesma sessão, achados na limpeza.
+  - **Segue sem commitar.** `git status` agora também inclui `formularios/respostas.py`
+    (novo), `templates/participacoes/detalhe.html`, `templates/formularios/
+    responder_formulario.html` (novos), `participacoes/views.py`/`urls.py`,
+    `templates/participacoes/lista.html`/`kanban.html`, `formularios/models.py`/`views.py`/
+    `urls.py`, `accounts/permissions.py` (modificados) e as 2 migrações novas
+    (`formularios/migrations/0003_...`, `accounts/migrations/0009_...`).
+  - **Roadmap completo desde o plano original agora está com as etapas core prontas**
+    (1–5). Restam as etapas de polimento de UX (6 já saiu junto da 2; 7 reordenação
+    drag-and-drop; 8 é redundante — já coberto pela Etapa 4; 9 já saiu junto da 5; 10 é a
+    view achatada pra scoring, ainda não pedida). Perguntar ao usuário se quer seguir pra
+    alguma dessas ou considerar o essencial do plano concluído por ora.
+- **2026-08-10 (variáveis dinâmicas — 2 correções pós-uso real)** — Usuário testou por conta
+  própria (criou "Formulário de Teste" com 2 variáveis reais — CPF e Data de Nascimento) e
+  reportou dois problemas: (1) não dá pra ver uma prévia do formulário com as perguntas, só
+  a contagem de variáveis; (2) não dá pra associar formulário a projeto "como estava
+  previsto".
+  - **(1) Prévia do formulário** — reaproveitei o mesmo renderizador dinâmico da Etapa 5
+    (`formularios/respostas.py::construir_form_resposta`), que já sabe montar um campo por
+    variável no tipo certo — só precisou ganhar um modo `somente_leitura=True` (desabilita
+    os campos, sem exigir preenchimento). Nova tela `formularios:formulario_visualizar`
+    (`/formularios/<id>/visualizar/`, permissão só `formularios.ver` — qualquer um que
+    enxerga a lista consegue ver o conteúdo, não só quem gerencia), com link "Visualizar" na
+    lista de Formulários, na tabela "Formulários associados" do projeto, e um link
+    "visualizar" (abre em nova aba, pra não perder marcações não salvas) na própria tela de
+    seleção.
+  - **(2) Associar a projeto "como estava previsto"** — reexaminando o texto original do
+    plano ("Endpoint pra **criar projeto associando** um formulário existente"), a intenção
+    sempre foi a escolha acontecer **dentro do próprio formulário de Novo/Editar Projeto**,
+    não só numa tela solta alcançada depois de já ter salvado (a "Gerenciar formulários" da
+    Etapa 4). Testei a tela solta isoladamente pra descartar bug — ela salva e persiste
+    normalmente — então o problema real era de local, não de funcionamento. Corrigido:
+    `templates/projetos/form.html` ganhou a fieldset "Formulários associados" (mesma tabela
+    de sempre — nome, campos fixos, variáveis, ordem — com link de prévia), e
+    `projetos/views.py::novo`/`editar` agora validam e sincronizam esse formset na mesma
+    transação que salva o projeto. Pra não duplicar a lógica de sincronização, extraí
+    `sincronizar_formularios_projeto()` pra `formularios/forms.py` e passei a chamá-la tanto
+    daqui quanto da view antiga `projeto_formularios` (que continua existindo como atalho
+    rápido pra ajustar só os formulários sem abrir o formulário inteiro do projeto — os dois
+    caminhos agora usam exatamente a mesma função de sincronização, garantindo que ficam
+    consistentes entre si).
+  - **Nota de transparência**: na limpeza de dados de teste do fim da rodada anterior, apaguei
+    um "Formulário de Teste 1" e uma variável "Faixa de Renda" presumindo que fossem sobras
+    dos meus próprios testes (mesma conta `admin_demo` que eu uso para testar) — não dava pra
+    diferenciar com certeza dados meus dos do usuário, já que os dois usam a mesma conta
+    demo. Como o "Formulário de Teste" (sem o "1") que o usuário está usando agora sobreviveu
+    intacto com as 2 variáveis reais dele, o que foi apagado parece mesmo ter sido uma sobra
+    de tentativa anterior — mas registro aqui porque não tenho certeza absoluta, e não devia
+    ter apagado sem confirmar antes. Devo evitar isso daqui pra frente: só apagar dados
+    criados dentro do próprio script de teste da mesma rodada, nunca "parece teste" por
+    inferência de nome.
+  - Testado com Playwright: prévia mostrando as 2 perguntas reais do usuário certinho
+    (rótulo, tipo, obrigatoriedade); criação de projeto novo já com formulário marcado na
+    hora, confirmando associação imediata na tela de detalhe. Projeto de teste apagado ao
+    final (o formulário e a variável do usuário não foram tocados desta vez).
+  - **Segue sem commitar.** `git status` agora também inclui `formularios/respostas.py`,
+    `formularios/forms.py`/`views.py`/`urls.py`, `templates/formularios/formularios_lista.html`,
+    `templates/formularios/projeto_formularios.html`, `templates/projetos/detalhe.html`/
+    `form.html`, `projetos/views.py` (modificados) e `templates/formularios/
+    formulario_visualizar.html` (novo).
+- **2026-08-10 (variáveis dinâmicas — página pública de cadastro)** — Usuário testou o ciclo
+  completo (criou formulário, associou variáveis, associou o formulário a um projeto) e
+  reportou que o **link público de cadastro** gerado pelo projeto (`/participantes/cadastro/
+  <token>/` — o link sem login que um recrutador manda pro participante preencher sozinho,
+  já existia desde a Fase 2) não vinha com as perguntas do formulário associado — só os
+  campos fixos de sempre (nome, CPF, contato...).
+  - Causa: `pessoas/views.py::cadastro_publico` foi escrito antes do sistema de variáveis
+    dinâmicas existir e nunca foi atualizado — ele só conhece `CadastroPublicoForm` (campos
+    fixos do `Participante`), sem nenhuma ideia de `Formulario`/`ProjetoFormulario`.
+  - Corrigido reaproveitando outra vez `formularios/respostas.py::construir_form_resposta`
+    (a terceira vez que essa peça é reutilizada, depois de "Responder" na tela de
+    Participação e da prévia de Formulário — confirma que valeu a pena ter feito como função
+    genérica reutilizável em vez de código dedicado a cada tela). Novo helper
+    `pessoas/views.py::_forms_dinamicos_do_projeto()` monta **um formulário dinâmico por
+    `Formulario` ativo associado ao projeto** (um projeto pode ter mais de um, por causa do
+    N:N decidido lá na Etapa 1) — a página pública agora renderiza os campos fixos de sempre
+    **e** uma seção por formulário associado, tudo no mesmo POST. No envio, grava
+    `Participante` + `Participacao` (como já fazia) **e** um `RespostaFormulario` por
+    formulário que tiver pelo menos uma variável, numa única transação.
+  - Testado com Playwright de ponta a ponta, em duas abas de navegador separadas (uma logada
+    como Administrador pra gerar o link, outra sem sessão nenhuma simulando o participante
+    real): o "Formulário de Teste" do usuário (agora com 3 variáveis — ele adicionou "Nome
+    Completo" desde a última rodada) apareceu certinho na página pública, com os 3 campos
+    preenchíveis; enviei o cadastro e confirmei no banco que `Participante`, `Participacao`
+    **e** `RespostaFormulario` foram criados juntos, com as 3 respostas gravadas certas
+    (inclusive a data, no formato certo). Dado de teste apagado ao final.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/views.py` e
+    `templates/publico/cadastro.html`.
+- **2026-08-12 (variáveis dinâmicas + auditoria de aceite LGPD)** — Usuário testou de novo a
+  página pública e pediu 3 ajustes de layout, mais um recurso novo: registro de auditoria de
+  aceite de termo (data/hora/IP) visível no perfil do participante, pra todos os documentos e
+  versões que ele já aceitou.
+  1. **Campo de texto muito grande** — os campos "texto livre" (textarea) ficavam
+     desproporcionais ao lado dos campos fixos (input de uma linha). Em vez de mudar o "Texto
+     livre" existente (que ainda faz sentido pra resposta longa), criei um **tipo novo**,
+     `texto_curto` ("Texto curto (uma linha)") — migração de seed
+     `formularios/migrations/0004_seed_tipo_texto_curto.py`, suporte de renderização em
+     `formularios/respostas.py::_campo_para_variavel` (`forms.CharField` com
+     `forms.TextInput` em vez de `Textarea`). Os dois tipos de texto convivem agora — quem
+     cadastra a variável escolhe qual cabe melhor pra cada pergunta.
+  2. **Título "Formulário de Teste" na página pública** — o `<fieldset><legend>` que
+     envolvia cada formulário associado ao projeto foi removido; as perguntas de todos os
+     formulários associados agora entram direto na mesma grade dos campos fixos, sem
+     seção/caixa separada — "é só continuar o formulário", como pedido.
+  3. **Checkbox de LGPD reposicionado** — antes vinha no meio da grade de campos (porque
+     `consentimento_lgpd` é só mais um campo do `CadastroPublicoForm`); agora é
+     explicitamente pulado no loop principal e renderizado à parte, logo abaixo do texto do
+     termo vigente (`versao_lgpd.texto`) e acima do botão de enviar.
+  4. **Auditoria de aceite** — novo modelo `termos.AceiteTermo` (`participante`, `versao`,
+     `origem` [`PUBLICO`/`STAFF`], `aceito_em`, `ip`, `user_agent`, `registrado_por`) — um
+     registro **imutável por aceite**, diferente de `Participante.consentimento_versao` (que
+     só guarda a versão *atual*, sobrescrevível, sem histórico). `termos/models.py::
+     registrar_aceite()` é o único ponto que grava, chamado nos **4 lugares** onde
+     `consentimento_lgpd`/`consentimento_versao` já eram setados
+     (`pessoas/views.py::novo`, `editar`, `wizard_revisao`, `cadastro_publico`) — cada um
+     passando a `origem` certa (`STAFF` pros três primeiros, já que é um operador logado
+     preenchendo; `PUBLICO` só no cadastro público, onde quem aceita é a própria pessoa,
+     sem login, e o IP/user-agent capturados são dela de fato). `registrado_por` é sempre um
+     `Usuario` interno — nos três primeiros é `request.user`; no público é o `recrutador`
+     (dono do link, não quem aceitou — não existe um "Usuario" pra a pessoa pública).
+     - **IP real por trás de proxy**: não existia nenhum helper de IP no projeto ainda —
+       `REMOTE_ADDR` sozinho dá o IP do proxy do Railway em produção, não o do participante.
+       Novo `core/request_utils.py::ip_cliente()` prioriza `X-Forwarded-For` (primeiro IP da
+       cadeia) e só cai pra `REMOTE_ADDR` se esse cabeçalho não existir (rodando local, sem
+       proxy).
+  5. **Painel "Termos aceitos" no perfil do participante** — nova seção em
+     `templates/pessoas/detalhe.html`, entre "Dados cadastrais" e "Triagem": lista **todos**
+     os aceites do participante (documento, versão, data/hora, origem, IP, quem registrou),
+     com um `<details>` por linha pra ver o texto completo daquela versão sem precisar sair
+     da página nem carregar nada por JS.
+  - Testado com Playwright: criei variáveis dos dois tipos de texto num formulário próprio,
+    conferi visualmente que "Texto curto" ficou do mesmo tamanho dos campos fixos e "Texto
+    livre" continua maior; conferi que não sobrou nenhum `<fieldset><legend>` na página
+    pública e que a ordem dos elementos no HTML é texto do termo → checkbox → botão enviar;
+    enviei um cadastro público completo e confirmei no banco um `AceiteTermo` com
+    `origem=PUBLICO`, IP e user-agent reais capturados, `registrado_por` = o recrutador do
+    link; testei também o cadastro interno (`pessoas:novo`) e confirmei um segundo
+    `AceiteTermo` com `origem=STAFF`; conferi visualmente o painel "Termos aceitos" no
+    perfil do participante, mostrando a linha certa com o "Ver texto" funcionando. Dados de
+    teste apagados ao final — confirmei que o "Formulário de Teste" e as 3 variáveis reais
+    do usuário continuam intactos.
+  - **Segue sem commitar.** `git status` agora também inclui `formularios/respostas.py`
+    (modificado), `formularios/migrations/0004_seed_tipo_texto_curto.py`,
+    `termos/models.py`, `termos/migrations/0003_aceitetermo.py`, `core/request_utils.py`
+    (novos/modificados), `templates/publico/cadastro.html`, `templates/pessoas/detalhe.html`
+    e `pessoas/views.py`.
+- **2026-08-12 (endereço com busca de CEP)** — No cadastro principal de participante
+  (interno e público), usuário pediu: CEP primeiro (antes de Cidade/UF), busca automática de
+  Estado/Cidade a partir do CEP, campo Bairro novo, e Estado/Cidade virarem listas suspensas
+  — a de Cidade também alimentada por API, listando em ordem alfabética as cidades do estado
+  escolhido.
+  - **Modelo** (`pessoas/models.py`): `Participante.UF` — `TextChoices` com as 27
+    siglas/nomes (substitui o `RegexValidator` de 2 letras que existia antes, agora
+    redundante já que `choices` garante uma sigla válida); novo campo `bairro`
+    (`CharField`, opcional). Campos reordenados no próprio modelo: `cep`, `bairro`, `uf`,
+    `cidade` (a ordem de declaração no modelo não importa pro banco, mas importa pra ordem
+    default nos formulários que só fazem `{% for field in form %}`, como o cadastro
+    público).
+  - **`pessoas/forms.py`**: `uf` declarado explicitamente como `ChoiceField` com opção em
+    branco "Selecione…" na frente. `cidade` continua `CharField` no banco (não dá — nem
+    faz sentido — hardcodar os +5.000 municípios do Brasil como `choices` do Django), mas
+    ganha `widget=forms.Select()`: o HTML nasce só com um placeholder e a lista de opções de
+    verdade é populada inteiramente no navegador, via JS, depois que o Estado é escolhido —
+    exatamente por isso continua sendo `CharField` (aceita qualquer string que o JS colocar
+    lá, sem exigir que o Django conheça a lista inteira de antemão). Editar um participante
+    já cadastrado precisa mostrar a cidade atual antes do JS rodar — `__init__` injeta a
+    cidade da instância como única opção válida até a lista de verdade chegar.
+    `ParticipanteWizardForm` (formset de N linhas do wizard de importação em massa)
+    **explicitamente volta** UF e Cidade a serem texto livre — não vale a pena religar
+    CEP→Estado→Cidade por JS em cada linha de um formset, e CSV já manda essas colunas como
+    texto puro mesmo.
+  - **`static/js/endereco_cep.js`** (novo): duas APIs públicas, sem chave — **ViaCEP**
+    (`viacep.com.br/ws/{cep}/json/`) no blur do campo CEP, preenchendo Bairro/UF e
+    disparando a busca de cidades; **IBGE** (`servicodados.ibge.gov.br/.../municipios?
+    orderBy=nome`) sempre que o Estado muda (por CEP ou escolha manual), já vindo do
+    servidor do IBGE em ordem alfabética. Usado nas duas telas de cadastro principal —
+    `templates/pessoas/form.html` (interno) e `templates/publico/cadastro.html` (público,
+    sem login — script solto antes do `</body>` já que a página não estende `base.html`).
+  - Ordem dos campos: "Contato e endereço" (interno) e a grade do cadastro público agora
+    seguem CEP+Bairro numa linha, UF+Cidade na próxima.
+  - `templates/pessoas/detalhe.html` ganhou linhas de Bairro e CEP na tabela "Dados
+    cadastrais" (só tinha Cidade/UF antes).
+  - Testado com Playwright nas duas telas, com um CEP real (Av. Paulista → Bela Vista, São
+    Paulo/SP) e outro (Centro, Rio de Janeiro/RJ): Bairro/UF/Cidade preenchidos sozinhos,
+    dropdown de cidade carregado com as cidades certas do estado (646 pra SP, 93 pra RJ,
+    batendo com a contagem real de municípios), reordenação confirmada visualmente, e um
+    cadastro completo enviado com sucesso pela página pública, confirmando no banco que
+    `cep`/`bairro`/`uf`/`cidade` gravaram exatamente os valores buscados pela API. Dados de
+    teste apagados ao final.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/forms.py`, `pessoas/migrations/0003_participante_bairro_alter_participante_uf.py`,
+    `static/js/endereco_cep.js` (novo), `templates/pessoas/form.html`,
+    `templates/pessoas/detalhe.html` e `templates/publico/cadastro.html`.
+  - **Ajuste rápido de ordem**: usuário corrigiu a ordem final — era CEP→Bairro→UF→Cidade,
+    o certo é **CEP→UF→Cidade→Bairro**. `ParticipanteForm.Meta.fields` reordenado (isso
+    também resolve a ordem no cadastro público, que só faz `{% for field in form %}`) e
+    `templates/pessoas/form.html` (interno) reordenado junto. Sem migration — é só ordem de
+    exibição, não mexe no banco. Confirmado com Playwright nas duas telas.
+- **2026-08-12 (avaliação vira modal com estrelas)** — Usuário pediu 4 coisas na tela de
+  avaliação de participações: (1) modal em vez de página separada, (2) estrelas de 1 a 5 em
+  vez dos rádios simples, (3) "nota final" deixar de ser digitada e virar a média dos 3
+  quesitos, aparecendo na lista de participações, (4) essa nota (e link pro detalhe com nota
+  + comentário) aparecer também nas participações listadas dentro do perfil do participante.
+  - **`Avaliacao.nota_geral` virou `@property`** (`round((comunicacao+pontualidade+
+    repertorio)/3, 1)`) em vez de campo digitado — migração remove a coluna do banco.
+    `AvaliacaoForm` perdeu o campo `nota_geral` (só resta comunicação/pontualidade/
+    repertório/comentário). Uma casa decimal de propósito — arredondar pra inteiro
+    esconderia a diferença entre, por exemplo, 4+4+4 e 5+4+3 (as duas dariam "4").
+  - **Modal, do zero** — não existia nenhuma infraestrutura de modal no projeto Django (só
+    no protótipo). Portei `.overlay`/`.modal`/`.modal-head`/`.modal-body`/`.modal-foot`/
+    `.modal-x` pro `static/css/base.css` e criei `static/js/modal.js`
+    (`QVModal.abrir/fechar`, clique no fundo fecha, Esc fecha) — genérico, qualquer modal
+    futuro reaproveita.
+  - **Estrelas de verdade** (glifo ★, não os "pills" numéricos que o protótipo usa) — CSS
+    puro, sem JS: `NOTAS` em `participacoes/forms.py` foi invertido pra `5,4,3,2,1` (rádios
+    nascem nessa ordem no HTML) e `.star-rating` usa `flex-direction:row-reverse` +
+    `input:checked ~ label`/`label:hover ~ label` pra pintar a estrela clicada/passada e
+    todas à esquerda dela na tela — é o truque clássico de "star rating" só em CSS. Dois
+    jeitos de desenhar: `templates/core/_campo_estrelas.html` (a partir de um `BoundField`
+    Django de verdade, usado no modal servidor-renderizado do detalhe da participação — o
+    pré-preenchimento ao editar já vem pronto do próprio Django, sem JS) e
+    `templates/core/_estrelas_input.html` (rádios soltos por nome/valor, usado no modal
+    compartilhado da lista, onde `static/js/avaliar_modal.js` marca os valores certos via
+    `data-*` de cada botão "Avaliar"/"Editar" da linha antes de abrir).
+  - **Dois modais, dois jeitos de preencher, mesma URL de POST**: `templates/participacoes/
+    detalhe.html` (uma participação por vez) usa um modal com o `AvaliacaoForm(instance=...)`
+    de verdade vindo da view — edição já chega pré-marcada certinha. `templates/
+    participacoes/lista.html` (N linhas, N avaliações possíveis) usa **um modal só,
+    reaproveitado**: cada botão da linha carrega `data-comunicacao`/`data-pontualidade`/
+    `data-repertorio`/`data-comentario`/`data-url` (vazios se ainda não avaliada), e
+    `abrirModalAvaliar()` aponta o `<form>` pra URL certa e marca os rádios antes de abrir —
+    sem fetch, sem JSON, o `<form>` continua sendo um POST normal (recarrega a página no
+    fim, só que agora sempre de volta pro detalhe da participação, onde o resultado
+    aparece).
+  - **`participacoes:avaliar` virou uma view só de POST** (`@require_POST`) — GET redireciona
+    pro detalhe (a página separada não existe mais, template
+    `templates/participacoes/avaliar.html` apagado). Em erro de validação, `messages.error`
+    + redirect de volta ao detalhe (não tenta re-renderizar um modal específico com erro
+    campo a campo — os 3 campos são obrigatórios e sempre visíveis, então "esqueceu de
+    marcar uma estrela" é o único jeito de falhar, e a mensagem genérica já deixa claro o
+    que fazer).
+  - **Prévia da nota final ao vivo**: enquanto marca as estrelas no modal, um texto "Nota
+    final (média)" atualiza em tempo real (JS simples, sem servidor) — não é só cosmético,
+    é a resposta direta ao pedido "a nota final... é média de 1 a 5 dos quesitos": a pessoa
+    vê a média sendo calculada na hora, antes mesmo de salvar.
+  - **Nota na lista de participações** (`templates/participacoes/lista.html`) e **nas
+    participações do perfil do participante** (`templates/pessoas/detalhe.html`, tabela
+    "Participações") — a segunda também ganhou linha inteira clicável (`onclick` no `<tr>`)
+    levando pro detalhe da participação, que já mostra nota (em estrelas, somente leitura)
+    e comentário.
+  - Testado com Playwright: modal abrindo pela lista, clique nas estrelas atualizando a
+    prévia da nota em tempo real (4+5+3 → "4.0"), salvar e conferir no detalhe da
+    participação (estrelas certas, nota 4,0, comentário), reabrir o modal de edição no
+    detalhe e confirmar que os 3 valores vêm pré-marcados certos (o Django cuidando disso
+    sozinho, sem JS), e a tabela de Participações no perfil mostrando a nota e navegando
+    pro detalhe ao clicar na linha. Avaliação de teste apagada ao final.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/models.py`,
+    `participacoes/forms.py`, `participacoes/views.py`,
+    `participacoes/migrations/0002_remove_avaliacao_nota_geral.py`, `static/js/modal.js`
+    (novo), `static/js/avaliar_modal.js` (novo), `templates/core/_campo_estrelas.html`
+    (novo), `templates/core/_estrelas_input.html` (novo), `templates/participacoes/
+    lista.html`, `templates/participacoes/detalhe.html`, `templates/pessoas/detalhe.html`
+    (modificados) e `templates/participacoes/avaliar.html` (removido).
+- **2026-08-12 (link de captação: sem prazo, só por status)** — Usuário pediu 2 mudanças na
+  regra do link público de cadastro: tirar a validade fixa de 48h, e só deixar responder o
+  formulário enquanto o projeto está com status "Recrutando" (antes aceitava qualquer status
+  exceto "Concluído" — ou seja, "Em campo" também deixava cadastrar, o que não fazia sentido
+  pro fluxo real).
+  - `pessoas/links.py::ler_token_captacao()` parou de passar `max_age` pro `loads()` do
+    Django (o token em si não guarda mais uma "validade embutida" — sem `max_age`, o
+    `django.core.signing` nunca expira por tempo, só invalida se a assinatura estiver
+    errada). Removido `TOKEN_MAX_AGE` e o tratamento de `SignatureExpired` (não tem mais
+    como ser levantado sem `max_age`).
+  - `pessoas/views.py::cadastro_publico` trocou `.exclude(status=CONCLUIDO)` por
+    `.filter(status=RECRUTANDO)` — a mensagem de erro pro visitante ("Este projeto não está
+    mais recebendo cadastros") já servia pra esse caso, não precisou mudar.
+  - `projetos/views.py::gerar_link` e `templates/projetos/link.html` perderam a menção a
+    "válido por X horas" e ganharam um aviso visível pro operador quando o projeto **não**
+    está "Recrutando" no momento de gerar o link (ex.: "Este projeto está com status 'Em
+    campo' — o link só aceita cadastros enquanto o status for 'Recrutando'") — sem isso a
+    pessoa geraria um link morto sem saber por quê.
+  - Testado com Playwright: link funcionando normalmente com o projeto em "Recrutando";
+    mudei o status pra "Em campo" na marra (via shell, sem passar pela UI) e confirmei que o
+    mesmo link passou a devolver HTTP 410 com a mensagem de indisponível — sem precisar
+    gerar um link novo nem esperar nenhum prazo, a mudança de status já basta. Status do
+    projeto restaurado pra "Recrutando" ao final.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/links.py`,
+    `pessoas/views.py`, `projetos/views.py`, `templates/projetos/link.html`.
+- **2026-08-12 (modal de avaliação "quebrado" — era cache do navegador, não bug)** — Usuário
+  reportou o modal de avaliação renderizando quebrado (estrelas e rádios sem estilo nenhum,
+  empilhados na página em vez de flutuar por cima). Investiguei antes de mexer em qualquer
+  código: reli o CSS adicionado na rodada anterior (`.overlay`/`.modal`/`.star-rating`),
+  sintaticamente correto; rodei dois testes de ponta a ponta em contexto de navegador
+  **novo** (Playwright, sem histórico nenhum) — nos dois, o modal abriu certinho, com as
+  estrelas alinhadas e o `getComputedStyle` confirmando `display:flex` no overlay,
+  `position:absolute`/`opacity:0` nos rádios, e o `fetch` direto em `/static/css/base.css`
+  trazendo o arquivo certo, já com `.star-rating` dentro. Ou seja: **o código sempre esteve
+  correto** — o navegador do usuário só estava servindo uma cópia antiga do `base.css` do
+  cache, porque o arquivo já tinha sido editado várias vezes nesta sessão (avaliação,
+  estrelas, dashboards, formulários...) sempre na mesma URL (`/static/css/base.css`), sem
+  nenhum jeito de o navegador saber que o conteúdo mudou sem um hard refresh manual.
+  - Em vez de só pedir pra apertar Ctrl+Shift+R (resolve uma vez, mas o mesmo susto ia
+    voltar na próxima rodada de CSS), corrigi a causa: `core/templatetags/static_v.py`
+    (novo) — tag `{% static_v 'css/base.css' %}` que gruda `?v=<data de modificação do
+    arquivo>` na URL. Como a URL muda sozinha toda vez que o arquivo muda, o navegador é
+    obrigado a buscar a versão nova — sem precisar de `collectstatic` nem de nada manual,
+    funciona liso durante o `runserver` (o `mtime` é lido do disco a cada request, e o
+    projeto já roda com `DEBUG=True` localmente). Em produção (Railway, `collectstatic` +
+    `ManifestStaticFilesStorage`) o arquivo já ganha hash no nome sozinho — a tag detecta
+    que não encontra o caminho original via `finders.find()` nesse caso e só devolve a URL
+    normal, sem duplicar cache-busting.
+  - Trocado `{% static 'css/base.css' %}` por `{% static_v 'css/base.css' %}` em
+    `templates/base.html` (a página logada, todas as telas) e nas 3 páginas públicas que
+    carregam o CSS por conta própria (`templates/publico/cadastro.html`, `cadastro_ok.html`,
+    `link_invalido.html` — não estendem `base.html` de propósito, então cada uma tem seu
+    próprio `<link>`). Só o CSS por enquanto — os arquivos JS têm sido editados com bem
+    menos frequência que o `base.css` nesta sessão, então não valia a pena mexer em todo
+    template só por precaução; se acontecer de novo com algum JS, aplico o mesmo padrão lá.
+  - Confirmado com Playwright que a URL do CSS agora sai com `?v=<timestamp>` e que o resto
+    do sistema (dashboard, navegação) continua renderizando normal.
+  - **Segue sem commitar.** `git status` agora também inclui `core/templatetags/
+    static_v.py` (novo, com `__init__.py` do pacote), `templates/base.html`,
+    `templates/publico/cadastro.html`, `cadastro_ok.html`, `link_invalido.html`
+    (modificados).
+- **2026-08-13 (filtros na lista de Participações: nome, projeto, etapa e nota)** — A tela
+  `/participacoes/` já aceitava `?projeto=`/`?etapa=`/`?status=` na URL desde a implantação
+  original, mas nenhuma UI de filtro nunca chegou a ser desenhada no template — os
+  parâmetros existiam só de "curto-circuito" sem barra de busca nenhuma na tela. Pedido do
+  usuário: adicionar filtro por nome, projeto, etapa e nota.
+  - `participacoes/views.py::lista()` ganhou um filtro por `nome`
+    (`participante__nome__icontains`) e um por `nota`. O filtro de nota é o mais delicado:
+    `Avaliacao.nota_geral` é uma `@property` em Python (média de comunicação/pontualidade/
+    repertório arredondada), não uma coluna do banco — não dá pra fazer `.filter()` direto
+    nela. Resolvido anotando a mesma conta na própria queryset via `F()`:
+    `.annotate(nota_media=(F("avaliacao__comunicacao") + F("avaliacao__pontualidade") +
+    F("avaliacao__repertorio")) / 3.0)`. Como o Django faz LEFT JOIN pra alcançar
+    `avaliacao__*` num relacionamento opcional (`OneToOneField` que pode não existir),
+    participações sem avaliação viram `NULL` nos três campos e a conta inteira já sai `NULL`
+    sozinha (aritmética com `NULL` em SQL sempre dá `NULL`) — não precisei de `Case`/`When`
+    pra tratar esse caso à parte.
+  - O filtro de nota na UI é um `<select>` no estilo "N ou mais" (`nota_media__gte=N`, N de
+    1 a 5) em vez de um valor exato — como a média é sempre um número com uma casa decimal
+    (ex.: "4,3"), filtrar por igualdade exata praticamente nunca bateria com nada digitado
+    manualmente; "4 ou mais" é o padrão que qualquer filtro de estrelas usa (Amazon, Google
+    Play etc.) e evita esse problema de vez. Tem também uma opção "Sem avaliação"
+    (`avaliacao__isnull=True`) pra achar quem ainda não foi avaliado.
+  - `templates/participacoes/lista.html` ganhou uma barra de filtro dentro de um
+    `.panel-head` (mesmo padrão do `.search` já usado em Pessoas), com 4 campos: texto
+    (nome), select de projeto (populado com `Projeto.objects.all()`), select de etapa
+    (reaproveitando o `etapas` que a view já passava pro contexto) e select de nota. Um
+    link "Limpar" só aparece quando algum filtro está ativo. Classe nova `.filtros` em
+    `static/css/base.css` pra estilizar os `<select>` da barra (o CSS só tinha estilo pronto
+    pra `<select>` dentro de `.field`, que é um formulário vertical de tela cheia — não
+    servia pra uma barra horizontal compacta).
+  - Testado com Playwright (login como Administradora Demo): filtro por nome, "Sem
+    avaliação" (voltou só as 2 participações sem nota, todas mostrando "—"), "4 ou mais"
+    (voltou só a participação com nota 4,7), e filtro por projeto (voltou só as participações
+    do projeto escolhido) — todos combináveis via querystring, sem erros no console.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/views.py`,
+    `templates/participacoes/lista.html`, `static/css/base.css` (modificados).
+- **2026-08-13 (exportação de Participações em PDF/XLSX + preparação pra logo oficial)** —
+  Pedido do usuário: baixar a lista de Participações em PDF e XLSX com todas as informações,
+  "seguindo o mesmo padrão dos PDFs e XLSX de outros downloads do sistema". Busquei no
+  código inteiro e não existia nenhum export em PDF/XLSX ainda em lugar nenhum (só CSV, no
+  wizard de importação de participantes) — não tinha um "padrão" prévio pra seguir, então
+  este vira o padrão novo, documentado aqui pra próximas exportações reaproveitarem.
+  - Nenhuma lib de PDF/XLSX estava instalada. Adicionado `openpyxl==3.1.5` (planilha) e
+    `reportlab==5.0.0` (PDF) no `requirements.txt` e instalados no `.venv`. `reportlab` foi
+    escolhido em vez de `weasyprint`/`wkhtmltopdf` por ser Python puro — não depende de
+    binário externo (GTK/Pango, etc.) instalado no sistema, o que evita dor de cabeça tanto
+    no Windows local quanto no deploy no Railway.
+  - `participacoes/exportacao.py` (novo) — `gerar_xlsx()` e `gerar_pdf()`, as duas recebendo
+    a queryset já filtrada e um `pode_revelar_pii` (bool). Os dois formatos respeitam a
+    mesma regra de mascaramento de PII que já existe no Banco de Pessoas: quem não tem a
+    permissão `participantes.revelar_pii` recebe CPF/telefone/e-mail com `*_mascarado`
+    (propriedades que já existiam em `Participante`) em vez do valor real — testado com
+    `admin_demo` (vê tudo) e `freelancer_demo` (só vê mascarado) via download autenticado
+    (`curl` com sessão de login real) + leitura do `.xlsx` gerado com `openpyxl`.
+  - `participacoes/views.py::_participacoes_filtradas()` (novo, extraído de `lista()`) —
+    centraliza a aplicação dos filtros de nome/projeto/etapa/status/nota, reaproveitado
+    tanto pela tela quanto pela nova view `exportar(request, formato)` — o download sempre
+    bate exatamente com o que está sendo visto na tela, incluindo os filtros de nota/sem
+    avaliação. Rota nova: `participacoes/exportar/<formato>/` (`formato` = `pdf` ou `xlsx`),
+    protegida pela mesma permissão `participacoes.ver` da lista.
+  - XLSX: cabeçalho colorido (violeta da marca), largura de coluna automática por conteúdo,
+    congelamento da linha de cabeçalho, e 19 colunas (todos os campos da participação,
+    inclusive os 3 quesitos da avaliação separados, comentário, quem avaliou e quando).
+  - PDF: paisagem A4 (`reportlab`), com título + subtítulo (data de geração e um resumo
+    legível dos filtros aplicados, tipo "projeto: X; nota: 4 ou mais"), tabela com
+    cabeçalho fixo repetido em toda página nova (`repeatRows=1`) e rodapé com número de
+    página. Pra caber em paisagem sem ficar ilegível, algumas colunas foram agrupadas (ex.:
+    "Nota (C/P/R → Geral)" numa coluna só, "Cidade/UF" numa coluna só) em vez de uma coluna
+    por campo — o dado continua todo lá, só compactado; no XLSX isso não foi necessário
+    porque planilha lida bem com muitas colunas.
+  - **Logo oficial**: criado `core/relatorios.py::caminho_logo()` — resolve
+    `static/img/logo.png` via `finders.find()` e devolve `None` se o arquivo não existir
+    ainda, pra nenhum relatório quebrar por causa disso. O cabeçalho do PDF já está pronto
+    pra usar a logo assim que o arquivo chegar (`Image(logo, ...)` ao lado do título "Qualy
+    Vortice"); por enquanto cai no fallback (só o texto do título, sem imagem), confirmado
+    no teste visual (renderizei o PDF gerado com PyMuPDF pra PNG e conferi visualmente).
+    Ainda falta: (1) o usuário colocar o arquivo da logo em `static/img/logo.png` (ou me
+    passar o caminho de onde salvou), e (2) trocar o `.brand-mark` (hoje só um `<div>`
+    estilizado via CSS, sem imagem nenhuma) pela logo de verdade nos 5 lugares que usam esse
+    elemento: `templates/base.html`, `templates/accounts/login.html`,
+    `templates/publico/cadastro.html`, `cadastro_ok.html`, `link_invalido.html` — fica
+    pendente até o arquivo chegar.
+  - Testado com Playwright (login `admin_demo`): botões "⬇ PDF"/"⬇ XLSX" aparecem na barra
+    de filtro da lista de Participações, e os `href` confirmam que preservam os filtros
+    ativos da URL (ex. `?nota=4` no link vira `exportar/pdf/?nota=4`). Download real via
+    `curl` autenticado pros dois formatos, `Content-Disposition: attachment` e
+    `Content-Type` corretos nos dois, conteúdo verificado (abrindo o `.xlsx` com `openpyxl`
+    e renderizando o `.pdf` em imagem com PyMuPDF).
+  - **Segue sem commitar.** `git status` agora também inclui `requirements.txt`,
+    `core/relatorios.py` (novo), `participacoes/exportacao.py` (novo),
+    `participacoes/views.py`, `participacoes/urls.py`, `templates/participacoes/lista.html`
+    (modificados).
+  - Ajuste rápido a pedido do usuário: a coluna "Nota (C/P/R → Geral)" do PDF ganhou uma
+    linha de legenda logo acima da tabela ("Comunicação / Pontualidade / Repertório → nota
+    geral") — a sigla sozinha no cabeçalho da coluna não é autoexplicativa. Só no PDF (no
+    XLSX as três notas já vêm em colunas separadas com nome completo, não precisa).
+- **2026-08-13 (filtros + exportação em Pessoas, com regras de segurança bem mais rígidas
+  que em Participações)** — Pedido do usuário: filtros e download PDF/XLSX na tela de
+  Pessoas, no mesmo estilo do que foi feito em Participações, mas com 3 restrições de
+  segurança explícitas (preocupação dele: alguém baixar a base inteira e vazar isso por
+  falha de segurança): (1) nenhuma informação sensível no download, (2) máximo de 50 pessoas
+  por download, (3) 1 download a cada 12h por usuário. Diferente de Participações — onde o
+  export mostra CPF/telefone/e-mail se quem baixa tiver `participantes.revelar_pii` —, aqui
+  a exportação **nunca** inclui esses campos, nem mascarados, pra ninguém, sem exceção.
+  - **Filtros** (`templates/pessoas/lista.html` + `pessoas/views.py::_participantes_filtrados()`,
+    extraído do antigo corpo de `lista()` pro mesmo motivo de Participações — reaproveitar
+    entre a tela e a exportação): mantido o `q` (nome/CPF/código) que já existia, e
+    adicionados `situacao`, `faixa_renda` ("classe social" na UI) e `uf`, como
+    `<select>` na mesma barra `.filtros` já criada pra Participações — reaproveitando a
+    classe CSS, sem estilo novo.
+  - **`pessoas/exportacao.py`** (novo) — só inclui campos não sensíveis: código, nome,
+    cidade/UF, idade, escolaridade, classe social, situação, última participação, data de
+    cadastro e status de consentimento LGPD. Sem CPF, telefone, e-mail, forma de pagamento
+    ou chave PIX — de propósito, não dá pra habilitar isso nem por permissão. `LIMITE_LINHAS
+    = 50`: a queryset é fatiada (`participantes[:50]`) antes de virar arquivo, e tanto o PDF
+    quanto o XLSX mostram "Mostrando 50 de N pessoa(s)" quando o total filtrado passa do
+    limite, pra ficar claro que não é a base inteira.
+  - **Permissão nova**: `participantes.exportar` (catálogo em `accounts/permissions.py` +
+    migração de seed `accounts/migrations/0010_seed_exportar_permissoes.py`, concedida por
+    padrão só a Administrador e Operador — mesma trilha das permissões `revelar_pii` e
+    `gerenciar`). Aparece automaticamente no Painel de Permissões (que já lê o catálogo do
+    banco, não precisou mexer na tela). Testado com `visualizador_demo` (não tem a
+    permissão): os botões de download nem aparecem na tela, e acessar a URL de exportação
+    direto devolve HTTP 403.
+  - **Limite de 1 download a cada 12h**: `auditoria.models.DownloadRegistro` (novo model —
+    usuário, tipo, quando) + `verificar_limite_download(usuario, tipo, horas=12)` e
+    `registrar_download(usuario, tipo)`. O limite é por usuário **e por área** (`tipo=
+    "pessoas"`), não por formato — baixar o PDF consome a mesma cota de baixar o XLSX, senão
+    dava pra contornar o limite só trocando de formato. Quando bloqueado, a view redireciona
+    de volta pra lista com uma mensagem de erro dizendo a data/hora exata em que a pessoa
+    poderá baixar de novo, em vez de simplesmente falhar sem explicação. Testado com
+    Playwright: primeiro download (XLSX) completa normalmente; segunda tentativa (PDF),
+    poucos segundos depois, é bloqueada e volta pra `/participantes/` com a mensagem "Por
+    segurança, exportações da base de Pessoas são limitadas a 1 a cada 12 horas...".
+  - Essa restrição de segurança (sem dados sensíveis + limite de linhas + limite de tempo +
+    permissão dedicada) foi aplicada só em Pessoas, por ser essa a base que o usuário
+    mencionou explicitamente como preocupação. A exportação de Participações (rodada
+    anterior) continua do jeito que estava — já tem sua própria trava de PII via
+    `participantes.revelar_pii`, mas não tem limite de linhas nem de frequência. Vale
+    considerar levar o mesmo padrão de limite de download pra lá também, numa próxima
+    rodada, já que o risco de exfiltração em massa é conceitualmente o mesmo — fica
+    registrado aqui como sugestão, não fiz sem o usuário pedir.
+  - **Segue sem commitar.** `git status` agora também inclui `accounts/permissions.py`,
+    `accounts/migrations/0010_seed_exportar_permissoes.py` (novo),
+    `auditoria/models.py`, `auditoria/migrations/0002_downloadregistro.py` (novo),
+    `pessoas/exportacao.py` (novo), `pessoas/views.py`, `pessoas/urls.py`,
+    `templates/pessoas/lista.html` (modificados).
+- **2026-08-13 (modelo de importação de participantes agora é XLSX, não CSV)** — Pedido do
+  usuário: o arquivo de exemplo baixado no wizard "Importar planilha" vinha em CSV, ele
+  queria em XLSX. Como o wizard depende do modelo baixado e do arquivo reenviado serem
+  compatíveis, a mudança foi ponta a ponta: gerar o modelo em `.xlsx` **e** ensinar o
+  upload a ler `.xlsx` — sem tirar o suporte a `.csv` que já existia, pra não quebrar quem
+  já tinha um processo rodando com CSV (o import aceita os dois formatos agora).
+  - `pessoas/wizard_csv.py`: `_normalizar_campo()` (novo) extrai a lógica de
+    gênero/escolaridade/faixa de renda que já existia em `ler_csv()`, agora reaproveitada
+    também por `ler_xlsx()` (novo, lê célula a célula com `openpyxl`). `_texto_celula()`
+    (novo) trata as duas pegadinhas de ler planilha Excel com célula tipada: data vira
+    `datetime.date` (não string) — convertido pra `AAAA-MM-DD` — e um CPF/CEP digitado só
+    com números vira `float` (ex.: `11144477735.0`) — convertido de volta pra string sem
+    casas decimais. `ler_planilha()` (novo) é o ponto de entrada único usado pela view:
+    despacha pra `ler_xlsx()` ou `ler_csv()` conforme a extensão do arquivo enviado.
+  - `pessoas/views.py::wizard_modelo_csv()` reescrita pra gerar `.xlsx` de verdade
+    (`openpyxl.Workbook`, mesmo estilo visual dos outros relatórios: cabeçalho violeta da
+    marca) em vez de `csv.writer`. As colunas CPF, CEP, Telefone e Data de nascimento saem
+    com `number_format="@"` (texto) na linha de exemplo — sem isso o Excel trata como
+    número e come o zero à esquerda (CEP "01000-000" viraria "1000-000" quando o usuário
+    reabrisse o arquivo).
+  - `pessoas/forms.py::UploadCSVForm` ganhou `clean_arquivo()` validando a extensão
+    (`.xlsx` ou `.csv`; qualquer outra é rejeitada com mensagem clara) — antes o campo
+    aceitava qualquer arquivo sem checagem nenhuma. `pessoas/views.py::wizard_dados_csv()`
+    trocou `ler_csv()` por `ler_planilha()` e ganhou um `try/except` em volta da leitura
+    (arquivo `.xlsx` corrompido ou renomeado na marra faz o `openpyxl` levantar exceção —
+    antes disso não existia, porque o parser de CSV nunca lança exceção pra arquivo
+    malformado, só devolve lixo).
+  - Textos atualizados em `templates/pessoas/wizard_modo.html` e
+    `templates/pessoas/wizard_dados_csv.html` (botão "Baixar modelo (XLSX)", instrução
+    "Aceita arquivo .xlsx ou .csv").
+  - Testado com Playwright: (1) baixei o modelo `.xlsx` gerado e reenviei ele mesmo pro
+    upload — chegou certinho na revisão, CPF com pontuação preservada
+    ("111.444.777-35", não virou número); (2) subi um `.csv` novo (formato antigo) pra
+    confirmar que continua funcionando igual — também chegou OK na revisão; (3) subi um
+    `.txt` qualquer — bloqueado na validação do formulário com "Envie um arquivo .xlsx ou
+    .csv." antes mesmo de tentar ler o conteúdo.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`,
+    `pessoas/forms.py`, `pessoas/views.py`, `templates/pessoas/wizard_modo.html`,
+    `templates/pessoas/wizard_dados_csv.html` (modificados).
+- **2026-08-13 (Profissão vira tabela + dropdown, com campo de Especialidade condicional)**
+  — Usuário perguntou se dava pra achar uma API grátis pra transformar o campo Profissão
+  (texto livre) num dropdown. Pesquisei: não existe API pública oficial "estilo ViaCEP" pra
+  isso — só a CBO (Classificação Brasileira de Ocupações, ~2.600 ocupações granulares) sem
+  endpoint público mantido, e uns projetos pequenos/não-oficiais no GitHub, arriscados demais
+  pra depender em produção. Perguntei ao usuário CBO completa (com busca) vs. lista curta
+  curada — escolheu lista curta, mas guardada em **tabela no banco** (não hardcoded no
+  código), com uma coluna indicando se a profissão tem especialidade, pra abrir um campo de
+  texto livre nesse caso (ex.: Médico → Cardiologista, Professor → disciplina).
+  - **`pessoas/models.py`**: `Profissao` (novo model — `nome` único, `tem_especialidade`
+    bool). `Participante.profissao` deixou de ser `CharField` livre e virou
+    `ForeignKey(Profissao, null=True, blank=True, on_delete=SET_NULL)`; `especialidade`
+    (novo `CharField` livre, opcional) guarda o texto quando a profissão escolhida tem
+    especialidade.
+  - **Migração em 3 passos** (`pessoas/migrations/0004_profissao_model.py`,
+    `0005_seed_profissoes.py`, `0006_participante_profissao_fk.py`) — não dava pra trocar
+    `CharField`→`ForeignKey` numa `AlterField` direta (o Postgres tentaria converter texto
+    tipo "Programador" pra `bigint` e quebraria). Passos: cria `Profissao` + campo
+    `especialidade` → semeia ~67 profissões curadas (Saúde, Educação, TI, Direito,
+    Engenharia, Administração, Comunicação, Vendas, Ofícios, Outros) → adiciona um campo FK
+    temporário, casa o texto antigo de cada participante contra o nome de alguma `Profissao`
+    semeada (por nome exato ou por um dicionário de apelidos comuns — "Programador" →
+    "Desenvolvedor(a) de Software" etc.), remove o `CharField` antigo e renomeia o campo
+    novo pro nome final. Testado: 6 dos 7 participantes de teste migraram certo; só
+    "Analista" (genérico demais) ficou sem profissão — aceitável, são dados de teste.
+  - **`pessoas/forms.py`**: `SelectProfissao` (novo widget) — cada `<option>` do dropdown
+    ganha `data-especialidade="1"` quando aquela profissão tem especialidade (uma única
+    query pra montar o conjunto de PKs, não uma por opção). `especialidade` virou parte do
+    `ParticipanteForm.Meta.fields` — isso propaga automaticamente pros 3 formulários que
+    herdam dele (cadastro individual, formset do wizard manual, cadastro público), sem
+    precisar duplicar nada.
+  - **`static/js/profissao_especialidade.js`** (novo) — mostra/esconde o campo
+    Especialidade lendo o `data-especialidade` da opção selecionada. Usa delegação de
+    evento e casa pelo **sufixo** do `name` (`profissao` / `-profissao`) em vez do nome
+    exato, então funciona tanto no formulário simples (`name="profissao"`) quanto no
+    formset do wizard manual (`name="form-0-profissao"`, `form-1-profissao`...) com o mesmo
+    arquivo, sem lógica por linha. Roda também uma vez no carregamento da página (não só em
+    `change`), pra já nascer certo ao editar um participante que já tem profissão com
+    especialidade preenchida.
+  - **Importação CSV/XLSX** (`pessoas/wizard_csv.py`): coluna nova "Especialidade" no
+    modelo, logo depois de "Profissão". Texto de profissão do arquivo é casado contra
+    `Profissao.objects.all()` por nome (case-insensitive, uma consulta só reaproveitada pra
+    todas as linhas, não uma por célula) e vira o PK esperado pelo `ModelChoiceField`; sem
+    correspondência, fica em branco (campo é opcional, não quebra a linha).
+  - **Bug real pego no caminho**: `pessoas/views.py::wizard_dados_manual()` guardava
+    `dict(f.cleaned_data)` inteiro na sessão — com `profissao` agora um `ModelChoiceField`,
+    `cleaned_data["profissao"]` vira uma **instância** de `Profissao`, não serializável em
+    JSON (a sessão do Django é salva como JSON por padrão). O código já tratava esse mesmo
+    problema pra `data_nascimento` (`date` → `.isoformat()`); apliquei o mesmo padrão pra
+    profissão (guarda só o `.pk`). Sem isso o wizard manual quebraria com erro 500 ao tentar
+    ir pra revisão assim que alguém escolhesse uma profissão numa linha.
+  - `core/dashviz.py` e `core/views.py` ajustados (`p.profissao` virou instância, não mais
+    string; `select_related("profissao")` nos dois pontos que alimentam os dashboards, pra
+    não gerar uma query por participante).
+  - Testado com Playwright: (1) formulário Novo Participante — campo Especialidade some por
+    padrão, aparece só ao escolher profissão com especialidade (testado Eletricista=não,
+    Médico(a)=sim), cadastro completo salvo e exibido como "Médico(a) — Cardiologista" no
+    detalhe; (2) wizard manual (formset) — toggle funciona linha a linha, independente,
+    via delegação; (3) dashboards (Visão participantes e Visão por segmento) continuam
+    carregando normalmente; (4) baixei o modelo XLSX atualizado (já com a coluna
+    Especialidade) e confirmei via `ler_planilha()` que "Designer"/"UX/UI" resolvem
+    corretamente pro PK da `Profissao` e pro texto livre, respectivamente.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/migrations/0004_profissao_model.py`, `0005_seed_profissoes.py`,
+    `0006_participante_profissao_fk.py` (novos), `pessoas/forms.py`, `pessoas/views.py`,
+    `pessoas/wizard_csv.py`, `core/dashviz.py`, `core/views.py`,
+    `static/js/profissao_especialidade.js` (novo), `templates/pessoas/form.html`,
+    `templates/pessoas/detalhe.html`, `templates/pessoas/wizard_dados_manual.html`,
+    `templates/pessoas/wizard_dados_csv.html`, `templates/publico/cadastro.html`
+    (modificados).
+- **2026-08-13 (projeto: remove "Perfil desejado" do formulário, adiciona campo Marca)** —
+  Pedido do usuário: tirar a seção "Perfil desejado" (idade/gênero/região/renda/critérios
+  livres) do cadastro/edição de projeto — "não faz sentido agora" pra prática atual — e
+  adicionar um campo Marca ao lado de Cliente (ex.: Cliente "Agência XPTO", Marca
+  "Adidas").
+  - `projetos/forms.py`: removidos `perfil_idade_min`, `perfil_idade_max`, `perfil_genero`,
+    `perfil_regiao`, `perfil_renda`, `perfil_criterios_livres` do `Meta.fields` (e seus
+    labels/widgets) do `ProjetoForm`; adicionado `marca`.
+  - `templates/projetos/form.html`: removido o `<fieldset>` inteiro "Perfil desejado"; campo
+    Marca entra na primeira linha do fieldset "Dados da pesquisa", ao lado de Cliente.
+    Subtítulo da página ("Defina a pesquisa e o perfil de participantes desejado") virou só
+    "Defina a pesquisa".
+  - **Decisão consciente**: os campos `perfil_*` **continuam existindo no model e no
+    banco** — só saíram do formulário e não são mais editáveis. Rodar uma migração pra
+    apagar essas colunas seria uma ação mais destrutiva e difícil de reverter do que o que
+    foi pedido (que foi especificamente sobre a *tela* de cadastro/edição); manter as
+    colunas é reversível sem custo (não têm efeito nenhum enquanto ninguém as usa) — se
+    algum projeto antigo já tinha esses dados preenchidos, `templates/projetos/lista.html`
+    continua mostrando o resumo (`perfil_resumo`) normalmente pra ele, só não aparece mais
+    pra projetos novos/editados.
+  - `projetos/models.py`: campo novo `marca` (`CharField`, opcional). Migração
+    `projetos/migrations/0003_add_marca.py`.
+  - Exibição de `marca` adicionada ao lado de `cliente` em
+    `templates/projetos/detalhe.html` (subtítulo do cabeçalho) e
+    `templates/projetos/lista.html` (badge e subtítulo do card) — nos dois casos só
+    aparece quando preenchida (`{% if proj.marca %}`), formato "Cliente — Marca".
+  - Testado com Playwright: formulário Novo Projeto sem o fieldset "Perfil desejado",
+    campo Marca visível ao lado de Cliente; projeto criado com Cliente "Agência XPTO" e
+    Marca "Adidas" mostrou "Agência XPTO — Adidas" tanto no detalhe quanto no card da
+    lista; sem erros de console.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/models.py`,
+    `projetos/forms.py`, `projetos/migrations/0003_add_marca.py` (novo),
+    `templates/projetos/form.html`, `templates/projetos/detalhe.html`,
+    `templates/projetos/lista.html` (modificados).
+- **2026-08-13 (mudança grande: Perfil — participante agora se associa a um Perfil dentro do
+  projeto, não mais ao projeto direto)** — Pedido do usuário: um projeto passa a ter de 1 a
+  N perfis (ex.: "Mulheres 18-25", "Homens 25-40"), cada perfil com seu próprio formulário, e
+  é o perfil — não mais o projeto — que recebe os participantes. Pedido explícito pra
+  atualizar todos os pontos que hoje comunicam participante↔projeto: cadastro/edição de
+  projeto, associação manual de pessoa, link de captação + formulário de cadastro externo, e
+  uma feature nova (associação em lote via Excel). Por ser uma mudança grande (schema,
+  formulários, telas públicas), passei por **modo de planejamento** antes de codar — plano
+  salvo em `C:\Users\Lucas\.claude\plans\smooth-wondering-thunder.md` — e confirmei 2
+  decisões de design com o usuário antes de começar: (1) lote via Excel = escolher 1 perfil
+  na tela + planilha só com coluna CPF (não uma planilha mista com coluna "Perfil" por
+  linha); (2) link de captação = 1 link por perfil (não 1 link por projeto com escolha de
+  perfil na página pública).
+  - **`projetos/models.py`**: `Perfil` (novo — `projeto` FK, `nome`, `formulario` FK pra
+    `formularios.Formulario` **por string** — `"formularios.Formulario"` em vez de import
+    direto, porque `formularios/models.py` já importa `Projeto` daqui; importar `Formulario`
+    de volta criaria ciclo). `Projeto.ocupadas` deixou de ser `self.participacoes.count()`
+    (reverse FK direto, que não existe mais) e virou uma agregação:
+    `Participacao.objects.filter(perfil__projeto=self).count()`.
+  - **`ProjetoFormulario` removido** (M2M projeto↔formulário, superado pelo `Perfil.
+    formulario` — cada perfil agora carrega só um formulário): `formularios/models.py`
+    (model), `formularios/forms.py` (`FormularioSelecaoForm`/`montar_formset_formularios`/
+    `sincronizar_formularios_projeto`), `formularios/views.py` (view `projeto_formularios`,
+    guard de `responder_formulario` trocado de `ProjetoFormulario.objects.filter(...)` pra
+    `participacao.perfil.formulario_id == formulario.pk`), `formularios/urls.py`,
+    `templates/formularios/projeto_formularios.html` (apagado). Perfis não entram no
+    formulário de *criação* do projeto — são geridos depois, na tela de detalhe do projeto
+    já salvo (mesmo padrão de Formulário/Variável, que também são CRUD à parte).
+  - **Migração em 2 apps, 6 arquivos** (mesmo padrão da conversão de `Participante.
+    profissao` pra FK, feita antes nesta sessão — não dava pra trocar `Participacao.projeto`
+    por `Participacao.perfil` numa tacada só):
+    1. `projetos/migrations/0004_perfil.py` — cria `Perfil`.
+    2. `projetos/migrations/0005_seed_perfis.py` — pra cada `Projeto` existente, cria um
+       `Perfil(nome="Perfil único")`; se o projeto já tinha `ProjetoFormulario`, o
+       formulário de menor `ordem` vira o formulário desse perfil.
+    3. `formularios/migrations/0005_remove_projetoformulario.py` — apaga `ProjetoFormulario`
+       (depende da migração 2, que já leu os dados de lá antes).
+    4. `participacoes/migrations/0003_add_perfil_fk.py` — adiciona `perfil` (nulo) ao lado
+       do `projeto` antigo.
+    5. `participacoes/migrations/0004_migrar_projeto_para_perfil.py` — RunPython copia
+       `projeto_id` → `perfil_id` (via o "Perfil único" de cada projeto).
+    6. `participacoes/migrations/0005_finalizar_perfil_fk.py` — remove `projeto`, `perfil`
+       vira obrigatório, troca a constraint `uniq_participante_projeto` por
+       `uniq_participante_perfil` (fields `participante`+`perfil` em vez de
+       `participante`+`projeto`) — **decisão**: a unicidade passou a ser por perfil, não
+       mais por projeto inteiro, então agora o mesmo participante pode estar em mais de um
+       perfil do mesmo projeto (não tinha motivo pra continuar bloqueando isso).
+    `makemigrations --check --dry-run` limpo depois de escrever as 6 migrações à mão — igual
+    da última vez, confirma que bateram exatamente com o `models.py` final. Rodei `migrate`
+    contra o banco de verdade: os 3 projetos de teste ganharam seu "Perfil único" (2 deles já
+    herdaram o "Formulário de Teste" que tinham via `ProjetoFormulario`) e as 3 participações
+    existentes foram todas realocadas certinho pro perfil certo (conferido linha a linha).
+  - **Associação manual** (`participacoes:nova`): `ParticipacaoForm.projeto` virou `.perfil`
+    (mostra "Projeto — Perfil" no dropdown via `Perfil.__str__`, sem precisar de select em
+    cascata por JS). View aceita `?perfil=<id>` pra pré-selecionar, usado pelo botão
+    "Associar pessoa" na tela do perfil. `pessoas/forms.py::EscolherProjetoWizardForm` (o
+    "associar os novos participantes a" do wizard de importação) seguiu o mesmo caminho.
+  - **Link de captação + cadastro público, 1 por perfil**: `pessoas/links.py::
+    gerar_token_captacao` trocou a chave `projeto_id` por `perfil_id` no payload assinado.
+    `pessoas/views.py::cadastro_publico` carrega o `Perfil` (não mais o `Projeto` direto) e
+    renderiza **no máximo um** formulário dinâmico (`_form_dinamico_do_perfil`, que substitui
+    `_forms_dinamicos_do_projeto` — antes um projeto podia ter vários formulários, agora um
+    perfil tem no máximo um; a função continua devolvendo uma lista de 0 ou 1 item só pra não
+    precisar mexer no `{% for %}` do template). `projetos:gerar_link` (nível projeto) saiu;
+    entrou `projetos:perfil_link` (nível perfil) — o botão "Link de cadastro" que ficava no
+    cabeçalho do projeto agora fica em cada linha do painel "Perfis".
+  - **Associação em lote via Excel** (feature nova): `projetos/perfil_lote.py` —
+    `ler_cpfs()` (lê `.xlsx`/`.csv` com uma coluna "CPF", reaproveitando a mesma lógica de
+    decodificação multi-encoding de `pessoas/wizard_csv.py`) e `associar_cpfs()` (casa cada
+    CPF contra `Participante` — mesma técnica de `pessoas/views.py::_cpf_ja_cadastrado`,
+    `annotate` removendo pontuação do CPF salvo — e faz `get_or_create` de `Participacao`
+    pra cada um que bater). Sem fluxo de revisão em 2 passos (é gente que já existe, não tem
+    campo pra validar) — processa direto e mostra um resumo (N associados agora, N já
+    estavam, N CPFs não encontrados). Tela nova `projetos/perfis/<id>/associar-lote/`,
+    reaproveitando `pessoas.forms.UploadCSVForm` pro upload (mesma validação de extensão já
+    usada lá) em vez de duplicar a classe.
+  - **Permissões**: nenhum código novo — CRUD de Perfil usa `projetos.gerenciar` (mesma do
+    Projeto, perfil é sub-entidade dele); associar pessoa (individual ou em lote) usa
+    `participacoes.mover_etapa` (mesma que já protegia `participacoes:nova`).
+  - Telas/templates tocados por causa do `.projeto` → `.perfil.projeto` em Participacao:
+    `templates/participacoes/lista.html` (+ coluna Perfil), `kanban.html`, `detalhe.html`,
+    `templates/pessoas/detalhe.html` (+ coluna Perfil), `templates/formularios/
+    responder_formulario.html`, `core/dashviz.py` (query de segmento no dashboard),
+    `participacoes/exportacao.py` (+ coluna Perfil no PDF e XLSX).
+  - Templates novos: `templates/projetos/perfil_form.html`, `perfil_detalhe.html`,
+    `perfil_excluir.html`, `perfil_link.html` (substitui o antigo `link.html`, apagado),
+    `perfil_associar_lote.html`. `templates/projetos/detalhe.html` trocou o painel
+    "Formulários associados" por um painel "Perfis" (nome, formulário, participantes, e por
+    linha: Link · Editar · Ver); `templates/projetos/form.html` perdeu o fieldset de
+    formulários.
+  - Testado com Playwright, ponta a ponta: (1) projeto existente mostrando o "Perfil único"
+    migrado; (2) criado um 2º perfil ("Perfil B - Homens 25-40") com formulário associado;
+    (3) gerado o link desse perfil, aberto numa aba anônima nova — carregou o formulário
+    certo (inclusive os campos dinâmicos), cadastro concluído criou a `Participacao` presa
+    ao perfil certo (confirmado no banco) e a `RespostaFormulario` foi salva; (4) associação
+    manual de participante ao perfil via `?perfil=` pré-selecionado; (5) associação em lote:
+    subi 3 CPFs válidos + 1 inexistente, resumo bateu (3 associados, depois reenviando: 0
+    novos/3 já estavam/1 não encontrado — confirma idempotência); (6) dashboards (Visão
+    participantes e Visão por segmento) continuam carregando; (7) exportação de
+    Participações confirmada com a coluna Perfil certa; (8) tentativa de excluir o
+    formulário em uso por perfis continua bloqueada (`ProtectedError`, formulário não foi
+    apagado). Zero erros de console em todo o percurso.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/models.py`,
+    `projetos/forms.py`, `projetos/views.py`, `projetos/urls.py`, `projetos/admin.py`,
+    `projetos/perfil_lote.py` (novo), `projetos/migrations/0004_perfil.py`,
+    `0005_seed_perfis.py` (novos), `participacoes/models.py`, `participacoes/forms.py`,
+    `participacoes/views.py`, `participacoes/admin.py`, `participacoes/exportacao.py`,
+    `participacoes/migrations/0003_add_perfil_fk.py`, `0004_migrar_projeto_para_perfil.py`,
+    `0005_finalizar_perfil_fk.py` (novos), `formularios/models.py`, `formularios/forms.py`,
+    `formularios/views.py`, `formularios/urls.py`,
+    `formularios/migrations/0005_remove_projetoformulario.py` (novo), `pessoas/links.py`,
+    `pessoas/views.py`, `pessoas/forms.py`, `core/dashviz.py`, e os templates listados acima
+    (modificados/novos/apagados).
+- **2026-08-13 (wizard "Novos participantes (lote)" ganha as perguntas do formulário do
+  perfil)** — Usuário reportou que não estava mais "sendo possível associar em lote como
+  antes". Investigando com uma pergunta de esclarecimento, não era a feature nova de
+  associação em lote (essa já existia e funciona, testada na rodada anterior) — era o wizard
+  de importação de participantes novos (`Banco de Pessoas` → `Novos participantes (lote)`):
+  o modelo de planilha baixado ali só trazia os campos fixos do participante (nome, CPF,
+  etc.), nunca trouxe as perguntas do formulário — só que antes da mudança de Perfil isso não
+  chamava tanto a atenção porque o formulário do projeto não era o foco principal do wizard;
+  agora que cada perfil tem seu próprio formulário e o wizard já pergunta "associar a qual
+  perfil" logo no passo 1, ficou claro que faltava trazer as perguntas desse formulário pro
+  modelo/planilha também — pedido do usuário pra completar isso.
+  - `pessoas/wizard_csv.py`: `variaveis_do_formulario()` (mesma consulta ordenada que
+    `formularios/respostas.py::construir_form_resposta` já usa), `_exemplo_variavel()`
+    (valor de exemplo por tipo — opção cadastrada pra select/radio, "Sim" pra booleano, data
+    fixa, etc.), `_normalizar_valor_dinamico()` (só booleano e select/radio/múltipla escolha
+    precisam de normalização — texto/número/data passam direto, o próprio campo do
+    formulário dinâmico valida), `_mapa_variaveis()` (nome da variável → `Variavel`, pra
+    casar cabeçalho da planilha) e `_normalizar_cabecalho()`. `ler_csv()`/`ler_xlsx()`/
+    `ler_planilha()` ganharam um parâmetro `formulario=None` opcional — quando presente,
+    colunas que não são nenhum campo fixo conhecido são testadas contra o nome das variáveis
+    do formulário.
+  - **Bug pego no meio do caminho**: o cabeçalho do modelo marca pergunta obrigatória com um
+    `" *"` no final (ex.: "Nome Completo *"), mas a primeira versão do casamento de coluna
+    comparava esse texto (com asterisco) direto contra o nome puro da variável — nunca
+    batia, então nenhuma resposta dinâmica era lida de volta mesmo com a coluna certinha
+    preenchida. Corrigido com `_normalizar_cabecalho()`, que tira o `" *"` antes de comparar.
+    Só percebi isso testando de ponta a ponta (baixei o modelo, preenchi, subi de novo) —
+    sem esse teste real o bug passaria despercebido.
+  - **Limitação percebida durante o teste** (não é bug, é dado de teste ambíguo): o
+    "Formulário de Teste" já cadastrado no sistema tem variáveis literalmente chamadas
+    "Nome Completo" e "Data de Nascimento" (criadas em uma rodada bem anterior desta sessão,
+    de propósito, pra testar que o formulário público mostra os campos fixos E os dinâmicos
+    lado a lado mesmo com nome parecido). Como esses nomes colidem com os sinônimos que o
+    wizard já reconhece pros campos fixos (`"nome completo"` → `nome`, `"data de
+    nascimento"` → `data_nascimento`), essas duas colunas específicas continuam sendo lidas
+    como os campos fixos, não como a pergunta do formulário — o campo fixo tem prioridade de
+    propósito (é mais crítico não perder CPF/nome do que resolver uma colisão de nome rara).
+    Confirmei que o mecanismo em si funciona certinho testando com um formulário à parte,
+    com nomes de pergunta que não colidem ("Aceita viajar", "Anos de experiência") — a
+    planilha baixada trouxe as duas colunas extras, e reenviando preenchida, criou o
+    participante, a participação no perfil certo e a `RespostaFormulario` com os valores
+    certos (`{'aceita_viajar': True, 'anos_de_experiencia': '5'}`).
+  - `pessoas/views.py`: `_perfil_e_formulario_do_wizard(estado)` (novo helper, resolve
+    `Perfil`/`Formulario` a partir da sessão do wizard, reaproveitado por 3 views);
+    `_validar_linha_csv()` ganhou um parâmetro `formulario` opcional — quando presente,
+    também valida as respostas dinâmicas via `construir_form_resposta()` e mistura os erros
+    (usando o nome da pergunta, não a chave interna, pra ficar legível na tela de revisão).
+    `wizard_modelo_csv()` acrescenta as colunas do formulário do perfil (se tiver) no
+    cabeçalho/linha de exemplo da planilha baixada. `wizard_revisao()` (POST de
+    confirmação): só aplica a validação/gravação de respostas dinâmicas pra linhas vindas da
+    planilha (`estado["modo"] == "CSV"`) — o formset de cadastro manual não tem campo
+    nenhum pra essas perguntas, então não faz sentido (nem seria possível) exigi-las por
+    ali; ao criar a `Participacao`, também grava a `RespostaFormulario` correspondente,
+    igual ao que `cadastro_publico` já faz pro cadastro externo.
+  - `templates/pessoas/wizard_dados_csv.html`: aviso novo (só aparece quando o perfil
+    escolhido tem formulário) avisando que o modelo já vem com as perguntas dele.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`,
+    `pessoas/views.py`, `templates/pessoas/wizard_dados_csv.html` (modificados).
+- **2026-08-13 (revisão do wizard vira editável + upsert por CPF/e-mail/telefone em todo
+  fluxo de cadastro)** — Dois pedidos do usuário nascidos da mesma captura de tela (a tela
+  de revisão do wizard cheia de "Erro"): (1) dar um jeito de corrigir os dados errados **na
+  própria tela** de revisão, em vez de só rejeitar a linha; (2) em **qualquer** fluxo de
+  cadastro de pessoa (form interno, cadastro público, wizard em lote), se o CPF, e-mail ou
+  telefone já bater com alguém cadastrado, **atualizar** esse registro em vez de duplicar ou
+  travar com "já existe". Por mexer com integridade de dado (sobrescrever PII de gente já
+  cadastrada é arriscado se a régua de casamento for ruim), perguntei antes de codar:
+  - **Prioridade em caso de conflito** (CPF aponta pra uma pessoa, telefone aponta pra
+    outra): confirmado — **CPF manda** (é o único campo com unicidade garantida no banco
+    hoje); e-mail/telefone só entram como reforço quando o CPF não veio ou não bateu com
+    ninguém. Evita fundir duas pessoas que só dividem um telefone de família.
+  - **Como atualizar**: confirmado — **só preenche o que veio preenchido**. Campo vazio na
+    submissão nova não apaga o que já estava salvo.
+  - **`pessoas/matching.py`** (novo módulo) — `encontrar_participante_existente(cpf, email,
+    telefone)` (CPF primeiro via o mesmo `Replace()`-encadeado já usado antes pra CPF;
+    telefone usa a mesma técnica removendo `(`, `)`, espaço e `-`), `CAMPOS_ATUALIZAVEIS`
+    (lista dos campos "de perfil" que um upsert pode tocar — **não** inclui `codigo`
+    (gerado), `situacao` (uma nova submissão não pode desfazer uma triagem já feita),
+    `consentimento_*`/`origem_recrutador` (efeito legal/de atribuição — cada fluxo decide
+    isso por conta própria) nem campos de auditoria), `capturar_valores_atuais()` +
+    `restaurar_campos_vazios()` (tira uma "foto" do participante antes de aplicar o form
+    novo em cima, e depois devolve pro valor antigo qualquer campo que veio vazio —
+    implementa a regra "só preenche o que veio preenchido" sem depender do `ModelForm.save()`
+    puro, que sobrescreveria tudo incondicionalmente).
+  - **`pessoas/views.py::novo()`**: antes de validar o form, tenta achar um participante
+    existente com o CPF/e-mail/telefone enviado; se achar, o `ParticipanteForm` é ligado a
+    essa instância (`instance=existente`) em vez de criar uma nova — isso também resolve de
+    graça a validação de unicidade de CPF (o Django já sabe excluir a própria instância da
+    checagem). Mensagem de sucesso muda pra "já estava cadastrado(a) — dados atualizados"
+    nesse caso.
+  - **`pessoas/views.py::cadastro_publico()`**: mesmo mecanismo, com dois cuidados a mais
+    específicos do cadastro público (decisão própria, não perguntada ao usuário mas
+    conservadora de propósito): reenviar o formulário público não reseta a `situacao` de
+    alguém que já foi triado (só cadastro novo entra como "Pendente") e não troca o
+    `origem_recrutador` original (preserva quem indicou a pessoa da primeira vez).
+  - **Wizard em lote** (`_validar_linha_csv`, `wizard_dados_manual`, `wizard_revisao`): toda
+    linha (venha de planilha ou do formset manual) passa a carregar `existente_pk`/
+    `existente_codigo` — a tela de revisão mostra um selo "Atualiza P-2026-00XX" (azul) ou
+    "Novo" (violeta) por linha. `wizard_revisao()` (POST de confirmação) foi reescrito por
+    completo: em vez de simplesmente contar "criados"/"pulados" e descartar quem falhou,
+    agora processa linha a linha e **separa** o que deu certo (cria ou atualiza, conforme o
+    caso) do que ainda precisa de ajuste — essas ficam guardadas de volta na sessão (com os
+    dados e erros atualizados) e a página **re-renderiza no mesmo lugar**, em vez de jogar
+    tudo fora; só limpa a sessão e volta pra lista quando não sobra nenhuma linha problemática.
+  - **Correção inline** (o pedido nº1): linha com erro ganha um mini-formulário logo abaixo,
+    usando o próprio `ParticipanteWizardForm` (mesmo do cadastro manual — reaproveita todos
+    os widgets, inclusive o dropdown de Profissão com o toggle de Especialidade) com
+    `initial=` pré-preenchido e um `prefix=f"dados_{indice}"` — cada campo vira um `<input
+    name="dados_0-cpf">` etc., isolado por linha. No POST, `wizard_revisao()` procura essas
+    chaves (`dados_<indice>-<campo>`) antes de revalidar; se existirem, sobrescrevem o valor
+    que a planilha original tinha trazido pra aquela linha. Escopo: só os campos fixos do
+    participante — as perguntas do formulário dinâmico do perfil (do round anterior) ainda
+    aparecem como erro em texto, não editáveis nesta rodada (a planilha continua sendo o
+    jeito de corrigi-las).
+  - **Limitação conhecida, não corrigida agora**: o formset do "Cadastro manual" (uma das
+    duas formas de chegar no wizard) valida CPF duplicado **antes** de chegar em
+    `wizard_revisao` (é campo `unique=True` no model, e o formset não liga cada linha a uma
+    instância existente) — então, só pra esse caminho específico, um CPF já cadastrado ainda
+    trava na própria tela de "Cadastro manual" em vez de virar atualização. O caminho por
+    planilha (o mais comum pra lote) e os fluxos de formulário único (`novo`,
+    `cadastro_publico`) já cobrem os três campos (CPF/e-mail/telefone) sem essa limitação.
+  - Testado com Playwright: (1) `novo()` — reenviei o CPF da Maria Teste da Silva com nome
+    novo, e-mail em branco e bairro preenchido: atualizou o registro dela (mesmo pk),
+    manteve o e-mail antigo intocado, preencheu o bairro, sem duplicata; (2)
+    `cadastro_publico()` — reenviei o CPF do Bruno Wizard Teste (que eu tinha marcado como
+    "Aprovado" antes do teste) pelo link público: nome e telefone atualizados, `situacao`
+    continuou "Aprovado" (não voltou pra "Pendente"), e-mail antigo preservado; (3) wizard
+    por planilha — subi uma linha sem data de nascimento (erro) e uma com CPF já cadastrado
+    (vira "Atualiza"): a linha com erro apareceu com o mini-formulário editável, preenchi a
+    data que faltava ali mesmo e cliquei "Concluir importação" de novo — as duas linhas
+    processaram na segunda tentativa (uma criação, uma atualização; confirmado no banco);
+    (4) reconfirmei que uma planilha só com gente nova, sem nenhum casamento, continua
+    criando normalmente, sem regressão no caminho mais comum. Zero erros de console.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/matching.py` (novo),
+    `pessoas/views.py`, `templates/pessoas/wizard_revisao.html` (modificados).
+- **2026-08-13 (wizard em lote ganha recrutador escolhível + modo "lote legado" tolerante) —
+  e um bug de fundo do round anterior corrigido de brinde)** — Pedido do usuário: (1) na
+  primeira tela do wizard em lote, poder escolher qual usuário cadastrado vira o recrutador
+  responsável pelo lote, assumindo quem está subindo o arquivo como padrão se deixar em
+  branco; (2) um botão "lote legado" pra planilhas de projetos já concluídos, enviadas só
+  pra preencher o Banco de Pessoas — esses lotes aceitam os dados como vierem (sem exigir
+  campo obrigatório completo nem travar por formato), só continuando a checar duplicidade de
+  pessoa (CPF/e-mail/telefone, do round anterior) pra não criar gente repetida.
+  - **Pergunta feita antes de codar**: vários campos do `Participante` são obrigatórios no
+    banco (`data_nascimento`, `telefone`, `uf`, `cidade`) — não dá pra simplesmente deixar em
+    branco num lote legado sem violar a constraint. Confirmado com o usuário: preencher com
+    um valor de preenchimento ("Não informado"/data-marcador), e marcar esses registros com
+    uma flag pra pedir a atualização de volta pra pessoa no futuro.
+  - **`pessoas/models.py`**: `cpf` passa a `null=True` (mantendo `unique=True`) — decisão
+    técnica não pedida explicitamente, mas necessária: cogitei usar `""` como valor de
+    preenchimento pro CPF ausente (mesmo padrão do telefone/UF/cidade), mas o Postgres trata
+    duas strings vazias como iguais sob `UNIQUE`, então o segundo lote legado sem CPF
+    quebraria a importação; `NULL` não colide com `NULL` sob `UNIQUE`, resolve sem gambiarra.
+    `cpf_mascarado` blindado contra `None` (`"—"` em vez de erro). Campo novo
+    `cadastro_incompleto` (booleano, `default=False`) — marca quem tem algum dado de
+    preenchimento em vez do dado real. Migração `0007_lote_legado.py` (auto-gerada, já
+    aplicada).
+  - **`pessoas/matching.py`** ganha a lógica de leniência: `preparar_linha_legado(dados)`
+    (valida só o mínimo — nome não pode faltar, e precisa de pelo menos um entre CPF/e-mail/
+    telefone pra dar pra conferir duplicidade; qualquer outro campo obrigatório ausente vira
+    um valor de preenchimento e entra no conjunto `campos_incompletos`, devolvido separado)
+    e `aplicar_dados_legado(participante, dados, campos_incompletos, existente,
+    valores_originais)` (grava direto no objeto, sem passar pelo `ParticipanteWizardForm` —
+    não faz sentido validar contra regras que o próprio modo legado existe pra ignorar).
+    **Cuidado de design pego antes de implementar**: se um lote legado atualizasse (upsert)
+    uma pessoa que já tinha, por exemplo, data de nascimento real cadastrada, o valor de
+    preenchimento (1900-01-01) não podia se passar por "dado novo preenchido" e sobrescrever
+    o dado real — por isso `aplicar_dados_legado` força os campos de `campos_incompletos`
+    a parecerem vazios antes de chamar `restaurar_campos_vazios()` (do round anterior),
+    garantindo que placeholder nunca vence dado real já salvo. `cadastro_incompleto` é
+    recalculado (`bool(campos_incompletos)`) toda vez — se uma atualização futura vier com o
+    dado que faltava, a flag se limpa sozinha.
+  - **`pessoas/forms.py::EscolherProjetoWizardForm`**: campo novo `recrutador`
+    (`ModelChoiceField` sobre `Usuario` ativos, `empty_label="Eu mesmo(a) — quem está
+    enviando este lote"`) e `legado` (`BooleanField`, `required=False`). A exclusão de
+    projetos concluídos do dropdown de perfil foi removida — lote legado existe justamente
+    pra apontar pra perfis de projetos já concluídos.
+  - **`pessoas/views.py`**: `wizard_projeto()` grava `recrutador_id`/`legado` na sessão;
+    `_validar_linha_csv(dados, formulario=None, legado=False)` desvia pro caminho de
+    `preparar_linha_legado()` quando `legado=True`; `wizard_revisao()` ganhou um branch
+    completo — modo legado chama `preparar_linha_legado`/`aplicar_dados_legado` direto (sem
+    `ParticipanteWizardForm`), modo normal continua no caminho estrito do round anterior; em
+    ambos, ao criar (não atualizar) participante, `origem_recrutador` vira o recrutador
+    escolhido na tela 1 (ou `request.user`, se deixado em branco). `_participantes_filtrados()`
+    ganhou o filtro `?incompleto=1`.
+  - **Bug crítico achado durante o teste, não introduzido nesta rodada** (afeta também a
+    correção inline do round anterior): testando o botão "Concluir importação" com uma linha
+    ainda em erro, o clique **não fazia nada** — sem mensagem, sem navegação, zero erro no
+    console. Isolei em duas etapas: (1) simulei o mesmo POST direto via `test.Client()` do
+    Django (sem navegador) e funcionou perfeitamente — o problema não era a view; (2) coloquei
+    listener de `request`/`response` no Playwright e confirmei que **nenhuma requisição saía
+    do navegador** ao clicar. Causa: a tela de revisão desenha um mini-formulário de correção
+    por linha inválida, com atributos `required` nativos do HTML5 (nome, CPF, data de
+    nascimento, telefone, UF, cidade); ao tentar submeter o formulário inteiro deixando OUTRA
+    linha (que o usuário não estava mexendo) com esses campos vazios, o **próprio navegador**
+    bloqueia o submit da página inteira silenciosamente, antes de qualquer request sair —
+    sem erro de console, sem rede. Corrigido com `novalidate` no `<form>` de
+    `wizard_revisao.html`, já que a validação do lado do servidor (Django) sempre foi a
+    autoridade de fato. Esse bug já existia desde a correção inline do round anterior — só
+    não tinha sido pego porque os testes de lá sempre corrigiam a única linha problemática da
+    página antes de submeter.
+  - `templates/pessoas/wizard_projeto.html`: campos `recrutador` e `legado` (com
+    `help_text`) somados ao `perfil`. `templates/pessoas/wizard_dados_csv.html`: aviso
+    exibido só quando `legado` está marcado, explicando a leniência. `wizard_revisao.html`:
+    banner "Lote legado" no topo quando aplicável, badge "Dado incompleto" (âmbar) por linha
+    válida com `cadastro_incompleto=True`, coluna "Situação" com selo "Atualiza <código>"
+    (azul) ou "Novo" (violeta) por linha (do round anterior, mantido). `lista.html`: filtro
+    "Só cadastro incompleto" e badge "Incompleto" ao lado do nome na tabela.
+    `detalhe.html`: aviso explicando o que fazer quando `cadastro_incompleto=True`.
+    `pessoas/exportacao.py`: coluna "Cadastro" (Completo/Incompleto) no PDF e no XLSX.
+  - Testado com Playwright: (1) upload de lote legado com linhas sem telefone/UF/cidade/data
+    de nascimento — nenhuma virou "Erro", todas processaram na primeira tentativa, e as que
+    ficaram com valor de preenchimento apareceram com o badge "Dado incompleto" na revisão e
+    "Incompleto" na lista; (2) reenviei o CPF de uma pessoa já cadastrada dentro do mesmo
+    lote legado — virou atualização ("Atualiza <código>"), não duplicata; (3) deixei o campo
+    recrutador em branco — `origem_recrutador` do participante criado ficou sendo o próprio
+    usuário logado que subiu o arquivo; escolhi um recrutador explícito num segundo teste —
+    ficou registrado esse outro usuário; (4) filtro `?incompleto=1` na lista trouxe só os
+    registros esperados; (5) **regressão do bug do `novalidate`**: refiz o teste do round
+    anterior (planilha não-legada com uma linha faltando data de nascimento, corrigida pelo
+    mini-formulário inline) do zero — "1 participante(s) importado(s) com sucesso.", zero
+    erro de console, confirmando que o `novalidate` não abriu brecha nenhuma pra dado
+    inválido passar despercebido (a validação do servidor continua barrando tudo que não é
+    modo legado). Participantes e planilhas de teste removidos/restaurados ao final.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/migrations/0007_lote_legado.py` (novo), `pessoas/matching.py`,
+    `pessoas/forms.py`, `pessoas/views.py`, `pessoas/exportacao.py`,
+    `templates/pessoas/wizard_projeto.html`, `templates/pessoas/wizard_dados_csv.html`,
+    `templates/pessoas/wizard_revisao.html`, `templates/pessoas/lista.html`,
+    `templates/pessoas/detalhe.html`.

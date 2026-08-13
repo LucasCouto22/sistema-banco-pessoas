@@ -1,0 +1,7 @@
+<div class="field">
+  <label>{{ campo.label }}</label>
+  <div class="star-rating">
+    {% for sub in campo.subwidgets %}{{ sub.tag }}<label for="{{ sub.id_for_label }}">★</label>{% endfor %}
+  </div>
+  {% for erro in campo.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+</div>

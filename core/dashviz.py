@@ -69,9 +69,9 @@ def dados_participantes_dashboard(participantes):
     segs_por_participante = {}
     linhas = (
         Participacao.objects.filter(participante__in=participantes)
-        .exclude(projeto__segmento="")
-        .exclude(projeto__segmento=Projeto.Segmento.OUTRO)
-        .values_list("participante_id", "projeto__segmento")
+        .exclude(perfil__projeto__segmento="")
+        .exclude(perfil__projeto__segmento=Projeto.Segmento.OUTRO)
+        .values_list("participante_id", "perfil__projeto__segmento")
         .distinct()
     )
     for participante_id, segmento in linhas:
@@ -90,7 +90,7 @@ def dados_participantes_dashboard(participantes):
                 "fx": _faixa_etaria(p.data_nascimento, hoje) if p.data_nascimento else None,
                 "cid": capitais_por_nome_lower.get((p.cidade or "").strip().lower(), ""),
                 "segs": sorted(segs_por_participante.get(p.id, ())),
-                "prof": (p.profissao or "").strip(),
+                "prof": str(p.profissao) if p.profissao_id else "",
             }
         )
     return registros

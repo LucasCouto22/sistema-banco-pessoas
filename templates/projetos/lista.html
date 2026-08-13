@@ -14,10 +14,10 @@
   <a class="folder" href="{% url 'projetos:detalhe' proj.pk %}">
     <div class="f-row">
       <span class="f-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-      {% if proj.cliente %}<span class="badge b-violet">{{ proj.cliente }}</span>{% endif %}
+      {% if proj.cliente %}<span class="badge b-violet">{{ proj.cliente }}{% if proj.marca %} — {{ proj.marca }}{% endif %}</span>{% endif %}
     </div>
     <h4>{{ proj.nome }}</h4>
-    <div class="f-sub">{{ proj.cliente }}{% if proj.metodologia %} · {{ proj.metodologia }}{% endif %}{% if proj.segmento %} · {{ proj.get_segmento_display }}{% endif %}</div>
+    <div class="f-sub">{{ proj.cliente }}{% if proj.marca %} — {{ proj.marca }}{% endif %}{% if proj.metodologia %} · {{ proj.metodologia }}{% endif %}{% if proj.segmento %} · {{ proj.get_segmento_display }}{% endif %}</div>
     {% if proj.perfil_resumo %}
     <div class="f-perfil">Perfil: {{ proj.perfil_resumo }}</div>
     {% endif %}

@@ -1,25 +1,22 @@
-{% load static %}<!DOCTYPE html>
+{% load static static_v %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cadastro de participante · Qualy Vortice</title>
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/base.css' %}">
 </head>
 <body>
 <section id="viewLogin">
   <div class="login-card wide">
     <div class="brand"><span class="brand-mark"></span><h1>Qualy Vortice</h1></div>
-    <p class="login-sub">Cadastro de participante — pesquisa <b>{{ projeto.nome }}</b></p>
+    <p class="login-sub">Cadastro de participante — pesquisa <b>{{ projeto.nome }}</b> · {{ perfil.nome }}</p>
 
     <form method="post">
       {% csrf_token %}
       <div class="form-row">
         {% for field in form %}
-          {% if field.field.widget.input_type == "checkbox" %}
-          <div class="check">{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
-          {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
-          {% else %}
+          {% if field.name != "consentimento_lgpd" %}
           <div class="field">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
@@ -27,11 +24,25 @@
           </div>
           {% endif %}
         {% endfor %}
+
+        {% for fd in forms_dinamicos %}
+          {% for fv, campo in fd.linhas %}
+          <div class="field">
+            <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if fv.variavel.obrigatoria %} *{% endif %}</label>
+            {{ campo }}
+            {% for erro in campo.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          </div>
+          {% endfor %}
+        {% endfor %}
       </div>
 
       {% if versao_lgpd %}
-      <div class="lock-note" style="margin-bottom:14px;max-height:160px;overflow:auto;white-space:pre-wrap">{{ versao_lgpd.texto }}</div>
+      <div class="lock-note" style="margin:14px 0;max-height:160px;overflow:auto;white-space:pre-wrap">{{ versao_lgpd.texto }}</div>
       {% endif %}
+      <div class="check" style="margin-bottom:14px">
+        {{ form.consentimento_lgpd }}<label for="{{ form.consentimento_lgpd.id_for_label }}">{{ form.consentimento_lgpd.label }}</label>
+      </div>
+      {% for erro in form.consentimento_lgpd.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
 
       <button class="btn btn-primary btn-block" type="submit">Enviar cadastro</button>
     </form>
@@ -42,5 +53,7 @@
     </div>
   </div>
 </section>
+<script src="{% static 'js/endereco_cep.js' %}" defer></script>
+<script src="{% static 'js/profissao_especialidade.js' %}" defer></script>
 </body>
 </html>

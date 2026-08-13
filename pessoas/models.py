@@ -1,14 +1,61 @@
 from datetime import date
 
 from django.conf import settings
-from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 
 from .validators import validar_cpf
 
 
+class Profissao(models.Model):
+    """Lista curada de profissões pro dropdown de cadastro — não é texto
+    livre nem uma lista fixa no código, fica no banco pra dar pra
+    ajustar/ampliar sem precisar de deploy. `tem_especialidade` controla se o
+    formulário abre um campo de texto livre pra especialidade (ex.: Médico →
+    Cardiologista) quando essa profissão é escolhida."""
+
+    nome = models.CharField(max_length=100, unique=True)
+    tem_especialidade = models.BooleanField(
+        default=False, help_text="Ex.: Médico, Professor, Analista de TI — abre campo de especialidade."
+    )
+
+    class Meta:
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class Participante(models.Model):
+    class UF(models.TextChoices):
+        AC = "AC", "Acre"
+        AL = "AL", "Alagoas"
+        AP = "AP", "Amapá"
+        AM = "AM", "Amazonas"
+        BA = "BA", "Bahia"
+        CE = "CE", "Ceará"
+        DF = "DF", "Distrito Federal"
+        ES = "ES", "Espírito Santo"
+        GO = "GO", "Goiás"
+        MA = "MA", "Maranhão"
+        MT = "MT", "Mato Grosso"
+        MS = "MS", "Mato Grosso do Sul"
+        MG = "MG", "Minas Gerais"
+        PA = "PA", "Pará"
+        PB = "PB", "Paraíba"
+        PR = "PR", "Paraná"
+        PE = "PE", "Pernambuco"
+        PI = "PI", "Piauí"
+        RJ = "RJ", "Rio de Janeiro"
+        RN = "RN", "Rio Grande do Norte"
+        RS = "RS", "Rio Grande do Sul"
+        RO = "RO", "Rondônia"
+        RR = "RR", "Roraima"
+        SC = "SC", "Santa Catarina"
+        SP = "SP", "São Paulo"
+        SE = "SE", "Sergipe"
+        TO = "TO", "Tocantins"
+
     class Genero(models.TextChoices):
         FEMININO = "FEMININO", "Feminino"
         MASCULINO = "MASCULINO", "Masculino"
@@ -37,18 +84,42 @@ class Participante(models.Model):
 
     codigo = models.CharField(max_length=20, unique=True, editable=False)
     nome = models.CharField(max_length=150)
-    cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf])
+    # `null=True` (mas sem `blank=True`) de propósito: os formulários normais
+    # continuam exigindo CPF (a obrigatoriedade neles depende de `blank`, não
+    # de `null`) — só o import de lote legado, que grava direto no model sem
+    # passar pelo form, usa `None` quando a planilha não trouxer CPF. Precisa
+    # ser `None`, não `""`, porque o campo é `unique=True` — duas pessoas sem
+    # CPF com `""` colidiriam nessa constraint; `None` não colide (regra
+    # padrão de unicidade em NULL no Postgres).
+    cpf = models.CharField(max_length=14, unique=True, null=True, validators=[validar_cpf])
     data_nascimento = models.DateField()
     genero = models.CharField(max_length=20, choices=Genero.choices, blank=True)
     telefone = models.CharField(max_length=20)
     email = models.EmailField(blank=True)
-    cidade = models.CharField(max_length=100)
-    uf = models.CharField(max_length=2, validators=[RegexValidator(r"^[A-Za-z]{2}$", "Use a sigla do estado (2 letras).")])
     cep = models.CharField(max_length=9, blank=True)
+    bairro = models.CharField(max_length=100, blank=True)
+    uf = models.CharField(max_length=2, choices=UF.choices)
+    cidade = models.CharField(max_length=100)
     escolaridade = models.CharField(max_length=20, choices=Escolaridade.choices, blank=True)
-    profissao = models.CharField(max_length=100, blank=True)
+    profissao = models.ForeignKey(
+        Profissao, null=True, blank=True, on_delete=models.SET_NULL, related_name="participantes"
+    )
+    especialidade = models.CharField(
+        max_length=150, blank=True, help_text="Só preenchido quando a profissão tem especialidade."
+    )
     faixa_renda = models.CharField(max_length=10, choices=FaixaRenda.choices, blank=True)
     situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.PENDENTE)
+
+    cadastro_incompleto = models.BooleanField(
+        default=False,
+        help_text=(
+            "Marcado automaticamente quando o cadastro veio de um lote legado sem "
+            "telefone, data de nascimento, UF, cidade ou CPF — algum desses campos "
+            "ficou com um valor de preenchimento (\"Não informado\"/data placeholder) "
+            "em vez do dado real. Sinaliza quem precisa ser procurado pra completar o "
+            "cadastro depois."
+        ),
+    )
 
     forma_pagamento = models.CharField(max_length=20, choices=FormaPagamento.choices, blank=True)
     chave_pix = models.CharField(max_length=140, blank=True)
@@ -122,6 +193,8 @@ class Participante(models.Model):
 
     @property
     def cpf_mascarado(self):
+        if not self.cpf:
+            return "—"
         digitos = "".join(filter(str.isdigit, self.cpf))
         if len(digitos) != 11:
             return self.cpf

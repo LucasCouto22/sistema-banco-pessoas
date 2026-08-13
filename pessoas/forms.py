@@ -1,9 +1,33 @@
 from django import forms
 
+from accounts.models import Usuario
 from core.form_utils import personalizar_opcoes_vazias
-from projetos.models import Projeto
+from projetos.models import Perfil
 
-from .models import Participante
+from .models import Participante, Profissao
+
+
+class SelectProfissao(forms.Select):
+    """`<select>` de profissão em que cada `<option>` carrega
+    `data-especialidade="1"` quando aquela profissão tem especialidade — é
+    isso que o JS (`static/js/profissao_especialidade.js`) lê pra decidir se
+    mostra o campo de texto livre "Especialidade". Guarda o conjunto de PKs
+    com especialidade numa única consulta (não uma por `<option>`)."""
+
+    _pks_com_especialidade = None
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        pk = getattr(value, "value", value)
+        if pk in (None, ""):
+            return option
+        if self._pks_com_especialidade is None:
+            self._pks_com_especialidade = {
+                str(pk) for pk in Profissao.objects.filter(tem_especialidade=True).values_list("pk", flat=True)
+            }
+        if str(pk) in self._pks_com_especialidade:
+            option["attrs"]["data-especialidade"] = "1"
+        return option
 
 
 class ParticipanteForm(forms.ModelForm):
@@ -11,6 +35,12 @@ class ParticipanteForm(forms.ModelForm):
         label="O participante aceitou o Termo de Consentimento LGPD vigente",
         required=True,
     )
+    # UF vira lista fixa (só 27 opções, não muda) e Cidade vira uma lista
+    # populada em JS (static/js/endereco_cep.js) a partir da API do IBGE,
+    # conforme o estado escolhido — por isso o widget nasce com só um
+    # placeholder; as opções de verdade chegam depois, no navegador.
+    uf = forms.ChoiceField(choices=[("", "Selecione…"), *Participante.UF.choices], label="UF")
+    cidade = forms.CharField(label="Cidade", widget=forms.Select())
 
     class Meta:
         model = Participante
@@ -21,11 +51,13 @@ class ParticipanteForm(forms.ModelForm):
             "genero",
             "telefone",
             "email",
-            "cidade",
-            "uf",
             "cep",
+            "uf",
+            "cidade",
+            "bairro",
             "escolaridade",
             "profissao",
+            "especialidade",
             "faixa_renda",
             "situacao",
             "forma_pagamento",
@@ -34,6 +66,8 @@ class ParticipanteForm(forms.ModelForm):
         ]
         widgets = {
             "data_nascimento": forms.DateInput(attrs={"type": "date"}),
+            "profissao": SelectProfissao(),
+            "especialidade": forms.TextInput(attrs={"placeholder": "Ex.: Cardiologista"}),
         }
         labels = {
             "nome": "Nome completo",
@@ -42,11 +76,11 @@ class ParticipanteForm(forms.ModelForm):
             "genero": "Gênero",
             "telefone": "Telefone",
             "email": "E-mail",
-            "cidade": "Cidade",
-            "uf": "UF",
             "cep": "CEP",
+            "bairro": "Bairro",
             "escolaridade": "Escolaridade",
             "profissao": "Profissão",
+            "especialidade": "Especialidade",
             "faixa_renda": "Faixa de renda",
             "situacao": "Situação",
             "forma_pagamento": "Forma de pagamento",
@@ -55,9 +89,19 @@ class ParticipanteForm(forms.ModelForm):
 
     def __init__(self, *args, pode_ver_pagamento=True, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["profissao"].empty_label = "Selecione…"
         if not pode_ver_pagamento:
             self.fields.pop("forma_pagamento")
             self.fields.pop("chave_pix")
+        # Sem isso, editar um participante existente mostraria o campo Cidade
+        # vazio (o `<select>` só ganha as opções de verdade via JS, depois
+        # que o estado é escolhido) — injeta a cidade atual como a única
+        # opção válida até o JS repopular a lista de verdade.
+        cidade_atual = self.initial.get("cidade") or (self.instance.cidade if self.instance and self.instance.pk else "")
+        if cidade_atual:
+            self.fields["cidade"].widget.choices = [("", "Selecione…"), (cidade_atual, cidade_atual)]
+        else:
+            self.fields["cidade"].widget.choices = [("", "Selecione o estado primeiro")]
         personalizar_opcoes_vazias(self)
 
 
@@ -74,6 +118,12 @@ class ParticipanteWizardForm(ParticipanteForm):
         super().__init__(*args, **kwargs)
         self.fields.pop("situacao", None)
         self.fields.pop("consentimento_lgpd", None)
+        # O formset manual do wizard tem N linhas de uma vez — não vale a pena
+        # religar a busca de CEP/estado→cidade por JS em cada uma. Volta UF e
+        # Cidade a serem texto livre, como sempre foram aqui (CSV também só
+        # manda essas colunas como texto puro).
+        self.fields["uf"] = forms.CharField(label="UF", max_length=2)
+        self.fields["cidade"] = forms.CharField(label="Cidade")
 
 
 def participante_wizard_formset(extra=0):
@@ -92,13 +142,39 @@ class CadastroPublicoForm(ParticipanteForm):
 
 
 class EscolherProjetoWizardForm(forms.Form):
-    projeto = forms.ModelChoiceField(
-        queryset=Projeto.objects.exclude(status=Projeto.Status.CONCLUIDO),
+    # Perfis de projeto concluído continuam na lista de propósito — é
+    # exatamente o caso de uso de um lote legado (`legado` abaixo), que
+    # quase sempre é de um projeto que já terminou há tempos.
+    perfil = forms.ModelChoiceField(
+        queryset=Perfil.objects.select_related("projeto").order_by("projeto__nome", "nome"),
         required=False,
-        empty_label="Apenas para o Banco de Pessoas (sem projeto)",
-        label="Associar os novos participantes a um projeto?",
+        empty_label="Apenas para o Banco de Pessoas (sem perfil)",
+        label="Associar os novos participantes a um perfil?",
+    )
+    recrutador = forms.ModelChoiceField(
+        queryset=Usuario.objects.filter(is_active=True).order_by("first_name", "username"),
+        required=False,
+        empty_label="Eu mesmo(a) — quem está enviando este lote",
+        label="Recrutador responsável por este lote",
+        help_text="Fica registrado como quem indicou os participantes criados neste lote.",
+    )
+    legado = forms.BooleanField(
+        required=False,
+        label="Este lote é de um projeto legado (já concluído) — só preencher o Banco de Pessoas",
+        help_text=(
+            "Aceita os dados da planilha como vierem, sem exigir campos obrigatórios "
+            "completos nem bloquear por formato — só confere que não é a mesma pessoa já "
+            "cadastrada. Cadastros com dado faltando ficam marcados pra atualizar depois."
+        ),
     )
 
 
 class UploadCSVForm(forms.Form):
-    arquivo = forms.FileField(label="Planilha (.csv)")
+    arquivo = forms.FileField(label="Planilha (.xlsx ou .csv)")
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data["arquivo"]
+        nome = (arquivo.name or "").lower()
+        if not nome.endswith((".xlsx", ".csv")):
+            raise forms.ValidationError("Envie um arquivo .xlsx ou .csv.")
+        return arquivo

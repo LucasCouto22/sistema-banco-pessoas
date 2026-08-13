@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load perms_extras %}
+{% block titulo %}Variáveis · Qualy Vortice{% endblock %}
+{% block crumbs %}Variáveis{% endblock %}
+{% block conteudo %}
+<div class="view-title">
+  <div><h2>Variáveis</h2><p class="sub">Campos dinâmicos que podem ser combinados em formulários de projeto</p></div>
+  {% if request.user|tem_permissao:"variaveis.gerenciar" %}
+  <a class="btn btn-primary" href="{% url 'formularios:variavel_novo' %}">＋ Nova variável</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Nome</th><th>Chave</th><th>Tipo de resposta</th><th>Obrigatória</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for v in variaveis %}
+      <tr>
+        <td class="cell-main">{{ v.nome }}</td>
+        <td class="mono">{{ v.chave }}</td>
+        <td>{{ v.tipo_resposta.descricao }}</td>
+        <td>{% if v.obrigatoria %}<span class="badge b-amber">Sim</span>{% else %}<span class="badge b-gray">Não</span>{% endif %}</td>
+        <td>{% if v.ativa %}<span class="badge b-green">Ativa</span>{% else %}<span class="badge b-gray">Inativa</span>{% endif %}</td>
+        <td style="display:flex;gap:6px;justify-content:flex-end">
+          {% if request.user|tem_permissao:"variaveis.gerenciar" %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'formularios:variavel_editar' v.pk %}">Editar</a>
+          {% endif %}
+          {% if request.user|tem_permissao:"variaveis.excluir" %}
+          <a class="btn btn-ghost btn-sm" style="border-color:#F7C9C0;color:#B03225" href="{% url 'formularios:variavel_excluir' v.pk %}">Excluir</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="empty">Nenhuma variável cadastrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

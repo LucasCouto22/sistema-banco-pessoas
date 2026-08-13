@@ -8,10 +8,20 @@
   <form method="post">
     {% csrf_token %}
     <div class="field">
-      <label for="{{ form.projeto.id_for_label }}">{{ form.projeto.label }}</label>
-      {{ form.projeto }}
-      {% for erro in form.projeto.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+      <label for="{{ form.perfil.id_for_label }}">{{ form.perfil.label }}</label>
+      {{ form.perfil }}
+      {% for erro in form.perfil.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
     </div>
+    <div class="field">
+      <label for="{{ form.recrutador.id_for_label }}">{{ form.recrutador.label }}</label>
+      {{ form.recrutador }}
+      {% if form.recrutador.help_text %}<p class="hint">{{ form.recrutador.help_text }}</p>{% endif %}
+      {% for erro in form.recrutador.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+    </div>
+    <div class="check" style="margin-bottom:14px">
+      {{ form.legado }}<label for="{{ form.legado.id_for_label }}">{{ form.legado.label }}</label>
+    </div>
+    {% if form.legado.help_text %}<p class="hint" style="margin-top:-8px;margin-bottom:14px">{{ form.legado.help_text }}</p>{% endif %}
     <button class="btn btn-primary btn-block" type="submit">Continuar</button>
   </form>
 </div>

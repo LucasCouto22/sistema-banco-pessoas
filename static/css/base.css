@@ -139,6 +139,9 @@ input,select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink)}
 .panel + .panel{margin-top:18px}
 .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;flex-wrap:wrap}
 .search input{padding:8px 12px;border:1px solid var(--line);border-radius:11px;width:220px;background:#fff}
+.filtros{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.filtros input,.filtros select{padding:8px 12px;border:1px solid var(--line);border-radius:11px;background:#fff}
+.filtros input{width:200px}
 table{width:100%;border-collapse:collapse;font-size:.86rem}
 th{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);text-align:left;
   padding:10px 16px;background:#F6F4FC;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -203,6 +206,33 @@ legend{font-family:var(--disp);font-weight:700;font-size:.9rem;color:var(--ink);
   padding:7px 0;font-size:.84rem;font-weight:700;color:var(--mut);cursor:pointer;user-select:none}
 .rating-group input{position:absolute;opacity:0;pointer-events:none}
 .rating-group input:checked + label,.rating-group label:has(input:checked){background:var(--violet);border-color:var(--violet);color:#fff}
+
+/* Estrelas de avaliação (1 a 5) — os rádios nascem em ordem 5→1 no HTML
+   (ver participacoes/forms.py::NOTAS) e a linha vira 1→5 na tela por causa
+   do row-reverse; o seletor de irmãos gerais (~) pinta a estrela marcada
+   e todas as que vieram antes dela no HTML — ou seja, todas à esquerda
+   dela na tela. Só CSS, sem precisar de JS pra "pintar" nada. */
+.star-rating{display:inline-flex;flex-direction:row-reverse;gap:3px}
+.star-rating input{position:absolute;opacity:0;pointer-events:none}
+.star-rating label{font-size:1.6rem;line-height:1;color:#E4E0EF;cursor:pointer;user-select:none;transition:color .1s}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label{color:var(--amber)}
+
+/* ============ MODAL ============ */
+.overlay{position:fixed;inset:0;background:rgba(23,18,33,.55);backdrop-filter:blur(2px);display:none;
+  align-items:flex-start;justify-content:center;padding:42px 16px;overflow:auto;z-index:60}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:640px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.modal.slim{max-width:480px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:1.08rem;font-weight:800}
+.modal-x{background:#F2F0F9;border:none;font-size:1.15rem;color:var(--mut);line-height:1;
+  width:30px;height:30px;border-radius:9px;cursor:pointer}
+.modal-x:hover{background:var(--violet-soft);color:var(--violet-deep)}
+.modal-body{padding:20px 24px;max-height:64vh;overflow:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--line);
+  background:#FAF9FE;border-radius:0 0 20px 20px}
 
 .matriz{width:100%;border-collapse:collapse}
 .matriz th,.matriz td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:center;font-size:.82rem}
