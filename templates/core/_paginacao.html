@@ -1,0 +1,19 @@
+{% load query_utils %}
+{% if page_obj.paginator.num_pages > 1 %}
+{% with qs=request.GET|sem_pagina %}
+<div class="paginacao">
+  <div class="pg-nav">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-ghost btn-sm" href="?{{ qs }}{% if qs %}&{% endif %}page=1">« Primeira</a>
+    <a class="btn btn-ghost btn-sm" href="?{{ qs }}{% if qs %}&{% endif %}page={{ page_obj.previous_page_number }}">‹ Anterior</a>
+    {% endif %}
+    <span class="pg-info">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-ghost btn-sm" href="?{{ qs }}{% if qs %}&{% endif %}page={{ page_obj.next_page_number }}">Próxima ›</a>
+    <a class="btn btn-ghost btn-sm" href="?{{ qs }}{% if qs %}&{% endif %}page={{ page_obj.paginator.num_pages }}">Última »</a>
+    {% endif %}
+  </div>
+  <span class="pg-total">{{ page_obj.paginator.count }} no total</span>
+</div>
+{% endwith %}
+{% endif %}

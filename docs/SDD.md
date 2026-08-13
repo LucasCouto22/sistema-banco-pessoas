@@ -1972,3 +1972,89 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     `templates/pessoas/wizard_projeto.html`, `templates/pessoas/wizard_dados_csv.html`,
     `templates/pessoas/wizard_revisao.html`, `templates/pessoas/lista.html`,
     `templates/pessoas/detalhe.html`.
+- **2026-08-13 (paginação em Pessoas/Participações + flash card de erro em qualquer
+  cadastro)** — Dois pedidos do usuário: (1) paginar as listagens de Pessoas e
+  Participações (10 por página) e fazer os downloads PDF/XLSX "considerarem a
+  paginação"; (2) trocar o jeito como erro de campo aparece nos formulários de cadastro
+  (hoje só um texto vermelho pequeno embaixo do campo, fácil de não notar num formulário
+  longo) por um "flash card" — um aviso que sobe na tela deixando claro o que deu errado.
+  - **Pergunta feita antes de codar**: com a lista paginada, o download deveria trazer só
+    a página atual (os mesmos 10 registros da tela) ou todos os resultados filtrados,
+    ignorando a página? Confirmado: **todos os filtrados, ignorando a página** — a
+    paginação vale só pra navegação na tela; o relatório continua completo, igual já
+    funciona hoje (e, pro Banco de Pessoas, ainda limitado a 50 por download, regra que já
+    existia). "Considerar a paginação" então virou: não deixar o parâmetro `page` da URL
+    contaminar o link de exportação por engano.
+  - **Paginação**: `pessoas/views.py::lista()` e `participacoes/views.py::lista()` passam
+    a paginar o queryset já filtrado com `django.core.paginator.Paginator` (constante
+    `ITENS_POR_PAGINA = 10` em cada app), usando `paginator.get_page(request.GET.get
+    ("page"))` — devolve a página pedida sem quebrar se `page` vier inválido ou fora do
+    intervalo (`get_page` já trata isso, ao contrário de `.page()`). As views de
+    exportação (`exportar()`) continuam usando a queryset completa (sem paginar) — só a
+    tela de listagem foi paginada, o relatório baixado nunca foi tocado.
+  - `core/templatetags/query_utils.py` (novo) — filtro `sem_pagina`, que reencoda
+    `request.GET` tirando a chave `page`; usado tanto nos links "‹ Anterior/Próxima›" da
+    paginação (pra montar `?...&page=N` sem duplicar) quanto nos links de PDF/XLSX (pra
+    não herdar `page=3` de quem clicou exportando estando na 3ª página — resposta da
+    pergunta acima).
+  - `templates/core/_paginacao.html` (novo, `{% include %}` nas duas listagens) —
+    Primeira/Anterior/Próxima/Última + "Página X de Y", sem numeração de página
+    individual (decisão de simplicidade: o `{% if %}` do Django não suporta bem misturar
+    `and`/`or` com precedência pra montar uma faixa de páginas com reticências tipo "1 … 4
+    5 6 … 20"; como a base de dados aqui não tem volume que justifique esse refinamento,
+    ficou só com o essencial).
+  - `templates/pessoas/lista.html` e `templates/participacoes/lista.html`: contador do
+    cabeçalho passa a usar `page_obj.paginator.count` (total real, não só o que está na
+    página); `{% include "core/_paginacao.html" %}` logo abaixo da tabela; links de PDF/
+    XLSX trocam `request.GET.urlencode` por `request.GET|sem_pagina`.
+  - **Flash card de erro**: em vez de mexer formulário por formulário, aproveitei que
+    **todo** template do sistema já renderiza erro de campo com o mesmo padrão
+    `<p class="erro">{{ erro }}</p>` (18 arquivos, confirmado por busca — Participante,
+    cadastro público, Usuário, Termo, Variável, Avaliação, formulário dinâmico, etc.) —
+    então a solução é um único mecanismo genérico, sem tocar em nenhum desses templates:
+    `static/js/flash_erros.js` roda em toda página (incluída em `base.html`, que cobre
+    todo o sistema autenticado + a tela pública de cadastro que não herda de `base.html`
+    e ganhou a inclusão à parte em `templates/publico/cadastro.html`); no `DOMContentLoaded`,
+    procura todo `p.erro` já renderizado pelo Django, sobe **um** card fixo no canto
+    superior direito juntando todos os erros da página (achando o rótulo do campo pelo
+    `<label>` mais próximo, quando existe), com botão de fechar (×). Não substitui o texto
+    vermelho abaixo do campo — os dois convivem, o card só chama atenção pra quem passaria
+    batido. Deliberadamente **não** entra na tela de revisão do wizard em lote
+    (`wizard_revisao.html`): lá os erros já aparecem numa tabela clara, linha por linha,
+    com badge e mini-formulário de correção — um card flutuante juntando erro de N linhas
+    ali seria barulho, não ajuda (e tecnicamente nem dispara, porque aquela tela usa
+    `<li>` dentro de `<ul class="wiz-erro-lista">`, não `<p class="erro">`).
+  - `static/css/base.css`: classes `.paginacao`/`.pg-nav`/`.pg-info`/`.pg-total` (mesma
+    linguagem visual dos botões `.btn-ghost` já existentes) e `#flash-erros`/`.flash-card`/
+    `.flash-close` (cartão branco com borda vermelha à esquerda, sombra, animação leve de
+    entrada deslizando da direita — mesma paleta `--red`/`--red-soft` já usada em
+    `.messages .error`).
+  - **Bug de teste pego no meio do caminho, não é bug do sistema**: montando o teste de
+    Playwright pro flash card, o clique em "Salvar participante" primeiro caiu direto na
+    tela de login — o seletor genérico `button[type="submit"]` bateu no botão "Sair"
+    (logout) da sidebar, que aparece antes no DOM. Depois, tentando desligar a validação
+    nativa do navegador pra simular envio com campo faltando, `document.querySelector
+    ("form")` pegou o formulário de logout (também antes no DOM) em vez do formulário do
+    cadastro — então o `novalidate` foi parar no form errado e o clique continuava sem
+    disparar nenhuma requisição. Corrigido escolhendo os elementos certos no teste (botão
+    pelo texto "Salvar participante"; sem precisar de `novalidate` nenhum, preenchendo os
+    campos obrigatórios de verdade). Nada disso é código do sistema — só uma armadilha do
+    próprio script de teste, registrada aqui porque o padrão ("primeiro elemento do tipo X
+    no DOM pode ser da sidebar, não do conteúdo") já se repetiu nesta sessão e vale
+    lembrar da próxima vez que for escrever um teste.
+  - Testado com Playwright: (1) `/participantes/` com 11 cadastros mostra 10 na página 1 e
+    1 na página 2, "Página 1 de 2"/"Página 2 de 2" corretos, `?page=2` na URL; (2) mesmo
+    teste em `/participacoes/`; (3) link de PDF/XLSX na página 2 de ambas as telas não
+    carrega `page=` na querystring; (4) submeti o formulário de novo participante com CPF
+    inválido (`111.111.111-11`) e cidade em branco: subiu 1 flash card no canto superior
+    direito com "CPF: CPF inválido." e "Cidade: Este campo é obrigatório." (mesmo texto
+    que já aparecia embaixo dos campos); clicar no × removeu o card; (5) confirmei que
+    nenhuma página carregada sem erro (listagens, tela de novo cadastro em branco) mostra
+    o card à toa — só sobe quando existe pelo menos um `p.erro` real na página. Zero
+    participantes de teste sobraram no banco (as tentativas com CPF inválido nunca chegam
+    a salvar) e zero erros de console em todo o percurso.
+  - **Segue sem commitar.** `git status` agora também inclui `core/templatetags/
+    query_utils.py` (novo), `templates/core/_paginacao.html` (novo), `static/js/
+    flash_erros.js` (novo), `static/css/base.css`, `templates/base.html`,
+    `templates/publico/cadastro.html`, `pessoas/views.py`, `participacoes/views.py`,
+    `templates/pessoas/lista.html`, `templates/participacoes/lista.html`.

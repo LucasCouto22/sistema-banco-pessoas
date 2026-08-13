@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import F
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,6 +13,8 @@ from projetos.models import Projeto
 from . import exportacao
 from .forms import AvaliacaoForm, ParticipacaoForm
 from .models import Avaliacao, Participacao
+
+ITENS_POR_PAGINA = 10
 
 
 def _participacoes_filtradas(request):
@@ -59,11 +62,14 @@ def _participacoes_filtradas(request):
 @requer_permissao("participacoes.ver")
 def lista(request):
     participacoes, filtros = _participacoes_filtradas(request)
+    paginator = Paginator(participacoes, ITENS_POR_PAGINA)
+    page_obj = paginator.get_page(request.GET.get("page"))
     return render(
         request,
         "participacoes/lista.html",
         {
-            "participacoes": participacoes,
+            "participacoes": page_obj,
+            "page_obj": page_obj,
             "projetos": Projeto.objects.all().order_by("nome"),
             "etapas": Participacao.Etapa.choices,
             "status_list": Participacao.Status.choices,

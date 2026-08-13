@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% load perms_extras %}
+{% load perms_extras query_utils %}
 {% block titulo %}Banco de Pessoas · Qualy Vortice{% endblock %}
 {% block crumbs %}Banco de Pessoas / <b>Pessoas</b>{% endblock %}
 {% block conteudo %}
 <div class="view-title">
-  <div><h2>Banco de Pessoas</h2><p class="sub">{{ participantes|length }} participante(s)</p></div>
+  <div><h2>Banco de Pessoas</h2><p class="sub">{{ page_obj.paginator.count }} participante(s)</p></div>
   {% if request.user|tem_permissao:"participantes.gerenciar" %}
   <div style="display:flex;gap:8px">
     <a class="btn btn-ghost" href="{% url 'pessoas:wizard_projeto' %}">＋ Novos participantes (lote)</a>
@@ -45,8 +45,8 @@
     </form>
     {% if pode_exportar %}
     <div style="display:flex;gap:8px">
-      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'pdf' %}?{{ request.GET.urlencode }}">⬇ PDF</a>
-      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'xlsx' %}?{{ request.GET.urlencode }}">⬇ XLSX</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'pdf' %}?{{ request.GET|sem_pagina }}">⬇ PDF</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'pessoas:exportar' 'xlsx' %}?{{ request.GET|sem_pagina }}">⬇ XLSX</a>
     </div>
     {% endif %}
   </div>
@@ -93,6 +93,7 @@
     {% endfor %}
     </tbody>
   </table></div>
+  {% include "core/_paginacao.html" %}
   <div class="lock-note" style="margin:14px 18px">Dados sensíveis (CPF, telefone, e-mail) ficam sob sigilo por padrão — revelar exige a permissão <span class="mono">participantes.revelar_pii</span> e fica registrado na Auditoria LGPD.</div>
 </div>
 {% endblock %}

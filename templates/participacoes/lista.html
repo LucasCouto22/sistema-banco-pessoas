@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static perms_extras %}
+{% load static perms_extras query_utils %}
 {% block titulo %}Participações · Qualy Vortice{% endblock %}
 {% block crumbs %}Participações / <b>Lista</b>{% endblock %}
 {% block conteudo %}
@@ -40,8 +40,8 @@
       {% endif %}
     </form>
     <div style="display:flex;gap:8px">
-      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'pdf' %}?{{ request.GET.urlencode }}">⬇ PDF</a>
-      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'xlsx' %}?{{ request.GET.urlencode }}">⬇ XLSX</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'pdf' %}?{{ request.GET|sem_pagina }}">⬇ PDF</a>
+      <a class="btn btn-soft btn-sm" href="{% url 'participacoes:exportar' 'xlsx' %}?{{ request.GET|sem_pagina }}">⬇ XLSX</a>
     </div>
   </div>
   <div class="tbl-wrap"><table>
@@ -79,6 +79,7 @@
     {% endfor %}
     </tbody>
   </table></div>
+  {% include "core/_paginacao.html" %}
 </div>
 
 {% if request.user|tem_permissao:"avaliacao.criar" %}

@@ -2,6 +2,7 @@ import io
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
@@ -45,6 +46,7 @@ from .models import Participante
 from .wizard_csv import CABECALHO_MODELO, LINHA_EXEMPLO, _exemplo_variavel, ler_planilha, variaveis_do_formulario
 
 WIZ_SESSION_KEY = "wizard_importacao"
+ITENS_POR_PAGINA = 10
 
 
 def _versao_lgpd_vigente():
@@ -93,13 +95,16 @@ def _participantes_filtrados(request):
 @ensure_csrf_cookie
 def lista(request):
     participantes, filtros = _participantes_filtrados(request)
+    paginator = Paginator(participantes, ITENS_POR_PAGINA)
+    page_obj = paginator.get_page(request.GET.get("page"))
     pode_revelar = request.user.tem_permissao("participantes.revelar_pii")
     pode_exportar = request.user.tem_permissao("participantes.exportar")
     return render(
         request,
         "pessoas/lista.html",
         {
-            "participantes": participantes,
+            "participantes": page_obj,
+            "page_obj": page_obj,
             "q": filtros["q"],
             "filtro_situacao": filtros["situacao"],
             "filtro_faixa_renda": filtros["faixa_renda"],

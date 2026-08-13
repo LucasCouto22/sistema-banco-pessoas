@@ -124,6 +124,27 @@ input,select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink)}
 .messages .success{background:var(--green-soft);color:var(--green)}
 .messages .error{background:var(--red-soft);color:#B03225}
 .messages .info{background:var(--blue-soft);color:var(--blue)}
+
+.paginacao{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+.pg-nav{display:flex;align-items:center;gap:6px}
+.pg-info{font-size:.8rem;color:var(--mut);padding:0 6px}
+.pg-total{font-size:.78rem;color:var(--mut)}
+
+#flash-erros{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;
+  gap:10px;max-width:380px}
+.flash-card{background:#fff;border-left:4px solid var(--red);border-radius:10px;
+  box-shadow:0 10px 30px rgba(220,40,90,.18);padding:14px 16px;font-size:.83rem;color:var(--ink);
+  animation:flash-in .2s ease-out}
+.flash-card h4{font-size:.85rem;font-weight:700;color:#B03225;margin-bottom:6px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.flash-card ul{margin:0;padding-left:18px}
+.flash-card li{margin-bottom:3px;line-height:1.4}
+.flash-card li b{color:var(--ink)}
+.flash-close{background:none;border:none;color:var(--mut);font-size:1rem;line-height:1;
+  cursor:pointer;padding:0 2px}
+.flash-close:hover{color:var(--ink)}
+@keyframes flash-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
 .view-title{margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}
 .view-title h2{font-size:1.45rem;font-weight:800}
 .view-title .sub{color:var(--mut);font-size:.85rem;margin-top:3px}
