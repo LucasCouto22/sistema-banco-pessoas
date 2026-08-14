@@ -22,10 +22,10 @@
         <option value="{{ valor }}" {% if filtro_situacao == valor %}selected{% endif %}>{{ rotulo }}</option>
         {% endfor %}
       </select>
-      <select name="faixa_renda" aria-label="Filtrar por classe social">
+      <select name="renda_individual" aria-label="Filtrar por classe social">
         <option value="">Todas as classes sociais</option>
         {% for valor, rotulo in faixas_renda %}
-        <option value="{{ valor }}" {% if filtro_faixa_renda == valor %}selected{% endif %}>{{ rotulo }}</option>
+        <option value="{{ valor }}" {% if filtro_renda_individual == valor %}selected{% endif %}>{{ rotulo }}</option>
         {% endfor %}
       </select>
       <select name="uf" aria-label="Filtrar por UF">
@@ -39,7 +39,7 @@
         <option value="1" {% if filtro_incompleto == "1" %}selected{% endif %}>Só cadastro incompleto</option>
       </select>
       <button class="btn btn-ghost btn-sm" type="submit">Filtrar</button>
-      {% if q or filtro_situacao or filtro_faixa_renda or filtro_uf or filtro_incompleto %}
+      {% if q or filtro_situacao or filtro_renda_individual or filtro_uf or filtro_incompleto %}
       <a class="btn btn-ghost btn-sm" href="{% url 'pessoas:lista' %}">Limpar</a>
       {% endif %}
     </form>
@@ -74,7 +74,7 @@
           <div>{% include "pessoas/_pii_campo.html" with participante=p campo="email" mascarado=p.email_mascarado %}</div>
         </td>
         <td>{{ p.idade }} anos</td>
-        <td>{{ p.get_faixa_renda_display|default:"—" }}</td>
+        <td>{{ p.get_renda_individual_display|default:"—" }}</td>
         <td>
           {% if p.situacao == "APROVADO" %}<span class="badge b-green">Aprovado</span>
           {% elif p.situacao == "DESCARTADO" %}<span class="badge b-red">Descartado</span>

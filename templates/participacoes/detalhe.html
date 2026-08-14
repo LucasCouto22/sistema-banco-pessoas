@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% load static perms_extras %}
+{% load static perms_extras static_v %}
 {% block titulo %}{{ participacao.participante.nome }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Participações / <b>{{ participacao.participante.nome }}</b>{% endblock %}
 {% block conteudo %}
 <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
   <div><h2>{{ participacao.participante.nome }}</h2>
-    <p class="sub">{{ participacao.perfil.projeto.nome }} · {{ participacao.perfil.nome }} — <span class="badge b-blue">{{ participacao.get_etapa_display }}</span></p></div>
+    <p class="sub">{{ participacao.perfil.projeto.nome }} · {{ participacao.perfil.nome }} — <span class="badge {{ participacao.etapa_badge }}">{{ participacao.get_etapa_display }}</span></p></div>
   <div style="display:flex;gap:8px">
     {% if pode_avaliar %}
     <button class="btn btn-ghost" type="button" onclick="QVModal.abrir('mAvaliar')">{% if avaliacao %}Editar avaliação{% else %}Avaliar{% endif %}</button>
@@ -13,7 +13,7 @@
   </div>
 </div>
 <div class="kpis">
-  <div class="kpi"><div class="kpi-top">Status</div><div class="v" style="font-size:1.1rem">{{ participacao.get_status_display|default:"—" }}</div></div>
+  <div class="kpi"><div class="kpi-top">Status</div><div class="v" style="font-size:1.1rem">{% if participacao.status %}<span class="badge {{ participacao.status_badge }}">{{ participacao.get_status_display }}</span>{% else %}—{% endif %}</div></div>
   <div class="kpi"><div class="kpi-top">Responsável</div><div class="v" style="font-size:1.1rem">{{ participacao.responsavel|nome_usuario }}</div></div>
   <div class="kpi"><div class="kpi-top">Na etapa desde</div><div class="v" style="font-size:1.1rem">{{ participacao.etapa_atualizada_em|date:"d/m/Y" }}</div></div>
 </div>
@@ -97,6 +97,6 @@
 
 {% block scripts %}
 {% if pode_avaliar %}
-<script src="{% static 'js/modal.js' %}" defer></script>
+<script src="{% static_v 'js/modal.js' %}" defer></script>
 {% endif %}
 {% endblock %}

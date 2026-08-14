@@ -2,6 +2,7 @@ import io
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -12,8 +13,8 @@ from accounts.permissions import requer_permissao
 from pessoas.forms import UploadCSVForm
 from pessoas.links import gerar_token_captacao
 
-from .forms import PerfilForm, ProjetoForm
-from .models import Perfil, Projeto
+from .forms import PerfilForm, ProjetoForm, montar_formset_formularios_perfil
+from .models import Perfil, PerfilFormulario, Projeto
 from .perfil_lote import associar_cpfs, ler_cpfs
 
 
@@ -24,11 +25,24 @@ def lista(request):
     return render(request, "projetos/lista.html", {"projetos": projetos})
 
 
+def _link_captacao(request, perfil):
+    """Link público de cadastro do perfil — não precisa mais de tela própria
+    pra "gerar": o token não expira por tempo (só perde validade se o
+    projeto sair de "Recrutando"), então dá pra montar na hora, direto onde
+    o link é mostrado. `recrutador_id` é sempre quem está vendo a página
+    nesse momento — cada indicação feita a partir desse link fica atribuída
+    a quem copiou, não a quem criou o perfil."""
+    token = gerar_token_captacao(perfil.id, request.user.id)
+    return request.build_absolute_uri(reverse("pessoas:cadastro_publico", args=[token]))
+
+
 @login_required
 @requer_permissao("projetos.ver")
 def detalhe(request, pk):
     projeto = get_object_or_404(Projeto, pk=pk)
-    perfis = projeto.perfis.select_related("formulario")
+    perfis = list(projeto.perfis.prefetch_related("perfil_formularios__formulario"))
+    for perfil in perfis:
+        perfil.link_cadastro = _link_captacao(request, perfil)
     return render(
         request,
         "projetos/detalhe.html",
@@ -92,22 +106,53 @@ def excluir(request, pk):
 # =========================================================================
 
 
+def _salvar_perfil_com_formularios(form, formset, projeto=None):
+    """Espelha `formularios/views.py::_salvar_formulario_com_variaveis` —
+    salva o Perfil e sincroniza seus `PerfilFormulario` (inclui/atualiza
+    ordem dos marcados, remove os desmarcados) numa transação só."""
+    if not (form.is_valid() and formset.is_valid()):
+        return False
+
+    with transaction.atomic():
+        perfil = form.save(commit=False)
+        if projeto is not None:
+            perfil.projeto = projeto
+        perfil.save()
+
+        incluidos = {}
+        for subform in formset.forms:
+            if not subform.cleaned_data.get("incluir"):
+                continue
+            incluidos[subform.cleaned_data["formulario_id"]] = subform.cleaned_data.get("ordem") or 0
+
+        PerfilFormulario.objects.filter(perfil=perfil).exclude(
+            formulario_id__in=incluidos.keys()
+        ).delete()
+        for formulario_id, ordem in incluidos.items():
+            PerfilFormulario.objects.update_or_create(
+                perfil=perfil, formulario_id=formulario_id, defaults={"ordem": ordem}
+            )
+    return perfil
+
+
 @login_required
 @requer_permissao("projetos.gerenciar")
 def perfil_novo(request, projeto_pk):
     projeto = get_object_or_404(Projeto, pk=projeto_pk)
     if request.method == "POST":
         form = PerfilForm(request.POST)
-        if form.is_valid():
-            perfil = form.save(commit=False)
-            perfil.projeto = projeto
-            perfil.save()
+        linhas, formset = montar_formset_formularios_perfil(data=request.POST)
+        perfil = _salvar_perfil_com_formularios(form, formset, projeto=projeto)
+        if perfil:
             messages.success(request, f'Perfil "{perfil.nome}" criado.')
             return redirect("projetos:detalhe", pk=projeto.pk)
     else:
         form = PerfilForm()
+        linhas, formset = montar_formset_formularios_perfil()
     return render(
-        request, "projetos/perfil_form.html", {"form": form, "projeto": projeto, "titulo": "Novo perfil"}
+        request,
+        "projetos/perfil_form.html",
+        {"form": form, "formset": formset, "linhas": linhas, "projeto": projeto, "titulo": "Novo perfil"},
     )
 
 
@@ -117,16 +162,23 @@ def perfil_editar(request, pk):
     perfil = get_object_or_404(Perfil.objects.select_related("projeto"), pk=pk)
     if request.method == "POST":
         form = PerfilForm(request.POST, instance=perfil)
-        if form.is_valid():
-            form.save()
+        linhas, formset = montar_formset_formularios_perfil(perfil=perfil, data=request.POST)
+        if _salvar_perfil_com_formularios(form, formset):
             messages.success(request, "Perfil atualizado.")
             return redirect("projetos:detalhe", pk=perfil.projeto_id)
     else:
         form = PerfilForm(instance=perfil)
+        linhas, formset = montar_formset_formularios_perfil(perfil=perfil)
     return render(
         request,
         "projetos/perfil_form.html",
-        {"form": form, "projeto": perfil.projeto, "titulo": f"Editar {perfil.nome}"},
+        {
+            "form": form,
+            "formset": formset,
+            "linhas": linhas,
+            "projeto": perfil.projeto,
+            "titulo": f"Editar {perfil.nome}",
+        },
     )
 
 
@@ -146,8 +198,11 @@ def perfil_excluir(request, pk):
 @login_required
 @requer_permissao("projetos.ver")
 def perfil_detalhe(request, pk):
-    perfil = get_object_or_404(Perfil.objects.select_related("projeto", "formulario"), pk=pk)
+    perfil = get_object_or_404(
+        Perfil.objects.select_related("projeto").prefetch_related("perfil_formularios__formulario"), pk=pk
+    )
     participacoes = perfil.participacoes.select_related("participante", "responsavel")
+    perfil.link_cadastro = _link_captacao(request, perfil)
     return render(
         request,
         "projetos/perfil_detalhe.html",
@@ -158,15 +213,6 @@ def perfil_detalhe(request, pk):
             "pode_associar": request.user.tem_permissao("participacoes.mover_etapa"),
         },
     )
-
-
-@login_required
-@requer_permissao("projetos.gerenciar")
-def perfil_link(request, pk):
-    perfil = get_object_or_404(Perfil.objects.select_related("projeto"), pk=pk)
-    token = gerar_token_captacao(perfil.id, request.user.id)
-    link = request.build_absolute_uri(reverse("pessoas:cadastro_publico", args=[token]))
-    return render(request, "projetos/perfil_link.html", {"perfil": perfil, "link": link})
 
 
 @login_required

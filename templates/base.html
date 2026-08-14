@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block titulo %}Qualy Vortice{% endblock %}</title>
 <link rel="stylesheet" href="{% static_v 'css/base.css' %}">
-<script src="{% static 'js/pii.js' %}" defer></script>
+<script src="{% static_v 'js/pii.js' %}" defer></script>
 </head>
 <body>
 {% if user.is_authenticated %}
@@ -126,6 +126,8 @@
 {% block conteudo_publico %}{% endblock %}
 {% endif %}
 <div id="flash-erros"></div>
-<script src="{% static 'js/flash_erros.js' %}" defer></script>
+<script src="{% static_v 'js/flash_erros.js' %}" defer></script>
+<script src="{% static_v 'js/dropdown_multiselect.js' %}" defer></script>
+<script src="{% static_v 'js/copiar_link.js' %}" defer></script>
 </body>
 </html>

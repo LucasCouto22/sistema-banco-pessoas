@@ -43,7 +43,13 @@ from .matching import (
     restaurar_campos_vazios,
 )
 from .models import Participante
-from .wizard_csv import CABECALHO_MODELO, LINHA_EXEMPLO, _exemplo_variavel, ler_planilha, variaveis_do_formulario
+from .wizard_csv import (
+    CABECALHO_MODELO,
+    LINHA_EXEMPLO,
+    _exemplo_variavel,
+    ler_planilha,
+    variaveis_dos_formularios,
+)
 
 WIZ_SESSION_KEY = "wizard_importacao"
 ITENS_POR_PAGINA = 10
@@ -60,7 +66,7 @@ def _versao_lgpd_vigente():
 def _participantes_filtrados(request):
     q = request.GET.get("q", "").strip()
     situacao = request.GET.get("situacao", "").strip()
-    faixa_renda = request.GET.get("faixa_renda", "").strip()
+    renda_individual = request.GET.get("renda_individual", "").strip()
     uf = request.GET.get("uf", "").strip()
     incompleto = request.GET.get("incompleto", "").strip()
 
@@ -71,8 +77,8 @@ def _participantes_filtrados(request):
         )
     if situacao:
         participantes = participantes.filter(situacao=situacao)
-    if faixa_renda:
-        participantes = participantes.filter(faixa_renda=faixa_renda)
+    if renda_individual:
+        participantes = participantes.filter(renda_individual=renda_individual)
     if uf:
         participantes = participantes.filter(uf=uf)
     if incompleto == "1":
@@ -82,8 +88,10 @@ def _participantes_filtrados(request):
         "q": q,
         "situacao": situacao,
         "situacao_label": dict(Participante.Situacao.choices).get(situacao, situacao),
-        "faixa_renda": faixa_renda,
-        "faixa_renda_label": dict(Participante.FaixaRenda.choices).get(faixa_renda, faixa_renda),
+        "renda_individual": renda_individual,
+        "renda_individual_label": dict(Participante.FaixaRendaIndividual.choices).get(
+            renda_individual, renda_individual
+        ),
         "uf": uf,
         "incompleto": incompleto,
     }
@@ -107,11 +115,11 @@ def lista(request):
             "page_obj": page_obj,
             "q": filtros["q"],
             "filtro_situacao": filtros["situacao"],
-            "filtro_faixa_renda": filtros["faixa_renda"],
+            "filtro_renda_individual": filtros["renda_individual"],
             "filtro_uf": filtros["uf"],
             "filtro_incompleto": filtros["incompleto"],
             "situacoes": Participante.Situacao.choices,
-            "faixas_renda": Participante.FaixaRenda.choices,
+            "faixas_renda": Participante.FaixaRendaIndividual.choices,
             "ufs": Participante.UF.choices,
             "pode_revelar": pode_revelar,
             "pode_exportar": pode_exportar,
@@ -278,7 +286,7 @@ def editar(request, pk):
 WIZ_STEPS = ["Banco de dados", "Novos participantes", "Dados", "Revisão"]
 
 
-def _validar_linha_csv(dados, formulario=None, legado=False):
+def _validar_linha_csv(dados, formularios=None, legado=False):
     dados = dict(dados)
     dados.setdefault("situacao", Participante.Situacao.PENDENTE)
 
@@ -321,19 +329,22 @@ def _validar_linha_csv(dados, formulario=None, legado=False):
     if not valido:
         erros.update({campo: [str(e) for e in lista] for campo, lista in form.errors.items()})
 
-    if formulario is not None:
-        form_dinamico, _linhas = construir_form_resposta(formulario, data=dados)
-        if not form_dinamico.is_valid():
-            valido = False
-            # Erro mostrado com o nome da pergunta (ex.: "Cor favorita"), não
-            # a chave interna (ex.: "cor_favorita") — mais legível na revisão.
-            rotulo_por_chave = {fv.variavel.chave: fv.variavel.nome for fv in variaveis_do_formulario(formulario)}
-            erros.update(
-                {
-                    rotulo_por_chave.get(campo, campo): [str(e) for e in lista]
-                    for campo, lista in form_dinamico.errors.items()
-                }
-            )
+    if formularios:
+        # Erro mostrado com o nome da pergunta (ex.: "Cor favorita"), não
+        # a chave interna (ex.: "cor_favorita") — mais legível na revisão.
+        # O rótulo é montado uma vez, combinando as variáveis de todos os
+        # formulários do perfil (chave já é única globalmente).
+        rotulo_por_chave = {fv.variavel.chave: fv.variavel.nome for fv in variaveis_dos_formularios(formularios)}
+        for formulario in formularios:
+            form_dinamico, _linhas = construir_form_resposta(formulario, data=dados)
+            if not form_dinamico.is_valid():
+                valido = False
+                erros.update(
+                    {
+                        rotulo_por_chave.get(campo, campo): [str(e) for e in lista]
+                        for campo, lista in form_dinamico.errors.items()
+                    }
+                )
 
     return {
         "dados": dados,
@@ -396,16 +407,21 @@ def wizard_modo(request):
     )
 
 
-def _perfil_e_formulario_do_wizard(estado):
+def _perfil_e_formularios_do_wizard(estado):
     """Perfil escolhido no passo 1 do wizard (`None` se for "sem perfil") e
-    o formulário desse perfil, se tiver algum — usado pra planilha do CSV,
-    pro modelo de exemplo e pra gravar as respostas do formulário na
-    revisão final."""
+    a lista ordenada dos formulários desse perfil (pode ser vazia) — usado
+    pra planilha do CSV, pro modelo de exemplo e pra gravar as respostas
+    dos formulários na revisão final."""
     if not estado or not estado.get("perfil_id"):
-        return None, None
-    perfil = Perfil.objects.select_related("projeto", "formulario").filter(pk=estado["perfil_id"]).first()
-    formulario = perfil.formulario if perfil and perfil.formulario_id else None
-    return perfil, formulario
+        return None, []
+    perfil = (
+        Perfil.objects.select_related("projeto")
+        .prefetch_related("perfil_formularios__formulario")
+        .filter(pk=estado["perfil_id"])
+        .first()
+    )
+    formularios = perfil.formularios_ordenados if perfil else []
+    return perfil, formularios
 
 
 @login_required
@@ -414,13 +430,13 @@ def wizard_dados_csv(request):
     estado = request.session.get(WIZ_SESSION_KEY)
     if estado is None or estado.get("modo") != "CSV":
         return redirect("pessoas:wizard_projeto")
-    _perfil, formulario = _perfil_e_formulario_do_wizard(estado)
+    _perfil, formularios = _perfil_e_formularios_do_wizard(estado)
 
     if request.method == "POST":
         form = UploadCSVForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                linhas_planilha = ler_planilha(form.cleaned_data["arquivo"], formulario)
+                linhas_planilha = ler_planilha(form.cleaned_data["arquivo"], formularios)
             except Exception:
                 linhas_planilha = None
                 messages.error(
@@ -431,7 +447,7 @@ def wizard_dados_csv(request):
             elif linhas_planilha:
                 legado = estado.get("legado", False)
                 estado["linhas"] = [
-                    _validar_linha_csv(dados, formulario, legado) for dados in linhas_planilha
+                    _validar_linha_csv(dados, formularios, legado) for dados in linhas_planilha
                 ]
                 request.session[WIZ_SESSION_KEY] = estado
                 return redirect("pessoas:wizard_revisao")
@@ -442,7 +458,7 @@ def wizard_dados_csv(request):
         "pessoas/wizard_dados_csv.html",
         {
             "form": form,
-            "formulario": formulario,
+            "formularios": formularios,
             "legado": estado.get("legado", False),
             "steps": WIZ_STEPS,
             "step_atual": 2,
@@ -454,15 +470,14 @@ def wizard_dados_csv(request):
 @requer_permissao("participantes.gerenciar")
 def wizard_modelo_csv(request):
     estado = request.session.get(WIZ_SESSION_KEY)
-    _perfil, formulario = _perfil_e_formulario_do_wizard(estado)
+    _perfil, formularios = _perfil_e_formularios_do_wizard(estado)
 
     cabecalho = list(CABECALHO_MODELO)
     linha_exemplo = list(LINHA_EXEMPLO)
-    if formulario is not None:
-        for fv in variaveis_do_formulario(formulario):
-            rotulo = fv.variavel.nome + (" *" if fv.variavel.obrigatoria else "")
-            cabecalho.append(rotulo)
-            linha_exemplo.append(_exemplo_variavel(fv.variavel))
+    for fv in variaveis_dos_formularios(formularios):
+        rotulo = fv.variavel.nome + (" *" if fv.variavel.obrigatoria else "")
+        cabecalho.append(rotulo)
+        linha_exemplo.append(_exemplo_variavel(fv.variavel))
 
     wb = Workbook()
     ws = wb.active
@@ -570,12 +585,15 @@ def wizard_revisao(request):
         return redirect("pessoas:wizard_projeto")
 
     linhas = estado["linhas"]
-    perfil, formulario = _perfil_e_formulario_do_wizard(estado)
-    # As respostas do formulário do perfil só existem pra quem veio da
+    perfil, formularios = _perfil_e_formularios_do_wizard(estado)
+    # As respostas dos formulários do perfil só existem pra quem veio da
     # planilha (`ler_planilha()` já sabe extrair as colunas certas) — o
     # formset manual não tem campo nenhum pra essas perguntas, então não dá
     # pra exigir/gravar resposta de formulário nesse caminho.
-    formulario_da_planilha = formulario if estado.get("modo") == "CSV" else None
+    formularios_da_planilha = formularios if estado.get("modo") == "CSV" else []
+    rotulo_por_chave = {
+        fv.variavel.chave: fv.variavel.nome for fv in variaveis_dos_formularios(formularios_da_planilha)
+    }
     campos_editaveis = list(ParticipanteWizardForm().fields.keys())
 
     if request.method == "POST":
@@ -638,7 +656,7 @@ def wizard_revisao(request):
                 valores_originais = capturar_valores_atuais(existente) if existente else None
                 participante = existente or Participante()
                 aplicar_dados_legado(participante, dados, campos_incompletos, existente, valores_originais)
-                form_dinamico = None
+                forms_dinamicos = []
             else:
                 existente = encontrar_participante_existente(
                     dados.get("cpf", ""), dados.get("email", ""), dados.get("telefone", "")
@@ -647,26 +665,26 @@ def wizard_revisao(request):
                 form = ParticipanteWizardForm(data=dados, instance=existente)
                 valido = form.is_valid()
 
-                form_dinamico = None
-                if formulario_da_planilha is not None:
-                    form_dinamico, _campos_dinamicos = construir_form_resposta(formulario_da_planilha, data=dados)
+                # Um form dinâmico por formulário do perfil — cada um vira
+                # uma `RespostaFormulario` separada depois de salvar.
+                forms_dinamicos = []
+                for formulario in formularios_da_planilha:
+                    form_dinamico, _campos_dinamicos = construir_form_resposta(formulario, data=dados)
+                    forms_dinamicos.append((formulario, form_dinamico))
                     valido = valido and form_dinamico.is_valid()
 
                 if not (valido and aceite):
                     erros = {}
                     if not form.is_valid():
                         erros.update({c: [str(e) for e in lst] for c, lst in form.errors.items()})
-                    if form_dinamico is not None and not form_dinamico.is_valid():
-                        rotulo_por_chave = {
-                            fv.variavel.chave: fv.variavel.nome
-                            for fv in variaveis_do_formulario(formulario_da_planilha)
-                        }
-                        erros.update(
-                            {
-                                rotulo_por_chave.get(c, c): [str(e) for e in lst]
-                                for c, lst in form_dinamico.errors.items()
-                            }
-                        )
+                    for _formulario, form_dinamico in forms_dinamicos:
+                        if not form_dinamico.is_valid():
+                            erros.update(
+                                {
+                                    rotulo_por_chave.get(c, c): [str(e) for e in lst]
+                                    for c, lst in form_dinamico.errors.items()
+                                }
+                            )
                     if valido and not aceite:
                         erros["Consentimento"] = ["Marque o consentimento LGPD pra importar esta linha."]
                     restantes.append(
@@ -718,10 +736,10 @@ def wizard_revisao(request):
                     perfil=perfil,
                     defaults={"etapa": Participacao.Etapa.ANALISE_PERFIL, "responsavel": request.user},
                 )
-                if form_dinamico is not None:
+                for formulario, form_dinamico in forms_dinamicos:
                     RespostaFormulario.objects.update_or_create(
                         participacao=participacao,
-                        formulario=formulario_da_planilha,
+                        formulario=formulario,
                         defaults={"respostas_variaveis": form_dinamico.cleaned_data},
                     )
 
@@ -799,8 +817,14 @@ def descartar(request, pk):
     participante = get_object_or_404(Participante, pk=pk)
     participante.situacao = Participante.Situacao.DESCARTADO
     participante.save(update_fields=["situacao"])
+    # Limpa participações que ainda não passaram de revisão inicial — tanto
+    # quem acabou de se cadastrar pelo link (Preenchimento de Dados) quanto
+    # quem já foi pra Análise de Perfil sem ainda ter avançado mais no
+    # funil. Quem já passou dessas duas etapas fica intocado (descartar o
+    # participante não deveria apagar um histórico de funil já avançado).
     Participacao.objects.filter(
-        participante=participante, etapa=Participacao.Etapa.ANALISE_PERFIL
+        participante=participante,
+        etapa__in=[Participacao.Etapa.PREENCHIMENTO_DADOS, Participacao.Etapa.ANALISE_PERFIL],
     ).delete()
     registrar(request.user, participante.codigo, RegistroAcesso.Acao.ALTERACAO, "Participante descartado na triagem")
     messages.info(request, f"{participante.nome} descartado(a).")
@@ -813,17 +837,17 @@ def descartar(request, pk):
 
 
 def _form_dinamico_do_perfil(perfil, data=None):
-    """Devolve uma lista com no máximo 1 item — o formulário do perfil (se
-    tiver algum e estiver ativo) já montado por
-    `formularios/respostas.py::construir_form_resposta`. Continua sendo uma
-    lista (em vez de um valor só) pra reaproveitar o mesmo `{% for %}` do
-    template sem mudar a estrutura — antes um projeto podia ter vários
-    formulários (via `ProjetoFormulario`), agora cada perfil tem no máximo
-    um."""
-    if not perfil.formulario_id or not perfil.formulario.ativo:
-        return []
-    form_dinamico, linhas = construir_form_resposta(perfil.formulario, data=data)
-    return [{"formulario": perfil.formulario, "form": form_dinamico, "linhas": linhas}]
+    """Devolve uma lista com um item por formulário ativo do perfil (na
+    ordem escolhida na tela do perfil), cada um já montado por
+    `formularios/respostas.py::construir_form_resposta` — pronta pra
+    iterar num único `{% for %}` no template."""
+    itens = []
+    for formulario in perfil.formularios_ordenados:
+        if not formulario.ativo:
+            continue
+        form_dinamico, linhas = construir_form_resposta(formulario, data=data)
+        itens.append({"formulario": formulario, "form": form_dinamico, "linhas": linhas})
+    return itens
 
 
 def cadastro_publico(request, token):
@@ -836,7 +860,8 @@ def cadastro_publico(request, token):
     # está "Recrutando". Sai desse status (em campo, concluído, o que for) e o
     # link para de aceitar novos cadastros sozinho, sem precisar gerar outro.
     perfil = (
-        Perfil.objects.select_related("projeto", "formulario")
+        Perfil.objects.select_related("projeto")
+        .prefetch_related("perfil_formularios__formulario")
         .filter(pk=payload["perfil_id"], projeto__status=Projeto.Status.RECRUTANDO)
         .first()
     )
@@ -880,10 +905,14 @@ def cadastro_publico(request, token):
                         participante, versao_lgpd,
                         origem=AceiteTermo.Origem.PUBLICO, request=request, registrado_por=recrutador,
                     )
+                # Etapa inicial é "Preenchimento de Dados" — é literalmente
+                # o que acabou de acontecer aqui (a pessoa preencheu os
+                # dados pelo link público). A equipe analisa o perfil depois,
+                # como próximo passo do funil.
                 participacao, _criada = Participacao.objects.get_or_create(
                     participante=participante,
                     perfil=perfil,
-                    defaults={"etapa": Participacao.Etapa.ANALISE_PERFIL, "responsavel": recrutador},
+                    defaults={"etapa": Participacao.Etapa.PREENCHIMENTO_DADOS, "responsavel": recrutador},
                 )
                 for fd in forms_dinamicos:
                     if not fd["linhas"]:

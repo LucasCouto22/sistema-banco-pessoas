@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static static_v %}
 {% block titulo %}Painel · Qualy Vortice{% endblock %}
 {% block crumbs %}Painel / <b>Resumo</b>{% endblock %}
 {% block conteudo %}
@@ -103,6 +103,6 @@
 
 {% block scripts %}
 {% if dash_participantes_json %}
-<script src="{% static 'js/dashboard.js' %}" defer></script>
+<script src="{% static_v 'js/dashboard.js' %}" defer></script>
 {% endif %}
 {% endblock %}

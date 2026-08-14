@@ -34,11 +34,11 @@
     {% for perfil in perfis %}
       <tr>
         <td class="cell-main"><a href="{% url 'projetos:perfil_detalhe' perfil.pk %}">{{ perfil.nome }}</a></td>
-        <td>{{ perfil.formulario|default:"—" }}</td>
+        <td>{% for f in perfil.formularios_ordenados %}{{ f.nome }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
         <td>{{ perfil.ocupadas }}</td>
         <td style="display:flex;gap:6px;justify-content:flex-end">
           {% if pode_editar %}
-          <a class="btn btn-ghost btn-sm" href="{% url 'projetos:perfil_link' perfil.pk %}">Link</a>
+          <button type="button" class="btn btn-ghost btn-sm" data-copiar="{{ perfil.link_cadastro }}">Copiar link</button>
           <a class="btn btn-ghost btn-sm" href="{% url 'projetos:perfil_editar' perfil.pk %}">Editar</a>
           {% endif %}
           <a class="btn btn-ghost btn-sm" href="{% url 'projetos:perfil_detalhe' perfil.pk %}">Ver</a>

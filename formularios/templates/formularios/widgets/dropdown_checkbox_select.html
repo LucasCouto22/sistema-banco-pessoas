@@ -1,0 +1,22 @@
+{% with id=widget.attrs.id %}
+<div class="dropdown-multiselect">
+  <button type="button" class="dropdown-multiselect-trigger">
+    <span class="dropdown-multiselect-label">Selecione…</span>
+    <span class="dropdown-multiselect-arrow">▾</span>
+  </button>
+  <div class="dropdown-multiselect-panel">
+    <input type="text" class="dropdown-multiselect-busca" placeholder="Buscar…">
+    <p class="dropdown-multiselect-vazio" hidden>Nada encontrado.</p>
+    <div class="dropdown-multiselect-opcoes"{% if id %} id="{{ id }}"{% endif %}>
+      {% for group, options, index in widget.optgroups %}
+        {% for option in options %}
+        <label class="dropdown-multiselect-opcao">
+          {% include "django/forms/widgets/input.html" with widget=option %}
+          <span>{{ option.label }}</span>
+        </label>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endwith %}

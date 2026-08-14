@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static perms_extras query_utils %}
+{% load static perms_extras query_utils static_v %}
 {% block titulo %}Participações · Qualy Vortice{% endblock %}
 {% block crumbs %}Participações / <b>Lista</b>{% endblock %}
 {% block conteudo %}
@@ -52,8 +52,37 @@
         <td class="cell-main">{{ part.participante.nome }}</td>
         <td>{{ part.perfil.projeto.nome }}</td>
         <td>{{ part.perfil.nome }}</td>
-        <td><span class="badge b-blue">{{ part.get_etapa_display }}</span></td>
-        <td>{{ part.get_status_display|default:"—" }}</td>
+        <td>
+          {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
+          <form method="post" action="{% url 'participacoes:mudar_etapa' part.pk %}" class="status-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="etapa" class="status-select {{ part.etapa_badge }}" onchange="this.form.submit()">
+              {% for valor, rotulo in etapas %}
+              <option value="{{ valor }}" {% if part.etapa == valor %}selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% else %}
+          <span class="badge {{ part.etapa_badge }}">{{ part.get_etapa_display }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
+          <form method="post" action="{% url 'participacoes:mudar_status' part.pk %}" class="status-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="status" class="status-select {% if part.status %}{{ part.status_badge }}{% else %}b-gray{% endif %}" onchange="this.form.submit()">
+              <option value="" {% if not part.status %}selected{% endif %}>Sem status</option>
+              {% for valor, rotulo in status_list %}
+              <option value="{{ valor }}" {% if part.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% elif part.status %}
+          <span class="badge {{ part.status_badge }}">{{ part.get_status_display }}</span>
+          {% else %}—{% endif %}
+        </td>
         <td>{{ part.responsavel|nome_usuario }}</td>
         <td>{{ part.avaliacao.nota_geral|default:"—" }}</td>
         <td style="display:flex;gap:6px;justify-content:flex-end">
@@ -119,7 +148,7 @@
 
 {% block scripts %}
 {% if request.user|tem_permissao:"avaliacao.criar" %}
-<script src="{% static 'js/modal.js' %}" defer></script>
-<script src="{% static 'js/avaliar_modal.js' %}" defer></script>
+<script src="{% static_v 'js/modal.js' %}" defer></script>
+<script src="{% static_v 'js/avaliar_modal.js' %}" defer></script>
 {% endif %}
 {% endblock %}

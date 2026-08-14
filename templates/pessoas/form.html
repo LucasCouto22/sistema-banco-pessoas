@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static static_v %}
 {% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Banco de Pessoas / <b>{{ titulo }}</b>{% endblock %}
 {% block conteudo %}
@@ -19,6 +19,8 @@
       <div class="form-row">
         {% include "core/_campo_form.html" with campo=form.data_nascimento %}
         {% include "core/_campo_form.html" with campo=form.genero %}
+        {% include "core/_campo_form.html" with campo=form.raca %}
+        {% include "core/_campo_form.html" with campo=form.estado_civil %}
       </div>
     </fieldset>
     <fieldset>
@@ -29,6 +31,7 @@
       </div>
       <div class="form-row">
         {% include "core/_campo_form.html" with campo=form.cep %}
+        {% include "core/_campo_form.html" with campo=form.regiao %}
         {% include "core/_campo_form.html" with campo=form.uf %}
       </div>
       <div class="form-row">
@@ -42,7 +45,11 @@
         {% include "core/_campo_form.html" with campo=form.escolaridade %}
         {% include "core/_campo_form.html" with campo=form.profissao %}
         {% include "core/_campo_form.html" with campo=form.especialidade %}
-        {% include "core/_campo_form.html" with campo=form.faixa_renda %}
+        {% include "core/_campo_form.html" with campo=form.ocupacao %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.renda_individual %}
+        {% include "core/_campo_form.html" with campo=form.renda_familiar %}
       </div>
     </fieldset>
     <fieldset>
@@ -72,6 +79,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/endereco_cep.js' %}" defer></script>
-<script src="{% static 'js/profissao_especialidade.js' %}" defer></script>
+<script src="{% static_v 'js/endereco_cep.js' %}" defer></script>
+<script src="{% static_v 'js/profissao_especialidade.js' %}" defer></script>
 {% endblock %}

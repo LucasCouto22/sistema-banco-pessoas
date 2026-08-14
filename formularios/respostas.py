@@ -16,6 +16,8 @@ from decimal import Decimal, InvalidOperation
 
 from django import forms
 
+from .widgets import DropdownCheckboxSelectMultiple
+
 
 def _campo_para_variavel(variavel):
     tipo = variavel.tipo_resposta.codigo
@@ -54,7 +56,7 @@ def _campo_para_variavel(variavel):
         if tipo == "radio":
             return forms.ChoiceField(required=obrigatoria, label=label, choices=opcoes, widget=forms.RadioSelect)
         return forms.MultipleChoiceField(
-            required=obrigatoria, label=label, choices=opcoes, widget=forms.CheckboxSelectMultiple
+            required=obrigatoria, label=label, choices=opcoes, widget=DropdownCheckboxSelectMultiple
         )
     if tipo == "texto_curto":
         return forms.CharField(required=obrigatoria, label=label, widget=forms.TextInput)

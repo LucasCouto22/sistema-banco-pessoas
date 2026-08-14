@@ -6,16 +6,39 @@
   <div><h2>{{ titulo }}</h2><p class="sub">{{ projeto.nome }}</p></div>
   <a class="btn btn-ghost" href="{% url 'projetos:detalhe' projeto.pk %}">‹ Voltar</a>
 </div>
-<div class="panel"><div style="padding:20px 22px;max-width:560px">
+<div class="panel"><div style="padding:20px 22px;max-width:680px">
   <form method="post">
     {% csrf_token %}
     <div class="form-row">
       {% include "core/_campo_form.html" with campo=form.nome %}
-      {% include "core/_campo_form.html" with campo=form.formulario %}
     </div>
-    <p class="hint" style="margin-bottom:16px">
-      Só perfis com um formulário associado mostram ele na página pública de cadastro.
-    </p>
+    <fieldset>
+      <legend>Formulários do perfil</legend>
+      <p class="hint" style="margin-bottom:10px">
+        Marque os formulários que entram neste perfil e defina a ordem de exibição
+        (menor primeiro) — aparecem nessa ordem na página pública de cadastro, no modelo
+        de importação em lote e no detalhe da participação. Um perfil sem nenhum
+        formulário marcado não mostra pergunta nenhuma além dos campos fixos.
+      </p>
+      {{ formset.management_form }}
+      {% if linhas %}
+      <div class="tbl-wrap"><table>
+        <thead><tr><th style="width:34px"></th><th>Nome</th><th>Descrição</th><th style="width:90px">Ordem</th></tr></thead>
+        <tbody>
+        {% for formulario, subform in linhas %}
+          <tr>
+            <td>{{ subform.incluir }}{{ subform.formulario_id }}</td>
+            <td class="cell-main">{{ formulario.nome }}</td>
+            <td>{{ formulario.descricao|default:"—" }}</td>
+            <td>{{ subform.ordem }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}
+      <p class="empty">Nenhum formulário ativo cadastrado ainda — <a href="{% url 'formularios:formulario_novo' %}">crie um primeiro</a>.</p>
+      {% endif %}
+    </fieldset>
     <div style="display:flex;justify-content:flex-end;gap:10px">
       <a class="btn btn-ghost" href="{% url 'projetos:detalhe' projeto.pk %}">Cancelar</a>
       <button class="btn btn-primary" type="submit">Salvar perfil</button>

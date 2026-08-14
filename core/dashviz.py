@@ -86,7 +86,7 @@ def dados_participantes_dashboard(participantes):
             {
                 "uf": (p.uf or "").strip().upper(),
                 "gen": p.get_genero_display(),
-                "cls": p.get_faixa_renda_display(),
+                "cls": p.get_renda_individual_display(),
                 "fx": _faixa_etaria(p.data_nascimento, hoje) if p.data_nascimento else None,
                 "cid": capitais_por_nome_lower.get((p.cidade or "").strip().lower(), ""),
                 "segs": sorted(segs_por_participante.get(p.id, ())),

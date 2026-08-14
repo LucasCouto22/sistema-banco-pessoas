@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static static_v %}
 {% block titulo %}Visão por segmento · Qualy Vortice{% endblock %}
 {% block crumbs %}Painel / <b>Visão por segmento</b>{% endblock %}
 {% block conteudo %}
@@ -65,6 +65,6 @@
 
 {% block scripts %}
 {% if dash_participantes_json %}
-<script src="{% static 'js/dashboard_segmento.js' %}" defer></script>
+<script src="{% static_v 'js/dashboard_segmento.js' %}" defer></script>
 {% endif %}
 {% endblock %}

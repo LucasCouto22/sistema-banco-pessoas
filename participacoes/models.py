@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from pessoas.models import Participante
 from projetos.models import Perfil
@@ -7,8 +8,11 @@ from projetos.models import Perfil
 
 class Participacao(models.Model):
     class Etapa(models.TextChoices):
-        ANALISE_PERFIL = "ANALISE_PERFIL", "Análise de Perfil"
+        # Ordem do funil: Preenchimento de Dados é o ponto de entrada de quem
+        # se cadastra pelo link público (`pessoas/views.py::cadastro_publico`)
+        # — só depois disso a equipe analisa o perfil.
         PREENCHIMENTO_DADOS = "PREENCHIMENTO_DADOS", "Preenchimento de Dados"
+        ANALISE_PERFIL = "ANALISE_PERFIL", "Análise de Perfil"
         CAPTACAO_MATERIAL = "CAPTACAO_MATERIAL", "Captação de Material"
         ENTREVISTA = "ENTREVISTA", "Entrevista"
         PAGO = "PAGO", "Pago"
@@ -21,9 +25,36 @@ class Participacao(models.Model):
         NAO_APROVADO = "NAO_APROVADO", "Não aprovado"
         FORA_PERFIL = "FORA_PERFIL", "Fora do perfil"
 
+    # Cor do badge por status — agrupado por "sentimento" do resultado, não
+    # 1 cor por valor: Aprovação (positivo) e Backup (neutro/reserva) têm
+    # cor própria; Desistência e Não aprovado dividem o vermelho (os dois
+    # tiram a pessoa do funil por um motivo "forte"); Não compareceu fica
+    # em âmbar (mais leve, pode ser reagendado); Fora do perfil em cinza
+    # (nem chegou a ser avaliado — não é uma rejeição de qualidade).
+    CORES_STATUS = {
+        Status.APROVACAO: "b-green",
+        Status.BACKUP: "b-blue",
+        Status.DESISTENCIA: "b-red",
+        Status.NAO_COMPARECEU: "b-amber",
+        Status.NAO_APROVADO: "b-red",
+        Status.FORA_PERFIL: "b-gray",
+    }
+
+    # Mesmas cores usadas no gráfico "Situação dos participantes" dos
+    # dashboards (ver `core/dashviz.py::COR_ETAPA`) — mantidas em paralelo
+    # porque lá o consumo é direto em CSS var pro Chart.js, aqui é classe de
+    # badge, mas o mapeamento cor↔etapa é o mesmo pra não destoar visualmente.
+    CORES_ETAPA = {
+        Etapa.PREENCHIMENTO_DADOS: "b-violet",
+        Etapa.ANALISE_PERFIL: "b-blue",
+        Etapa.CAPTACAO_MATERIAL: "b-amber",
+        Etapa.ENTREVISTA: "b-pink",
+        Etapa.PAGO: "b-green",
+    }
+
     ETAPAS_ORDEM = [
-        Etapa.ANALISE_PERFIL,
         Etapa.PREENCHIMENTO_DADOS,
+        Etapa.ANALISE_PERFIL,
         Etapa.CAPTACAO_MATERIAL,
         Etapa.ENTREVISTA,
         Etapa.PAGO,
@@ -52,6 +83,28 @@ class Participacao(models.Model):
 
     def __str__(self):
         return f"{self.participante} · {self.perfil} · {self.get_etapa_display()}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # "Pago" é a última etapa do funil — só quando chega ali dá pra
+        # dizer que a pessoa participou de verdade (fez a pesquisa e foi
+        # paga), então é o gatilho certo pra atualizar a "última
+        # participação" dela no Banco de Pessoas. Roda em todo save (não só
+        # em `avancar_etapa`) pra também cobrir quem já tiver o campo
+        # ausente por ter chegado em "Pago" antes dessa lógica existir.
+        if self.etapa == self.Etapa.PAGO:
+            hoje = timezone.localdate()
+            Participante.objects.filter(pk=self.participante_id).exclude(
+                data_ultima_participacao=hoje
+            ).update(data_ultima_participacao=hoje)
+
+    @property
+    def status_badge(self):
+        return self.CORES_STATUS.get(self.status, "b-gray")
+
+    @property
+    def etapa_badge(self):
+        return self.CORES_ETAPA.get(self.etapa, "b-gray")
 
     def avancar_etapa(self):
         idx = self.ETAPAS_ORDEM.index(self.etapa)

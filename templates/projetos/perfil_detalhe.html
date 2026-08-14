@@ -5,10 +5,10 @@
 {% block conteudo %}
 <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
   <div><h2>{{ perfil.nome }}</h2>
-    <p class="sub">{{ perfil.projeto.nome }}{% if perfil.formulario %} · {{ perfil.formulario.nome }}{% endif %}</p></div>
+    <p class="sub">{{ perfil.projeto.nome }}{% for f in perfil.formularios_ordenados %} · {{ f.nome }}{% endfor %}</p></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     {% if pode_editar %}
-    <a class="btn btn-ghost" href="{% url 'projetos:perfil_link' perfil.pk %}">Link de cadastro</a>
+    <button type="button" class="btn btn-ghost" data-copiar="{{ perfil.link_cadastro }}">Copiar link de cadastro</button>
     <a class="btn btn-ghost" href="{% url 'projetos:perfil_editar' perfil.pk %}">Editar</a>
     <a class="btn btn-ghost" style="border-color:#F7C9C0;color:#B03225" href="{% url 'projetos:perfil_excluir' perfil.pk %}">Excluir</a>
     {% endif %}
@@ -16,7 +16,7 @@
 </div>
 <div class="kpis">
   <div class="kpi"><div class="kpi-top">Participantes</div><div class="v">{{ perfil.ocupadas }}</div></div>
-  <div class="kpi"><div class="kpi-top">Formulário</div><div class="v" style="font-size:1.1rem">{{ perfil.formulario|default:"—" }}</div></div>
+  <div class="kpi"><div class="kpi-top">Formulários</div><div class="v">{{ perfil.formularios_ordenados|length }}</div></div>
 </div>
 {% if pode_associar %}
 <div class="panel" style="padding:16px 20px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">

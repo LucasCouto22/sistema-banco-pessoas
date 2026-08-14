@@ -230,10 +230,10 @@ def formulario_excluir(request, pk):
 def responder_formulario(request, participacao_id, formulario_id):
     participacao = get_object_or_404(Participacao, pk=participacao_id)
     formulario = get_object_or_404(Formulario, pk=formulario_id)
-    # O formulário só pode ser respondido aqui se realmente for o formulário
-    # do perfil dessa participação — sem essa checagem, dá pra montar a URL
-    # na mão e responder um formulário de outro perfil qualquer.
-    if participacao.perfil.formulario_id != formulario.pk:
+    # O formulário só pode ser respondido aqui se realmente estiver
+    # associado ao perfil dessa participação — sem essa checagem, dá pra
+    # montar a URL na mão e responder um formulário de outro perfil qualquer.
+    if not participacao.perfil.formularios.filter(pk=formulario.pk).exists():
         messages.error(request, f'"{formulario.nome}" não está associado ao perfil desta participação.')
         return redirect("participacoes:detalhe", pk=participacao.pk)
 

@@ -14,18 +14,25 @@
 
     <form method="post">
       {% csrf_token %}
-      <div class="form-row">
-        {% for field in form %}
-          {% if field.name != "consentimento_lgpd" %}
-          <div class="field">
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
-          </div>
-          {% endif %}
-        {% endfor %}
+      <div class="cadastro-secao">
+        <h3 class="cadastro-secao-titulo">Perguntas Básicas</h3>
+        <div class="form-row">
+          {% for field in form %}
+            {% if field.name != "consentimento_lgpd" %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
 
-        {% for fd in forms_dinamicos %}
+      {% for fd in forms_dinamicos %}
+      <div class="cadastro-secao">
+        <h3 class="cadastro-secao-titulo">{{ fd.formulario.nome }}</h3>
+        <div class="form-row">
           {% for fv, campo in fd.linhas %}
           <div class="field">
             <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if fv.variavel.obrigatoria %} *{% endif %}</label>
@@ -33,8 +40,9 @@
             {% for erro in campo.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
           </div>
           {% endfor %}
-        {% endfor %}
+        </div>
       </div>
+      {% endfor %}
 
       {% if versao_lgpd %}
       <div class="lock-note" style="margin:14px 0;max-height:160px;overflow:auto;white-space:pre-wrap">{{ versao_lgpd.texto }}</div>
@@ -54,8 +62,9 @@
   </div>
 </section>
 <div id="flash-erros"></div>
-<script src="{% static 'js/endereco_cep.js' %}" defer></script>
-<script src="{% static 'js/profissao_especialidade.js' %}" defer></script>
-<script src="{% static 'js/flash_erros.js' %}" defer></script>
+<script src="{% static_v 'js/endereco_cep.js' %}" defer></script>
+<script src="{% static_v 'js/profissao_especialidade.js' %}" defer></script>
+<script src="{% static_v 'js/flash_erros.js' %}" defer></script>
+<script src="{% static_v 'js/dropdown_multiselect.js' %}" defer></script>
 </body>
 </html>

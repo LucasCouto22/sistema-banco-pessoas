@@ -42,7 +42,7 @@ def _linhas(participantes):
                 "cidade": f"{p.cidade}/{p.uf}",
                 "idade": f"{p.idade} anos",
                 "escolaridade": p.get_escolaridade_display() or "—",
-                "classe_social": p.get_faixa_renda_display() or "—",
+                "classe_social": p.get_renda_individual_display() or "—",
                 "situacao": p.get_situacao_display(),
                 "ultima_participacao": (
                     p.data_ultima_participacao.strftime("%d/%m/%Y") if p.data_ultima_participacao else "—"
@@ -61,8 +61,8 @@ def _resumo_filtros(filtros):
         partes.append(f"busca “{filtros['q']}”")
     if filtros.get("situacao"):
         partes.append(f"situação: {filtros['situacao_label']}")
-    if filtros.get("faixa_renda"):
-        partes.append(f"classe social: {filtros['faixa_renda_label']}")
+    if filtros.get("renda_individual"):
+        partes.append(f"classe social: {filtros['renda_individual_label']}")
     if filtros.get("uf"):
         partes.append(f"UF: {filtros['uf']}")
     return "; ".join(partes) if partes else "nenhum filtro aplicado — todas as pessoas"

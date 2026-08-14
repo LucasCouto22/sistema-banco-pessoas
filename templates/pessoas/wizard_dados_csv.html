@@ -15,10 +15,12 @@
     .csv. O consentimento LGPD de cada participante será confirmado na próxima etapa
     (revisão).
   </p>
-  {% if formulario %}
+  {% if formularios %}
   <p class="hint" style="margin-bottom:16px">
-    O perfil escolhido tem o formulário <b>{{ formulario.nome }}</b> — o modelo já vem com
-    uma coluna a mais pra cada pergunta dele (colunas com * são obrigatórias).
+    O perfil escolhido tem {{ formularios|length }} formulário(s) associado(s)
+    ({% for f in formularios %}{{ f.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}) —
+    o modelo já vem com uma coluna a mais pra cada pergunta deles (colunas com * são
+    obrigatórias).
   </p>
   {% endif %}
   {% if legado %}

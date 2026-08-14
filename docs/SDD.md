@@ -2058,3 +2058,547 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     flash_erros.js` (novo), `static/css/base.css`, `templates/base.html`,
     `templates/publico/cadastro.html`, `pessoas/views.py`, `participacoes/views.py`,
     `templates/pessoas/lista.html`, `templates/participacoes/lista.html`.
+- **2026-08-13 ("Última participação" some sendo atualizada + cores por status + status
+  editável direto na lista de Participações)** — Três pedidos do usuário: (1) a coluna
+  "Última participação" na lista de Pessoas nunca mudava; (2) os "flags" (badges) de
+  status em Participações deveriam ter cor de acordo com o status; (3) um botão suspenso
+  (dropdown) pra editar o status direto na lista, sem precisar passar pelo kanban.
+  - **Causa da nº1**: `Participante.data_ultima_participacao` é um campo desde o modelo
+    inicial (migração `0001_initial`), mas nunca existia nenhum código que o preenchesse —
+    zero atribuições no projeto inteiro além da própria declaração do campo. Sempre ficou
+    `None`, daí "não atualizar" (na real, nunca chegou a atualizar nenhuma vez). Decisão de
+    design (não perguntada, mas direta o bastante pra não travar nisso): "participação",
+    aqui, significa participação de verdade — a pessoa fez a pesquisa e foi paga —, não só
+    estar dentro do funil. `Etapa.PAGO` já é a última etapa do funil (`ETAPAS_ORDEM`) e
+    representa exatamente isso, então virou o gatilho certo: `Participacao.save()` ganhou
+    uma checagem — sempre que uma participação é salva com `etapa == PAGO`, o participante
+    correspondente tem `data_ultima_participacao` posto pra hoje (`timezone.localdate()`).
+    Fica no `save()` do model (não só dentro de `avancar_etapa()`) de propósito: cobre
+    tanto quem avança pelo botão "Avançar" do kanban quanto qualquer outro jeito futuro de
+    setar `etapa=PAGO` diretamente, sem duplicar a lógica.
+  - **Backfill**: rodei um ajuste pontual nos dados de teste já existentes — a única
+    participação já em "Pago" no banco (`Wizard Dinamico Teste`) tinha `data_
+    ultima_participacao=None` porque chegou lá antes dessa lógica existir; resalvá-la
+    (mesmo código, `participacao.save()`) preencheu corretamente. Não foi feita migração
+    de dado — é só reprocessar os poucos registros que já estavam em Pago, mesma lógica
+    que qualquer save novo vai aplicar dali pra frente.
+  - **Cores por status** (pedido nº2): `Participacao.CORES_STATUS` (novo dict no model) +
+    `Participacao.status_badge` (property) mapeiam cada valor de `Status` pra uma classe
+    `.b-*` já existente no CSS — agrupado por "sentimento" do resultado, não 1 cor por
+    valor: Aprovação (verde, positivo), Backup (azul, neutro/reserva), Desistência e Não
+    aprovado (vermelho — os dois tiram a pessoa do funil por um motivo forte), Não
+    compareceu (âmbar — mais leve, dá pra reagendar), Fora do perfil (cinza — nem chegou a
+    ser avaliado, não é rejeição de qualidade). Aplicado tanto na lista quanto no KPI de
+    Status da tela de detalhe da participação.
+  - **Status editável na lista** (pedido nº3): hoje não existia NENHUM jeito de editar o
+    campo `status` pela interface — nem o kanban mexe nele (kanban só avança `etapa`; quem
+    quisesse mudar `status` só conseguia pelo Django admin). `participacoes/views.py::
+    mudar_status(request, pk)` (novo, `POST`, permissão `participacoes.mover_etapa` — a
+    mesma que já protege "Avançar" no kanban) grava o novo status e redireciona de volta
+    pro `next` recebido (a própria URL da lista, com filtro e página preservados — mesmo
+    padrão do botão "Avançar" do kanban, que já usa um `proximo` do mesmo jeito). Rota
+    nova `participacoes/<int:pk>/status/` (`mudar_status`).
+    `templates/participacoes/lista.html`: a coluna Status virou um `<form>` por linha com
+    um `<select name="status">` (opção "Sem status" + as 6 opções de `Status.choices`),
+    `onchange="this.form.submit()"` — funciona como um dropdown que salva sozinho ao
+    escolher, sem precisar de botão "Salvar" separado. Só aparece pra quem tem
+    `participacoes.mover_etapa`; sem essa permissão, cai de volta pro badge somente
+    leitura (mesmo badge colorido, sem o dropdown).
+  - `static/css/base.css`: classe `.status-select` estiliza o `<select>` nativo como um
+    badge colorido (sem borda, cantos arredondados, seta customizada via SVG embutido em
+    `data:` URI) — a cor de fundo/texto vem de continuar recebendo a mesma classe `.b-*`
+    do badge (`class="status-select b-green"` etc.); funciona porque `.status-select` só
+    mexe em propriedades de layout/seta (não redeclara `background-color`), então a cor
+    de cada `.b-*` (que já existia) continua valendo por cima.
+  - Testado: (1) via shell, forcei uma participação existente a passar por todas as
+    etapas até "Pago" (mesmo método `avancar_etapa()` que o botão real usa) e confirmei
+    que `data_ultima_participacao` do participante mudou pra hoje; desfiz a mudança depois
+    (voltou pra "Análise de Perfil" e `data_ultima_participacao=None`, estado original);
+    (2) Playwright: lista de Pessoas mostra "13 de Agosto de 2026" na linha da Wizard
+    Dinamico Teste (que já estava em Pago desde antes); (3) lista de Participações mostra
+    10 dropdowns de status coloridos (cinza pra quem não tem status); mudei o status de
+    uma participação pra "Aprovação" pelo dropdown, confirmei mensagem de sucesso, redirect
+    de volta pra mesma URL da lista, badge/select virou verde e o valor ficou selecionado
+    corretamente; desfiz a mudança depois (status voltou a vazio). Zero erros de console em
+    todo o percurso.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/models.py`,
+    `participacoes/views.py`, `participacoes/urls.py`, `static/css/base.css`,
+    `templates/participacoes/lista.html`, `templates/participacoes/detalhe.html`.
+- **2026-08-13 (coluna "Pago" some do Kanban)** — Pedido do usuário: quem já foi pago não
+  precisa mais aparecer no quadro do pipeline. `participacoes/views.py::kanban()` passa a
+  pular `Etapa.PAGO` no loop que monta as colunas — a etapa continua existindo
+  normalmente no modelo (`avancar_etapa()` intocado: de "Entrevista" ainda dá pra avançar
+  pra "Pago" clicando "Avançar", só que agora, ao chegar lá, o card some do quadro em vez
+  de ganhar uma 5ª coluna). `static/css/base.css`: `.board` tinha `grid-template-columns:
+  repeat(5,...)` fixo (base e no breakpoint mobile) — ajustado pra `repeat(4,...)` nos dois
+  lugares, senão sobraria um espaço vazio no lugar da coluna removida.
+  - Testado com Playwright: kanban mostra só 4 colunas (Análise de Perfil, Preenchimento
+    de Dados, Captação de Material, Entrevista — "Pago" não aparece); um participante já
+    em "Pago" desde uma rodada anterior não aparece em nenhuma coluna do quadro; avancei um
+    participante de teste de "Entrevista" até "Pago" pelo botão real da UI e confirmei que
+    ele desaparece do quadro (mensagem de sucesso "avançou para Pago" continua aparecendo,
+    só não sobra card visível depois) — desfiz a mudança depois pra devolver o estado
+    original dos dados de teste.
+  - **Nota de limpeza**: nesse teste percebi que um script de Playwright de uma rodada
+    anterior desta sessão (já apagado) tinha travado achando um card errado pelo nome
+    "Exemplo" e avançado por engano 2 participações reais (do participante-seed
+    "Exemplo") até "Captação de Material" antes de dar timeout — passou despercebido no
+    fechamento daquela rodada porque só validei os registros que eu *pretendia* ter
+    mexido, sem reconferir a contagem geral. Achei comparando a distribuição de etapas
+    antes/depois e restaurei as duas pra "Análise de Perfil", voltando o banco de teste ao
+    estado original (10 em Análise de Perfil, 1 em Pago, igual estava antes de qualquer
+    teste automatizado desta sessão).
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/views.py` e
+    `static/css/base.css`.
+- **2026-08-13 (correção: "cores por status" era pra ser "cores por etapa" + reordenação
+  do funil)** — O usuário apontou que a rodada anterior (cores + dropdown) mirou o campo
+  errado: o pedido original usava a palavra "status" num sentido coloquial pra se referir
+  à **etapa** do funil (que já existia como badge sempre azul, sem variação de cor, e sem
+  jeito de editar direto na lista) — não ao campo `status` (Aprovação/Backup/etc., que era
+  literalmente inédito na interface). Também pediu pra reordenar as etapas: **Preenchimento
+  de Dados** (assim que a pessoa preenche os dados pelo link) → Análise de Perfil →
+  Captação de Material → Entrevista → Pago — hoje Análise de Perfil vinha primeiro.
+  - **Decisão**: mantive o dropdown/cores de `status` da rodada anterior (não foi pedido
+    remover, e agora que existe é a única forma de editar esse campo no sistema todo — sem
+    ele, voltaria a ficar só no Django admin) e *adicionei* o mesmo tratamento pra `etapa`
+    ao lado. Se o usuário preferir tirar o de `status`, é reverter só essa coluna.
+  - **Reordenação do funil**: `Participacao.Etapa` (TextChoices) reordenado pra
+    `PREENCHIMENTO_DADOS, ANALISE_PERFIL, CAPTACAO_MATERIAL, ENTREVISTA, PAGO` — a ordem de
+    declaração é o que decide tanto a ordem das colunas do Kanban (`Etapa.choices` iterado
+    direto em `kanban()`) quanto a ordem das opções no dropdown novo, então só reordenar a
+    classe já resolveu os dois lugares de uma vez. `ETAPAS_ORDEM` (lista separada, usada só
+    por `avancar_etapa()` pra saber qual é a "próxima" etapa) seguiu a mesma nova ordem.
+    Gerei `participacoes/migrations/0006_alter_participacao_etapa.py` (`AlterField`,
+    puramente sobre a lista de `choices` — não muda nenhum dado nem tipo de coluna, os
+    valores salvos no banco continuam as mesmas strings de sempre).
+  - **Efeito colateral que precisou de ajuste** (achado revisando quem cria `Participacao`
+    com etapa inicial fixa): como "Preenchimento de Dados" virou a etapa que representa
+    literalmente "a pessoa acabou de preencher os dados pelo link", `pessoas/views.py::
+    cadastro_publico()` (a view do link público) passou a criar a participação já em
+    `PREENCHIMENTO_DADOS` em vez de `ANALISE_PERFIL` — é a etapa que descreve exatamente o
+    que acabou de acontecer ali. Os outros 2 pontos que criam `Participacao` com etapa fixa
+    (`wizard_revisao`, importação em lote — e `perfil_lote.py`, associação de gente já
+    cadastrada por CPF) continuam criando em `ANALISE_PERFIL` de propósito: são fluxos
+    onde a equipe já está de posse dos dados (veio de planilha ou já estava no Banco de
+    Pessoas), não "a pessoa preenchendo o formulário agora" — decisão não pedida
+    explicitamente, mas a leitura mais direta do parênteses do próprio pedido ("assim que a
+    pessoa preenche os dados **pelo link**").
+  - **Bug pego de graça por causa da reordenação**: `pessoas/views.py::descartar()` (botão
+    de descartar um participante na triagem) limpava participações órfãs filtrando só por
+    `etapa=ANALISE_PERFIL` — com o cadastro público agora criando em
+    `PREENCHIMENTO_DADOS`, descartar um participante recém-cadastrado pelo link deixaria
+    a participação dele **para trás**, órfã, sem limpar (o filtro antigo nunca ia bater
+    nela). Corrigido pra `etapa__in=[PREENCHIMENTO_DADOS, ANALISE_PERFIL]` — as duas etapas
+    que contam como "ainda não passou de revisão inicial".
+  - **Cores por etapa**: `Participacao.CORES_ETAPA` (novo dict) + `etapa_badge` (property),
+    mesmo padrão de `CORES_STATUS`/`status_badge` da rodada anterior — usando exatamente as
+    mesmas cores já definidas em `core/dashviz.py::COR_ETAPA` (o gráfico "Situação dos
+    participantes" dos dashboards), só que como classe de badge (`.b-*`) em vez de CSS var
+    direta: Preenchimento de Dados → violeta, Análise de Perfil → azul, Captação de
+    Material → âmbar, Entrevista → rosa, Pago → verde. Precisei criar a classe `.b-pink`
+    (não existia — as outras 5 cores de badge já tinham classe, rosa não), usando as
+    variáveis `--pink`/`--pink-soft` que já estavam definidas no CSS mas sem nenhum badge
+    associado.
+  - **Dropdown de etapa**: `participacoes/views.py::mudar_etapa(request, pk)` (novo, POST,
+    mesma permissão `participacoes.mover_etapa`, mesmo padrão de `mudar_status` —
+    inclusive já atualiza `etapa_atualizada_em` junto, igual `avancar_etapa()` faz, pra não
+    zerar o "Na etapa desde" da tela de detalhe). Rota `participacoes/<int:pk>/etapa/`.
+    `templates/participacoes/lista.html`: a coluna Etapa virou um `<select>` colorido igual
+    ao de Status (mesma classe `.status-select`, cor via `part.etapa_badge`), só que sem
+    opção "Sem etapa" (etapa nunca é vazia). Como muda a etapa passando por
+    `Participacao.save()` normalmente, chegar em "Pago" pelo dropdown da lista também já
+    atualiza `data_ultima_participacao` do participante — mesmo gatilho de sempre, não
+    precisou de código novo pra isso. Badge do `detalhe.html` também ganhou cor (era sempre
+    azul fixo antes).
+  - Testado: (1) Playwright — ordem das colunas do Kanban confirmada (Preenchimento de
+    Dados, Análise de Perfil, Captação de Material, Entrevista — Pago continua oculto,
+    rodada anterior); dropdown de etapa na lista com as 5 opções na ordem certa e cor
+    correspondente (`b-blue` pra quem estava em Análise de Perfil); mudei a etapa de uma
+    linha pelo dropdown, mensagem de confirmação apareceu e desfiz a mudança depois; (2)
+    cadastro público de ponta a ponta pelo formulário real (mockei a API do IBGE do
+    seletor de cidade, que depende de rede externa e não respondia neste ambiente de
+    teste) — confirmei no banco que a participação nasceu em `PREENCHIMENTO_DADOS`; (3)
+    descartei esse mesmo participante e confirmei que a participação órfã foi removida
+    (bug do item acima corrigido); removi o participante de teste depois. Zero erros de
+    console em todo o percurso. Banco de teste conferido no fim — voltou exatamente pro
+    baseline (10 participações em Análise de Perfil, 1 em Pago, nenhum status).
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/models.py`,
+    `participacoes/views.py`, `participacoes/migrations/0006_alter_participacao_etapa.py`
+    (novo), `pessoas/views.py`, `static/css/base.css`,
+    `templates/participacoes/lista.html`, `templates/participacoes/detalhe.html`.
+- **2026-08-14 (Perfil volta a aceitar múltiplos formulários, ordenáveis)** — Antes da
+  refatoração de Perfis (rodada bem anterior desta sessão), quem carregava formulário era
+  o Projeto, e podia ter vários — um multi-select com campo de ordem. A refatoração
+  reduziu isso pra 1 formulário por Perfil (FK simples). Usuário pediu de volta a mesma
+  capacidade de antes, agora no nível do Perfil: 0 a N formulários, numa lista com
+  checkbox pra marcar e campo numérico pra ordenar — **mesmo padrão** que `Formulario` já
+  usa pra escolher suas `Variavel`s (`formularios/forms.py::VariavelSelecaoForm`/
+  `montar_formset_variaveis`), não um widget novo.
+  - **Modelo**: `Perfil.formulario` (FK) → `Perfil.formularios` (M2M) via `PerfilFormulario`
+    (novo, em `projetos/models.py`, ao lado de `Perfil` pelo mesmo motivo de
+    string-reference já documentado ali) — campos `perfil`, `formulario`, `ordem`,
+    `UniqueConstraint(perfil, formulario)`, `Meta.ordering = ["ordem"]`. `on_delete=PROTECT`
+    no FK do through preserva o comportamento de hoje: excluir um formulário em uso por
+    algum perfil continua bloqueado com `ProtectedError` (`formularios/views.py::
+    formulario_excluir` não precisou mudar).
+  - **Pegadinha de M2M-through evitada**: `perfil.formularios.all()` **não** respeita a
+    ordem do through (`PerfilFormulario.ordem`) — o manager do M2M ordena pelo
+    `Meta.ordering` do `Formulario` (nome), não do through, porque o M2M manager não sabe
+    nada sobre o through table's ordering. Resolvido com uma property nova,
+    `Perfil.formularios_ordenados`, que consulta `self.perfil_formularios.select_related
+    ("formulario").all()` (aí sim respeitando `Meta.ordering=["ordem"]`) — usada em toda
+    view e template que precisa da lista de formulários do perfil, em vez de
+    `.formularios.all()` direto.
+  - **Migração** (mesmo padrão schema+dado+remove-campo-antigo já usado nesta sessão pra
+    trocar `Projeto`→`Perfil`, dividida manualmente em 3 porque o Django propôs tudo numa
+    migração só, removendo o campo antigo *antes* de eu poder copiar o dado):
+    `0006_perfilformulario.py` (cria `PerfilFormulario` + `AddField Perfil.formularios`,
+    mantendo `Perfil.formulario` intocado), `0007_backfill_perfil_formularios.py`
+    (`RunPython`: cada perfil com `formulario_id` preenchido vira 1
+    `PerfilFormulario(ordem=0)`), `0008_remove_perfil_formulario.py` (`RemoveField`).
+    Confirmado no shell: os 4 perfis que tinham formulário associado ficaram cada um com
+    exatamente 1 `PerfilFormulario` apontando pro mesmo formulário de antes.
+  - `projetos/forms.py`: `FormularioSelecaoForm`/`FormularioSelecaoFormSet`/
+    `montar_formset_formularios_perfil()` — cópia estrutural de
+    `VariavelSelecaoForm`/`montar_formset_variaveis` (perfil↔formulário em vez de
+    formulário↔variável). `PerfilForm` perde o campo `formulario` (fica só `nome`).
+  - `projetos/views.py`: `_salvar_perfil_com_formularios()` (nova, espelha
+    `formularios/views.py::_salvar_formulario_com_variaveis`) sincroniza os
+    `PerfilFormulario` numa transação — apaga os desmarcados, `update_or_create` nos
+    marcados (grava a ordem). `perfil_novo`/`perfil_editar` passam a montar e salvar esse
+    formset junto do `PerfilForm`. Toda query que antes tinha `select_related("formulario")`
+    virou `prefetch_related("perfil_formularios__formulario")` (`detalhe` do projeto,
+    `perfil_detalhe`).
+  - **Pontos de consumo que assumiam "1 formulário por perfil" — viraram loop**:
+    `pessoas/wizard_csv.py` ganhou `variaveis_dos_formularios()` (mescla as variáveis de
+    todos os formulários do perfil, dedup por `chave` — que já é globalmente única, então
+    um formulário repetir uma variável de outro não duplica coluna); `ler_csv`/`ler_xlsx`/
+    `ler_planilha`/`_mapa_variaveis` trocaram o parâmetro `formulario=None` por
+    `formularios=None` (iterável). `pessoas/views.py::_perfil_e_formulario_do_wizard`
+    virou `_perfil_e_formularios_do_wizard` (devolve a lista, via
+    `perfil.formularios_ordenados`); `_validar_linha_csv`, `wizard_modelo_csv` e
+    `wizard_revisao` passam a rodar `construir_form_resposta()` uma vez por formulário da
+    planilha, juntando erros de todos e gravando uma `RespostaFormulario` por formulário
+    ao confirmar (antes só uma). `_form_dinamico_do_perfil` (cadastro público) **já
+    devolvia uma lista** desde a rodada anterior (decisão de design pensando exatamente
+    nisso — só trocou o filtro de "no máximo 1" pra "todos os ativos do perfil, em ordem");
+    `templates/publico/cadastro.html` não precisou mudar, já iterava num `{% for %}`.
+    `participacoes/views.py::detalhe` (`formularios_do_projeto`) e
+    `formularios/views.py::responder_formulario` (checagem de permissão) também passaram a
+    considerar todos os formulários do perfil, não só um.
+  - Templates: `perfil_form.html` ganhou a tabela checkbox+ordem (cópia visual de
+    `formulario_form.html`); `detalhe.html` (projeto) e `perfil_detalhe.html` passam a
+    listar os nomes dos formulários (o KPI do perfil virou uma contagem — "N formulários"
+    — pra não estourar o layout de um card pequeno; o subtítulo da página é quem lista os
+    nomes); `perfil_link.html` e `wizard_dados_csv.html` ajustados pro plural.
+  - Testado com Playwright + Django test Client (misturado, pra cobrir tanto a UI quanto
+    os fluxos que dependem de API externa/upload que são mais confiáveis via Client):
+    (1) editei o perfil "Campanha Tenis Playwright · Perfil único" (que já tinha 1
+    formulário do backfill), marquei um segundo, defini a ordem, salvei — subtítulo e KPI
+    do perfil passaram a mostrar os dois, na ordem certa; (2) cadastro público desse
+    perfil: os campos dos dois formulários apareceram na página (mockei a API do IBGE do
+    seletor de cidade, que não responde neste ambiente), enviei preenchido e confirmei 2
+    `RespostaFormulario` distintas gravadas, uma por formulário, com os dados certos; (3)
+    modelo de planilha baixado do wizard trouxe as colunas dos dois formulários
+    concatenadas, na ordem certa; (4) validação de uma linha da planilha com erro em só um
+    dos dois formulários reportou exatamente esse erro (o outro formulário, com dados
+    válidos, não apareceu nos erros — confirma que os dois são avaliados independentemente
+    dentro do merge); (5) um upload limpo (formulário sem colisão de nome, evitando a
+    limitação de colisão fixo×dinâmico já documentada numa rodada anterior) importou com
+    sucesso e gravou a `RespostaFormulario` certa via `wizard_revisao`; (6) tentativa de
+    excluir um formulário em uso por um perfil continua bloqueada (`ProtectedError`,
+    redirecionado com mensagem, formulário não apagado); (7) tela de "Novo perfil" também
+    renderiza a mesma tabela de seleção, sem nada marcado. `makemigrations --check
+    --dry-run` limpo. Zero erros de console em todo o percurso.
+  - **Efeito colateral do teste, corrigido**: pra testar o merge de 2 formulários no
+    cadastro público, usei um CPF que já batia com um participante de teste pré-existente
+    de uma rodada bem anterior desta sessão ("Teste Dinamico") — o upsert (mecanismo já
+    existente, comportamento correto) sobrescreveu nome/e-mail/telefone/nascimento/cidade
+    dele com os dados do meu teste. Restaurei o nome de volta pra "Teste Dinamico" (bem
+    evidenciado por uma resposta de formulário já salva antes do teste); os outros campos
+    (e-mail/telefone/nascimento/cidade) não tinham um snapshot conhecido pra restaurar com
+    segurança e ficaram com o valor que o teste deixou — registrando aqui caso essa pessoa
+    de teste específica seja usada como referência em algo futuro.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/models.py`,
+    `projetos/forms.py`, `projetos/views.py`, `projetos/admin.py`,
+    `projetos/migrations/0006_perfilformulario.py`,
+    `0007_backfill_perfil_formularios.py`, `0008_remove_perfil_formulario.py` (novos),
+    `pessoas/views.py`, `pessoas/wizard_csv.py`, `participacoes/views.py`,
+    `formularios/views.py`, `templates/projetos/perfil_form.html`,
+    `templates/projetos/detalhe.html`, `templates/projetos/perfil_detalhe.html`,
+    `templates/projetos/perfil_link.html`, `templates/pessoas/wizard_dados_csv.html`.
+- **2026-08-14 (BP.xlsx: campos obrigatórios do participante + 9 formulários de
+  perfilamento com 60 variáveis)** — Usuário trouxe `BP.xlsx` (raiz do projeto) com uma
+  aba "Modelo" (190 linhas × 85 colunas) e uma aba de opções por coluna (nome da aba =
+  letra da coluna). Pedido em duas etapas: primeiro só ler e confirmar entendimento (sem
+  mexer em nada), depois — já com todas as dúvidas respondidas — implementar de verdade.
+  - **Mapeamento confirmado com o usuário**: colunas H–Y (18 perguntas, 17 sem contar
+    "Idade" que já é calculada) viram **campos obrigatórios do `Participante`** (não um
+    formulário dinâmico — pedido explícito: "essas perguntas façam parte do
+    participante"). Colunas Z–AE + CG viram o formulário **Perguntas Básicas de Saúde**;
+    AF–AK **Lifestyle**; AL–AQ **Banco**; AR–AW **Beleza**; AX–BD **Esporte**; BE–BK
+    **Entretenimento**; BL–BR **Tecnologia**; BS–BY **Bebidas**; **BZ**–CF
+    **Alimentação** (o usuário tinha dito "BA a CF" — corrigido pra BZ, já que BA já
+    pertence ao bloco de Esporte nos cabeçalhos reais da planilha).
+  - **Fonte da verdade das opções**: confirmado com o usuário — a aba de cada coluna
+    manda, não os dados que já existiam no sistema (tratado como "princípio de teste").
+    Isso trocou as opções de `genero` (4 → 7, códigos novos) e `escolaridade` (4 tiers
+    genéricos → 7 tiers específicos, sem "Fundamental") pelas da planilha, e criou do
+    zero: `raca`, `estado_civil`, `ocupacao`, `regiao`. `faixa_renda` (3 faixas
+    agregadas) foi **substituído** por dois campos novos — `renda_individual` e
+    `renda_familiar` — porque a planilha trata como duas perguntas distintas (colunas P e
+    Q), cada uma com 5 classes (A-E) e rótulo de valor próprio (a classe B, por exemplo,
+    tem faixa de R$ diferente conforme é individual ou familiar).
+  - **Tipo de resposta**: a planilha não tem nenhuma coluna dizendo o tipo (dropdown,
+    radio, checkbox) — só a lista de opções. Regra combinada com o usuário: pergunta cujo
+    texto contém "quais" (plural) → `multipla_escolha` (checkbox); senão, é escolha
+    única — 2 opções → `radio`, 3+ → `select` (dropdown). Aplicada mecanicamente nas 60
+    perguntas via script (não à mão, pra não errar por cansaço) — nenhuma das 60 caiu no
+    caso de exatamente 2 opções nesta planilha, mas a regra está implementada pros dois
+    casos.
+  - **`pessoas/models.py`**: `Genero`/`Escolaridade` (choices reescritas), `Raca`,
+    `EstadoCivil`, `Ocupacao`, `Regiao`, `FaixaRendaIndividual`, `FaixaRendaFamiliar`
+    (`TextChoices` novas). Campos novos com `null=True` (mesmo padrão já usado pro CPF —
+    obrigatório em formulário via `blank=False`, mas tolera `None` em quem já estava
+    cadastrado antes dessa mudança, sem precisar de migração de dado inventando valor).
+    `email`/`bairro` passaram de `blank=True` pra obrigatórios (já eram `NOT NULL` no
+    banco, só a validação de formulário mudou). `profissao` (FK) virou `blank=False`
+    mantendo `null=True`.
+  - **Migração** `pessoas/migrations/0008_campos_perfilamento_bp.py` — só `AddField`/
+    `AlterField`/um `RemoveField` (`faixa_renda`), sem passo de backfill: como os campos
+    novos são `null=True`, cadastros existentes ficam com o campo vazio até serem
+    editados (não crashou nem pediu default na hora do `makemigrations`, rodou limpo e
+    não-interativo).
+  - **`pessoas/forms.py`**: `ParticipanteForm.Meta.fields` ganhou os 6 campos novos;
+    como `ParticipanteWizardForm`/`CadastroPublicoForm` herdam de `ParticipanteForm` sem
+    redeclarar a lista de campos, ganharam tudo de graça. `templates/publico/cadastro.html`
+    também não precisou de nenhuma mudança — já itera `{% for field in form %}`
+    genericamente.
+  - **`pessoas/matching.py`**: `CAMPOS_ATUALIZAVEIS` (upsert) e `PLACEHOLDERS_LEGADO`
+    (lote legado) ganharam os campos novos — sem isso, um lote legado que não trouxesse
+    "Gênero" (por exemplo) não ficaria marcado `cadastro_incompleto`, quebrando o
+    propósito da flag (ela existe pra sinalizar exatamente isso).
+  - **`pessoas/wizard_csv.py`**: `CAMPOS_CSV` ganhou sinônimos de coluna pros campos
+    novos (incluindo "Bairro", que **não tinha sinônimo nenhum antes** — bug latente
+    achado no caminho: até aqui, mesmo sendo campo do model há muito tempo, o wizard
+    nunca soube ler uma coluna "Bairro" de planilha). Mapas de normalização novos
+    (`RACA_MAP`, `ESTADO_CIVIL_MAP`, `OCUPACAO_MAP`, `REGIAO_MAP`, `RENDA_MAP` — este
+    último compartilhado entre individual/familiar, já que o código de classe A-E é
+    igual) e `GENERO_MAP`/`ESCOLARIDADE_MAP` reescritos pros códigos novos.
+    `CABECALHO_MODELO`/`LINHA_EXEMPLO` (modelo de planilha baixável) ganharam as 6
+    colunas novas + Bairro.
+  - **9 formulários + 60 variáveis + 636 opções**: `formularios/migrations/
+    0006_seed_perguntas_basicas_bp.py` (nova, ~51K caracteres — gerada por script a
+    partir dos dados extraídos do `BP.xlsx`, não lida do arquivo em tempo de migração,
+    pra ser reproduzível em qualquer ambiente/deploy sem depender do `.xlsx` estar
+    presente). `RunPython` cria os 9 `Formulario` (`inclui_campos_fixos=False` — os
+    campos fixos agora são sempre obrigatórios no cadastro base, não faz sentido esses
+    formulários "extra" reafirmarem isso) e, pra cada um, suas `Variavel`/
+    `VariavelOpcao`/`FormularioVariavel` na ordem da planilha. `obrigatoria=False` em
+    todas as 60 — decisão não pedida explicitamente, mas a leitura mais direta do pedido
+    original (só H–Y foi chamado de "obrigatório"; os 9 blocos temáticos foram descritos
+    só como "perguntas" a organizar em formulário, sem menção a obrigatoriedade). Reversão
+    da migração implementada (apaga por nome, na ordem certa pra não esbarrar no
+    `on_delete=PROTECT` entre `FormularioVariavel` e `Variavel`), mesmo não sendo um
+    caminho que planejo usar.
+  - **`chave` da Variavel**: gerada na migração replicando a lógica de
+    `Variavel._gerar_chave()` (`slugify` + sufixo numérico em colisão) em vez de chamar o
+    método de verdade — migração usa `apps.get_model()` (model "congelado" no tempo da
+    migração), que não carrega métodos customizados do model real, só os campos.
+  - Templates: `pessoas/form.html` (raça, estado civil, região, ocupação, renda
+    individual/familiar nos fieldsets certos), `pessoas/detalhe.html` (linhas novas na
+    tabela de dados cadastrais), `pessoas/lista.html` (filtro renomeado
+    `faixa_renda`→`renda_individual`, mesmas opções).
+  - Testado: (1) tela "Novo participante" mostra os 6 campos novos com as opções certas
+    (gênero com 7, escolaridade com 7, renda individual com 5 rótulos em R$); (2) cadastro
+    completo salvo com sucesso, conferido no banco que todos os 10 campos (incluindo os 6
+    novos) persistiram com os valores certos; (3) associei "Perguntas Básicas de Saúde" a
+    um perfil de teste — modelo de planilha do wizard trouxe as 19 colunas fixas + as
+    perguntas dos formulários associados (incluindo "Filhos", que fica dentro do
+    formulário de Saúde); desassociei depois, voltando o perfil ao estado original; (4)
+    lista de Pessoas, filtro de renda individual, exportação XLSX e os dois dashboards
+    (Visão participantes / Visão por segmento) carregando sem erro 500 nem exceção —
+    confirma que o rename de `faixa_renda` não quebrou nenhum consumidor esquecido.
+    `makemigrations --check --dry-run` limpo. Zero erros de console em todo o percurso.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/forms.py`, `pessoas/views.py`, `pessoas/matching.py`, `pessoas/wizard_csv.py`,
+    `pessoas/exportacao.py`, `pessoas/migrations/0008_campos_perfilamento_bp.py` (novo),
+    `formularios/migrations/0006_seed_perguntas_basicas_bp.py` (novo), `core/dashviz.py`,
+    `templates/pessoas/form.html`, `templates/pessoas/detalhe.html`,
+    `templates/pessoas/lista.html`, e `BP.xlsx` (novo, arquivo fonte na raiz do projeto).
+- **2026-08-14 (pergunta de múltipla escolha vira dropdown, não parede de checkbox)** —
+  Direto da rodada anterior: perguntas de `multipla_escolha` com muitas opções (ex.:
+  "Quais marcas de beleza você utiliza atualmente?", 74 marcas) renderizavam como uma
+  lista vertical de checkbox sempre visível — com dezenas de opções isso empurra o resto
+  do formulário pra baixo e fica visualmente pesado. Pedido: virar um dropdown de
+  múltipla seleção.
+  - **`formularios/widgets.py`** (novo) — `DropdownCheckboxSelectMultiple`, subclasse de
+    `forms.CheckboxSelectMultiple` que só troca o `template_name`. Continua mandando um
+    `<input type="checkbox" name="...">` por opção (o POST no servidor não muda em nada,
+    zero mudança em `formularios/respostas.py::construir_form_resposta` além de trocar
+    qual widget usar) — a diferença é inteiramente visual/client-side.
+  - **`formularios/templates/formularios/widgets/dropdown_checkbox_select.html`** (novo)
+    — template custom do widget: botão-gatilho (mostra "Selecione…", o nome da opção se só
+    1 estiver marcada, ou "N selecionadas"), painel que abre por baixo com campo de busca
+    e a lista de checkboxes dentro (scroll interno, não estica a página).
+    **Pegadinha descoberta no caminho**: o *form renderer* do Django (que desenha widgets)
+    usa uma engine de template **separada** da engine principal do projeto — ela só
+    enxerga templates dentro da pasta `templates/` de cada *app* (`app_directories`), não
+    a pasta `templates/` na raiz do projeto onde todo o resto do sistema guarda seus
+    templates. Coloquei o arquivo lá primeiro (padrão do resto do projeto) e caiu em
+    `TemplateDoesNotExist` — corrigido movendo pra dentro de
+    `formularios/templates/formularios/widgets/`, a única pasta que essa engine
+    específica enxerga.
+  - **`static/js/dropdown_multiselect.js`** (novo, incluído globalmente em `base.html` e
+    em `publico/cadastro.html`, mesmo padrão do `flash_erros.js`) — abre/fecha o painel,
+    fecha ao clicar fora ou `Esc`, filtra as opções pelo texto digitado na busca (ignora
+    acento/caixa), atualiza o rótulo do botão ao marcar/desmarcar (inclusive já no
+    carregamento da página, pra respeitar opções pré-marcadas na prévia/edição). Só entra
+    em ação se existir pelo menos um `.dropdown-multiselect` na página — no-op em todo o
+    resto do sistema.
+  - **`static/css/base.css`**: estilo do gatilho (igual a um `<select>` comum, mesma
+    paleta/raio de borda do resto dos campos) e do painel (sombra `--shadow`, borda
+    `--line`, opções com hover em `--violet-soft`).
+  - Testado: (1) associei "Perguntas Básicas de Beleza" (3 perguntas de múltipla escolha,
+    uma com 74 opções) a um perfil de teste e abri o link de cadastro público — os 5
+    dropdowns de múltipla escolha da página (de 2 formulários combinados) renderizam
+    fechados por padrão; abri o de 74 opções, busquei "ro" e filtrou corretamente pra
+    "Ruby Rose"/"Boca Rosa"/"Neutrogena"; marquei 2 opções e o rótulo do botão virou
+    "2 selecionadas"; cliquei fora e o painel fechou; (2) prévia de formulário
+    (`formulario_visualizar`, somente leitura) — os 3 dropdowns aparecem com os 91
+    checkboxes (74+8+9) todos desabilitados, confirmando que o modo somente-leitura
+    (`campo.disabled = True`) continua propagando corretamente pro widget novo; (3)
+    desfiz a associação de formulário de teste depois. Zero erros de console.
+  - **Segue sem commitar.** `git status` agora também inclui `formularios/widgets.py`
+    (novo), `formularios/templates/formularios/widgets/dropdown_checkbox_select.html`
+    (novo), `formularios/respostas.py`, `static/js/dropdown_multiselect.js` (novo),
+    `static/css/base.css`, `templates/base.html`, `templates/publico/cadastro.html`.
+- **2026-08-14 (cadastro público: CEP reposicionado + Região preenchida sozinha + seções
+  por formulário + CEP obrigatório)** — Usuário mandou um print do cadastro público real
+  (perfil "Campanha Tênis Playwright", já com formulários próprios associados por ele
+  mesmo pela tela que criei há duas rodadas) pedindo três coisas nessa tela: (1) CEP
+  reposicionado pra ficar logo antes de Região, com o ViaCEP preenchendo o resto sozinho;
+  (2) separação visual em seções — "Perguntas Básicas" primeiro, depois uma seção por
+  formulário associado ao perfil (título = nome do formulário), com uma linha fina entre
+  elas, não caixas pesadas; (3) todas as perguntas do formulário base obrigatórias.
+  - **CEP já tinha ViaCEP** (`static/js/endereco_cep.js`, de uma rodada bem anterior) —
+    preenchia bairro/UF e disparava a busca de cidades do IBGE, mas **não existia** ainda
+    quando esse script foi escrito, então nunca preenchia Região. Adicionado
+    `REGIAO_POR_UF` (mapa fixo — é geografia oficial, os 5 grupos de estado não mudam) e
+    `definirRegiao(uf)`, chamada tanto na resposta do ViaCEP quanto na troca manual de UF
+    — cobre os dois jeitos de a UF ficar sabida.
+  - **CEP era o único campo do H–Y que tinha ficado de fora da obrigatoriedade** na rodada
+    anterior (não estava nas 18 colunas H-Y da planilha original) — agora que ele entra
+    de vez no fluxo (é o gatilho do autopreenchimento), virou obrigatório também, fechando
+    a lacuna: `pessoas/models.py::Participante.cep` perde o `blank=True` (migração
+    `0009_cep_obrigatorio.py`, só `AlterField`, sem precisar de default pra dado
+    existente — a coluna já era `NOT NULL`, só a validação de formulário mudou).
+  - **Reordenação**: `pessoas/forms.py::ParticipanteForm.Meta.fields` — CEP sai de antes
+    de UF e vai pra logo antes de Região (depois de UF/Cidade/Bairro). Como
+    `publico/cadastro.html` itera os campos do form na ordem do `Meta.fields`, isso já
+    resolve a posição na tela sem precisar tocar no template pra essa parte. O formulário
+    interno (`pessoas/form.html`) já tinha CEP antes de Região na mesma linha (ordem
+    manual, campo a campo) — não precisou de ajuste.
+  - **Seções**: `publico/cadastro.html` reestruturado — a lista solta de campos virou um
+    bloco "Perguntas Básicas" (os campos fixos do `ParticipanteForm`) seguido de um bloco
+    por item de `forms_dinamicos` (cada um já é 1 formulário do perfil, na ordem
+    escolhida na tela de perfil), cada um com `<h3>{{ formulario.nome }}</h3>`. Classe CSS
+    nova `.cadastro-secao` (linha fina `border-top` + respiro, sem borda na primeira seção
+    pra não duplicar a linha que já existe abaixo do subtítulo do cabeçalho) — decisão de
+    propósito de não usar painel/caixa (`.panel` já existente no sistema é mais pesado
+    visualmente, o pedido foi por algo sutil).
+  - Testado com Playwright (mockei ViaCEP e IBGE, que não respondem neste ambiente de
+    teste sem internet — mesma técnica já usada nas rodadas anteriores): (1) 4 seções
+    renderizadas na página de um perfil com 3 formulários associados (o próprio usuário já
+    tinha montado esse cenário testando a tela de perfil) — "Perguntas Básicas",
+    "Perguntas Básicas de Alimentação", "...de Banco", "...de Bebidas"; (2) ordem dos
+    campos confirmada — CEP aparece logo antes de Região; (3) preenchi o CEP
+    "01310-100" e conferi que Bairro, UF, Cidade **e Região** foram todos preenchidos
+    sozinhos (antes desta rodada, Região nunca preenchia); (4) confirmado que submeter o
+    formulário sem CEP agora dá erro "Este campo é obrigatório." Zero erros de console.
+    Não mexi nos formulários associados ao perfil de teste usado (Alimentação/Banco/
+    Bebidas) — são associações reais que o próprio usuário já tinha montado explorando a
+    tela de perfil, não fixture minha, então não desfiz nada ao terminar.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/forms.py`, `pessoas/migrations/0009_cep_obrigatorio.py` (novo),
+    `static/js/endereco_cep.js`, `static/css/base.css`, `templates/publico/cadastro.html`.
+- **2026-08-14 (CEP primeiro, Região continuava sem preencher — bug real: cache do
+  navegador no JS)** — Usuário mandou um segundo print da mesma tela pedindo ordem
+  diferente (CEP primeiro, depois Região, Estado, Cidade, Bairro) e reclamando de novo que
+  o ViaCEP não preenche Região — mas eu já tinha implementado isso na rodada anterior.
+  - **Causa raiz**: `static/js/endereco_cep.js` é incluído nos templates como
+    `{% static 'js/endereco_cep.js' %}` — **sem** cache-busting. O projeto já tem exatamente
+    a ferramenta certa pra isso, `core/templatetags/static_v.py::static_v` (gruda
+    `?v=<data de modificação do arquivo>` na URL), só que até agora só era usada pra CSS. O
+    print do usuário mostrava UF e Cidade certos (prova que o ViaCEP rodou) mas Região
+    errada ("Norte" pra um CEP do Rio de Janeiro) — exatamente a assinatura de rodar uma
+    cópia do JS em cache no navegador, de antes da Região existir no script: o valor
+    "Norte" ali era sobra de uma seleção manual anterior, não um cálculo novo errado (o
+    código em si já estava certo, só não chegava a rodar naquele navegador). A própria
+    docstring do `static_v` já registra que isso **já tinha acontecido antes com CSS**
+    ("foi exatamente o que confundiu o usuário com o CSS do modal de avaliação") — mesma
+    causa, dessa vez em JS.
+  - **Correção estrutural** (não só o caso do CEP): troquei **todo** `<script src="{%
+    static 'js/...' %}">` do projeto (17 tags em 10 templates) por `{% static_v %}`,
+    adicionando `static_v` no `{% load %}` de quem ainda não tinha. Não é sobre esse bug
+    específico — é fechar a lacuna de vez, já que o mecanismo existe desde uma rodada bem
+    anterior mas só cobria CSS.
+  - **Reordenação**: `pessoas/forms.py::ParticipanteForm.Meta.fields` — CEP volta a ficar
+    logo depois de E-mail (era a posição original, antes da rodada passada), seguido de
+    Região, UF, Cidade, Bairro. `templates/pessoas/form.html` (formulário interno)
+    ajustado pra mesma ordem na fieldset "Contato e endereço".
+  - Testado com Playwright (ViaCEP/IBGE mockados, mesma técnica de sempre): (1) confirmei
+    que o `<script>` servido agora carrega com `?v=<timestamp>` na URL — a causa raiz de
+    fato sumiu; (2) ordem dos campos na seção "Perguntas Básicas" confirmada: E-mail, CEP,
+    Região, UF, Cidade, Bairro, Escolaridade...; (3) preenchi o CEP de Niterói/RJ
+    (24110-415) e confirmei bairro="Barreto", UF="Rio de Janeiro", Região="Sudeste" — a
+    região certa dessa vez, e batendo com a UF (antes o print mostrava "Norte" pra um
+    endereço do Rio). Zero erros de console. Não toquei nos formulários associados ao
+    perfil de teste (permanecem os mesmos 3 que o usuário já tinha montado).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/forms.py`,
+    `templates/pessoas/form.html`, e os 8 templates que ganharam `static_v` nos scripts:
+    `templates/base.html`, `templates/publico/cadastro.html`,
+    `templates/core/home.html`, `templates/core/dashboard_segmento.html`,
+    `templates/participacoes/lista.html`, `templates/participacoes/detalhe.html`,
+    `templates/pessoas/wizard_revisao.html`, `templates/pessoas/wizard_dados_manual.html`,
+    `templates/formularios/variavel_form.html`.
+- **2026-08-14 (tela "Link de cadastro" removida — vira botão de copiar direto)** — Desde
+  que o link público parou de expirar por tempo (rodada bem anterior — só perde validade
+  se o projeto sair de "Recrutando"), a tela dedicada (`projetos:perfil_link`, com campo
+  de link + botão "Gerar novo link") não tinha mais razão de existir: como o token é só
+  assinado na hora (sem estado salvo no banco), dá pra montar o link direto onde ele é
+  mostrado, sem precisar navegar pra outro lugar.
+  - `projetos/views.py::_link_captacao(request, perfil)` (novo, privado) — mesma geração
+    de token de sempre (`gerar_token_captacao(perfil.id, request.user.id)`), só que
+    chamada direto de `detalhe()` (tela do projeto, um link por perfil na tabela) e
+    `perfil_detalhe()` (tela do perfil), anexando `perfil.link_cadastro` em cada objeto.
+    Como o `recrutador_id` do token é sempre "quem está vendo a página agora", o link
+    mostrado já reflete corretamente quem vai levar o crédito pela indicação se for essa
+    pessoa quem copiar e compartilhar — sem precisar de um botão "Gerar novo link"
+    separado pra isso (é recalculado a cada carregamento da página).
+  - View `perfil_link`, rota `projetos/perfis/<int:pk>/link/` e o template
+    `projetos/perfil_link.html` foram **removidos** (não mantidos como código morto).
+  - `templates/projetos/detalhe.html` e `templates/projetos/perfil_detalhe.html`: o `<a
+    href="...">Link</a>` que navegava pra tela dedicada virou `<button type="button"
+    data-copiar="{{ perfil.link_cadastro }}">` — clique copia pro clipboard
+    (`navigator.clipboard.writeText`, com fallback via `document.execCommand("copy")` pra
+    contexto sem Clipboard API) e sobe um balãozinho "Link copiado!" ancorado no próprio
+    botão (aparece por cima, seta apontando pra baixo, some sozinho depois de ~1.6s).
+  - `static/js/copiar_link.js` (novo, incluído globalmente em `base.html` via
+    `static_v` — funciona em qualquer botão com `data-copiar="<texto>"` em qualquer tela
+    futura, não é específico de link de cadastro) + `.balao-copiado` em
+    `static/css/base.css` (mesma linguagem visual do `.flash-card`, mas pequeno e
+    ancorado no elemento em vez de canto da tela).
+  - Testado com Playwright (contexto com permissão de clipboard concedida): (1) a rota
+    antiga (`/projetos/perfis/1/link/`) agora dá 404, confirmando que não sobrou nada
+    acessível; (2) botão "Copiar link" na tabela de perfis do projeto — cliquei, balão
+    "Link copiado!" apareceu, conteúdo do clipboard bateu exatamente com o
+    `data-copiar` do botão, balão sumiu sozinho depois de ~2s; (3) decodifiquei o token
+    copiado e confirmei `perfil_id`/`recrutador_id` corretos (o usuário logado no teste);
+    (4) mesmo teste no botão "Copiar link de cadastro" da tela do perfil — funciona igual.
+    Zero erros de console (fora o 404 esperado da checagem da rota removida).
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/views.py`,
+    `projetos/urls.py`, `static/js/copiar_link.js` (novo), `static/css/base.css`,
+    `templates/base.html`, `templates/projetos/detalhe.html`,
+    `templates/projetos/perfil_detalhe.html`; `templates/projetos/perfil_link.html`
+    removido.

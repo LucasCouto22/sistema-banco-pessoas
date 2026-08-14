@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static static_v %}
 {% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Variáveis / <b>{{ titulo }}</b>{% endblock %}
 {% block conteudo %}
@@ -60,5 +60,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/variavel_form.js' %}" defer></script>
+<script src="{% static_v 'js/variavel_form.js' %}" defer></script>
 {% endblock %}

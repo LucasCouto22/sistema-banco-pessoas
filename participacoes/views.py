@@ -98,6 +98,12 @@ def exportar(request, formato):
 def kanban(request):
     colunas = []
     for etapa_valor, etapa_label in Participacao.Etapa.choices:
+        # "Pago" é o fim do funil — quem chega lá já foi pago e não precisa
+        # mais aparecer no quadro de acompanhamento. Continua existindo
+        # como etapa normal (dá pra "Avançar" até ela a partir de
+        # Entrevista), só não ganha coluna própria aqui.
+        if etapa_valor == Participacao.Etapa.PAGO:
+            continue
         itens = Participacao.objects.filter(etapa=etapa_valor).select_related("participante", "perfil__projeto")
         colunas.append({"valor": etapa_valor, "label": etapa_label, "itens": itens})
     return render(request, "participacoes/kanban.html", {"colunas": colunas})
@@ -110,11 +116,15 @@ def detalhe(request, pk):
         Participacao.objects.select_related("participante", "perfil__projeto", "responsavel"), pk=pk
     )
     formularios_do_projeto = []
-    if request.user.tem_permissao("respostas.ver") and participacao.perfil.formulario_id:
-        resposta = RespostaFormulario.objects.filter(
-            participacao=participacao, formulario_id=participacao.perfil.formulario_id
-        ).first()
-        formularios_do_projeto.append({"formulario": participacao.perfil.formulario, "resposta": resposta})
+    if request.user.tem_permissao("respostas.ver"):
+        respostas_por_formulario = {
+            r.formulario_id: r
+            for r in RespostaFormulario.objects.filter(participacao=participacao)
+        }
+        for formulario in participacao.perfil.formularios_ordenados:
+            formularios_do_projeto.append(
+                {"formulario": formulario, "resposta": respostas_por_formulario.get(formulario.pk)}
+            )
     avaliacao = getattr(participacao, "avaliacao", None)
     pode_avaliar = request.user.tem_permissao("avaliacao.criar")
     return render(
@@ -147,6 +157,41 @@ def nova(request):
         # pra já chegar com o perfil certo pré-selecionado.
         form = ParticipacaoForm(initial={"perfil": request.GET.get("perfil")})
     return render(request, "participacoes/form.html", {"form": form, "titulo": "Associar a perfil"})
+
+
+@login_required
+@requer_permissao("participacoes.mover_etapa")
+@require_POST
+def mudar_status(request, pk):
+    participacao = get_object_or_404(Participacao, pk=pk)
+    novo_status = request.POST.get("status", "")
+    rotulos = dict(Participacao.Status.choices)
+    if novo_status and novo_status not in rotulos:
+        raise Http404
+    participacao.status = novo_status
+    participacao.save(update_fields=["status"])
+    if novo_status:
+        messages.success(request, f'Status de {participacao.participante.nome} alterado para "{rotulos[novo_status]}".')
+    else:
+        messages.info(request, f"Status de {participacao.participante.nome} removido.")
+    destino = request.POST.get("next") or "participacoes:lista"
+    return redirect(destino)
+
+
+@login_required
+@requer_permissao("participacoes.mover_etapa")
+@require_POST
+def mudar_etapa(request, pk):
+    participacao = get_object_or_404(Participacao, pk=pk)
+    nova_etapa = request.POST.get("etapa", "")
+    rotulos = dict(Participacao.Etapa.choices)
+    if nova_etapa not in rotulos:
+        raise Http404
+    participacao.etapa = nova_etapa
+    participacao.save(update_fields=["etapa", "etapa_atualizada_em"])
+    messages.success(request, f'{participacao.participante.nome} agora está em "{rotulos[nova_etapa]}".')
+    destino = request.POST.get("next") or "participacoes:lista"
+    return redirect(destino)
 
 
 @login_required

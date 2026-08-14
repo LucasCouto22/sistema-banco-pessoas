@@ -31,12 +31,17 @@
     <tr><td class="cell-sub">Telefone</td><td>{% include "pessoas/_pii_campo.html" with participante=participante campo="telefone" mascarado=participante.telefone_mascarado %}</td></tr>
     <tr><td class="cell-sub">E-mail</td><td>{% include "pessoas/_pii_campo.html" with participante=participante campo="email" mascarado=participante.email_mascarado %}</td></tr>
     <tr><td class="cell-sub">Nascimento</td><td>{{ participante.data_nascimento }} ({{ participante.idade }} anos)</td></tr>
-    <tr><td class="cell-sub">Cidade/UF</td><td>{{ participante.cidade }}/{{ participante.uf }}</td></tr>
+    <tr><td class="cell-sub">Gênero</td><td>{{ participante.get_genero_display }}</td></tr>
+    <tr><td class="cell-sub">Raça/cor</td><td>{{ participante.get_raca_display|default:"—" }}</td></tr>
+    <tr><td class="cell-sub">Estado civil</td><td>{{ participante.get_estado_civil_display|default:"—" }}</td></tr>
+    <tr><td class="cell-sub">Região/Cidade/UF</td><td>{{ participante.get_regiao_display|default:"—" }} · {{ participante.cidade }}/{{ participante.uf }}</td></tr>
     <tr><td class="cell-sub">Bairro</td><td>{{ participante.bairro|default:"—" }}</td></tr>
     <tr><td class="cell-sub">CEP</td><td>{{ participante.cep|default:"—" }}</td></tr>
     <tr><td class="cell-sub">Escolaridade</td><td>{{ participante.get_escolaridade_display }}</td></tr>
     <tr><td class="cell-sub">Profissão</td><td>{{ participante.profissao|default:"—" }}{% if participante.especialidade %} — {{ participante.especialidade }}{% endif %}</td></tr>
-    <tr><td class="cell-sub">Faixa de renda</td><td>{{ participante.get_faixa_renda_display }}</td></tr>
+    <tr><td class="cell-sub">Ocupação</td><td>{{ participante.get_ocupacao_display|default:"—" }}</td></tr>
+    <tr><td class="cell-sub">Renda individual</td><td>{{ participante.get_renda_individual_display|default:"—" }}</td></tr>
+    <tr><td class="cell-sub">Renda familiar</td><td>{{ participante.get_renda_familiar_display|default:"—" }}</td></tr>
     <tr><td class="cell-sub">Situação</td><td>
       {% if participante.situacao == "APROVADO" %}<span class="badge b-green">{{ participante.get_situacao_display }}</span>
       {% elif participante.situacao == "DESCARTADO" %}<span class="badge b-red">{{ participante.get_situacao_display }}</span>

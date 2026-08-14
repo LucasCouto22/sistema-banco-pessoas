@@ -15,54 +15,147 @@ CAMPOS_CSV = {
     "nascimento": "data_nascimento",
     "genero": "genero",
     "gênero": "genero",
+    "raca": "raca",
+    "raça": "raca",
+    "raca/cor": "raca",
+    "raça/cor": "raca",
     "e-mail": "email",
     "email": "email",
     "telefone": "telefone",
     "cidade": "cidade",
     "uf": "uf",
     "cep": "cep",
+    "bairro": "bairro",
+    "regiao": "regiao",
+    "região": "regiao",
     "escolaridade": "escolaridade",
     "profissao": "profissao",
     "profissão": "profissao",
     "especialidade": "especialidade",
-    "faixa de renda": "faixa_renda",
-    "faixa_renda": "faixa_renda",
+    "ocupacao": "ocupacao",
+    "ocupação": "ocupacao",
+    "estado civil": "estado_civil",
+    "estado_civil": "estado_civil",
+    "renda individual": "renda_individual",
+    "renda_individual": "renda_individual",
+    "faixa de renda": "renda_individual",
+    "renda familiar": "renda_familiar",
+    "renda_familiar": "renda_familiar",
 }
 
 GENERO_MAP = {
-    "feminino": "FEMININO",
-    "f": "FEMININO",
-    "masculino": "MASCULINO",
-    "m": "MASCULINO",
-    "outro": "OUTRO",
-    "nao informa": "NAO_INFORMA",
-    "não informa": "NAO_INFORMA",
-    "prefere nao informar": "NAO_INFORMA",
-    "prefere não informar": "NAO_INFORMA",
+    "mulher cisgenero": "MULHER_CIS",
+    "mulher cisgênero": "MULHER_CIS",
+    "mulher cis": "MULHER_CIS",
+    "feminino": "MULHER_CIS",
+    "f": "MULHER_CIS",
+    "homem cisgenero": "HOMEM_CIS",
+    "homem cisgênero": "HOMEM_CIS",
+    "homem cis": "HOMEM_CIS",
+    "masculino": "HOMEM_CIS",
+    "m": "HOMEM_CIS",
+    "mulher transgenero": "MULHER_TRANS",
+    "mulher transgênero": "MULHER_TRANS",
+    "mulher trans": "MULHER_TRANS",
+    "homem transgenero": "HOMEM_TRANS",
+    "homem transgênero": "HOMEM_TRANS",
+    "homem trans": "HOMEM_TRANS",
+    "pessoa nao binaria": "NAO_BINARIA",
+    "pessoa não binária": "NAO_BINARIA",
+    "nao binaria": "NAO_BINARIA",
+    "não binária": "NAO_BINARIA",
+    "outra identidade de genero": "OUTRA",
+    "outra identidade de gênero": "OUTRA",
+    "outro": "OUTRA",
+    "outra": "OUTRA",
+    "prefiro nao responder": "NAO_RESPONDE",
+    "prefiro não responder": "NAO_RESPONDE",
+    "nao informa": "NAO_RESPONDE",
+    "não informa": "NAO_RESPONDE",
+}
+RACA_MAP = {
+    "branca": "BRANCA",
+    "preta": "PRETA",
+    "parda": "PARDA",
+    "amarela": "AMARELA",
+    "indigena": "INDIGENA",
+    "indígena": "INDIGENA",
+}
+ESTADO_CIVIL_MAP = {
+    "solteiro": "SOLTEIRO",
+    "solteiro(a)": "SOLTEIRO",
+    "casado": "CASADO",
+    "casado(a)": "CASADO",
+    "uniao estavel": "UNIAO_ESTAVEL",
+    "união estável": "UNIAO_ESTAVEL",
+    "separado": "SEPARADO",
+    "separado(a)": "SEPARADO",
+    "divorciado": "DIVORCIADO",
+    "divorciado(a)": "DIVORCIADO",
+    "viuvo": "VIUVO",
+    "viúvo": "VIUVO",
+    "viuvo(a)": "VIUVO",
+    "viúvo(a)": "VIUVO",
+}
+OCUPACAO_MAP = {
+    "ocupacao remunerada": "OCUPACAO_REMUNERADA",
+    "ocupação remunerada": "OCUPACAO_REMUNERADA",
+    "estudante e ocupacao remunerada": "ESTUDANTE_E_OCUPACAO",
+    "estudante e ocupação remunerada": "ESTUDANTE_E_OCUPACAO",
+    "estudante": "ESTUDANTE",
+    "desempregado": "DESEMPREGADO",
+    "desempregado(a)": "DESEMPREGADO",
+    "aposentado": "APOSENTADO",
+    "aposentado(a)": "APOSENTADO",
+    "atividades do lar": "ATIVIDADES_DO_LAR",
+}
+REGIAO_MAP = {
+    "norte": "NORTE",
+    "nordeste": "NORDESTE",
+    "centro-oeste": "CENTRO_OESTE",
+    "centro oeste": "CENTRO_OESTE",
+    "sudeste": "SUDESTE",
+    "sul": "SUL",
 }
 ESCOLARIDADE_MAP = {
-    "fundamental": "FUNDAMENTAL",
-    "medio": "MEDIO",
-    "médio": "MEDIO",
-    "superior": "SUPERIOR",
-    "pos": "POS",
-    "pós": "POS",
-    "pos-graduacao": "POS",
-    "pós-graduação": "POS",
+    "medio incompleto": "MEDIO_INCOMPLETO",
+    "médio incompleto": "MEDIO_INCOMPLETO",
+    "ensino medio incompleto": "MEDIO_INCOMPLETO",
+    "ensino médio incompleto": "MEDIO_INCOMPLETO",
+    "medio completo": "MEDIO_COMPLETO",
+    "médio completo": "MEDIO_COMPLETO",
+    "ensino medio completo": "MEDIO_COMPLETO",
+    "ensino médio completo": "MEDIO_COMPLETO",
+    "medio": "MEDIO_COMPLETO",
+    "médio": "MEDIO_COMPLETO",
+    "superior incompleto": "SUPERIOR_INCOMPLETO",
+    "ensino superior incompleto": "SUPERIOR_INCOMPLETO",
+    "superior completo": "SUPERIOR_COMPLETO",
+    "ensino superior completo": "SUPERIOR_COMPLETO",
+    "superior": "SUPERIOR_COMPLETO",
+    "pos": "POS_GRADUACAO",
+    "pós": "POS_GRADUACAO",
+    "pos graduacao": "POS_GRADUACAO",
+    "pós graduação": "POS_GRADUACAO",
+    "pos-graduacao": "POS_GRADUACAO",
+    "pós-graduação": "POS_GRADUACAO",
+    "mestrado": "MESTRADO",
+    "doutorado": "DOUTORADO",
 }
-FAIXA_RENDA_MAP = {
-    "a": "A_B",
-    "b": "A_B",
-    "a/b": "A_B",
-    "classes a/b": "A_B",
-    "a_b": "A_B",
+# Mesmos códigos A-E servem pra renda individual e familiar — o rótulo (o
+# valor em R$/salários mínimos) é que muda por campo, o código de classe é
+# igual nos dois.
+RENDA_MAP = {
+    "a": "A",
+    "classe a": "A",
+    "b": "B",
+    "classe b": "B",
     "c": "C",
     "classe c": "C",
-    "d": "D_E",
-    "e": "D_E",
-    "d/e": "D_E",
-    "classes d/e": "D_E",
-    "d_e": "D_E",
+    "d": "D",
+    "classe d": "D",
+    "e": "E",
+    "classe e": "E",
 }
 
 CABECALHO_MODELO = [
@@ -70,31 +163,43 @@ CABECALHO_MODELO = [
     "CPF",
     "Data de nascimento",
     "Gênero",
+    "Raça/cor",
     "E-mail",
     "Telefone",
     "Cidade",
     "UF",
+    "Região",
     "CEP",
+    "Bairro",
     "Escolaridade",
     "Profissão",
     "Especialidade",
-    "Faixa de renda",
+    "Ocupação",
+    "Estado civil",
+    "Renda individual",
+    "Renda familiar",
 ]
 
 LINHA_EXEMPLO = [
     "Maria da Silva",
     "111.444.777-35",
     "1990-05-10",
-    "Feminino",
+    "Mulher cisgênero",
+    "Branca",
     "maria@example.com",
     "11999998888",
     "São Paulo",
     "SP",
+    "Sudeste",
     "01000-000",
-    "Superior",
+    "Centro",
+    "Superior Completo",
     "Designer",
     "UX/UI",
-    "Classes A/B",
+    "Ocupação remunerada",
+    "Solteiro(a)",
+    "Classe B",
+    "Classe B",
 ]
 
 
@@ -108,15 +213,24 @@ def _mapa_profissoes():
     return {p.nome.lower(): str(p.pk) for p in Profissao.objects.all()}
 
 
+_MAPAS_POR_CAMPO = {
+    "genero": GENERO_MAP,
+    "raca": RACA_MAP,
+    "estado_civil": ESTADO_CIVIL_MAP,
+    "ocupacao": OCUPACAO_MAP,
+    "regiao": REGIAO_MAP,
+    "escolaridade": ESCOLARIDADE_MAP,
+    "renda_individual": RENDA_MAP,
+    "renda_familiar": RENDA_MAP,
+}
+
+
 def _normalizar_campo(campo, valor, mapa_profissoes=None):
-    if campo == "genero":
-        return _mapear(valor, GENERO_MAP)
-    if campo == "escolaridade":
-        return _mapear(valor, ESCOLARIDADE_MAP)
-    if campo == "faixa_renda":
-        return _mapear(valor, FAIXA_RENDA_MAP)
     if campo == "profissao":
         return _mapear(valor, mapa_profissoes or {})
+    mapa = _MAPAS_POR_CAMPO.get(campo)
+    if mapa is not None:
+        return _mapear(valor, mapa)
     return valor
 
 
@@ -130,6 +244,23 @@ def variaveis_do_formulario(formulario):
         .prefetch_related("variavel__opcoes")
         .order_by("ordem")
     )
+
+
+def variaveis_dos_formularios(formularios):
+    """Mesma coisa que `variaveis_do_formulario()`, só que concatenando as
+    variáveis de **todos** os formulários do perfil, na ordem
+    formulário→variável-dentro-do-formulário, sem repetir uma `Variavel`
+    que apareça em mais de um formulário do mesmo perfil (a `chave` da
+    variável já é única globalmente, então dedup por chave é suficiente)."""
+    vistas = set()
+    resultado = []
+    for formulario in formularios or []:
+        for fv in variaveis_do_formulario(formulario):
+            if fv.variavel.chave in vistas:
+                continue
+            vistas.add(fv.variavel.chave)
+            resultado.append(fv)
+    return resultado
 
 
 def _exemplo_variavel(variavel):
@@ -185,14 +316,16 @@ def _normalizar_cabecalho(texto):
     return texto
 
 
-def _mapa_variaveis(formulario):
-    """Nome da variável (minúsculo) → (chave, Variavel) — usado pra casar o
-    cabeçalho da planilha com a variável certa do formulário do perfil."""
-    if not formulario:
+def _mapa_variaveis(formularios):
+    """Nome da variável (minúsculo) → Variavel — usado pra casar o
+    cabeçalho da planilha com a variável certa de algum dos formulários do
+    perfil (todos misturados: o cabeçalho da planilha não distingue de qual
+    formulário veio cada pergunta)."""
+    if not formularios:
         return {}
     return {
         fv.variavel.nome.strip().lower(): fv.variavel
-        for fv in variaveis_do_formulario(formulario)
+        for fv in variaveis_dos_formularios(formularios)
     }
 
 
@@ -211,14 +344,14 @@ def _texto_celula(valor):
     return str(valor).strip()
 
 
-def ler_csv(arquivo, formulario=None):
+def ler_csv(arquivo, formularios=None):
     """Lê um arquivo CSV enviado via upload e devolve uma lista de dicionários com as
     chaves já normalizadas para os nomes de campo do modelo Participante. Datas devem
     estar no formato AAAA-MM-DD; valores de gênero/escolaridade/faixa de renda aceitam
     variações comuns em português (ex.: "Superior", "Médio", "Classes A/B"). Se
-    `formulario` for passado (o formulário do perfil escolhido no wizard), colunas
-    que baterem com o nome de uma variável desse formulário também entram no
-    resultado, com a chave da variável — prontas pra `construir_form_resposta()`."""
+    `formularios` for passado (os formulários do perfil escolhido no wizard), colunas
+    que baterem com o nome de uma variável de algum desses formulários também entram
+    no resultado, com a chave da variável — prontas pra `construir_form_resposta()`."""
     bruto = arquivo.read()
     for codificacao in ("utf-8-sig", "utf-8", "latin-1"):
         try:
@@ -236,7 +369,7 @@ def ler_csv(arquivo, formulario=None):
 
     leitor = csv.DictReader(io.StringIO(texto), dialect=dialect)
     mapa_profissoes = _mapa_profissoes()
-    mapa_variaveis = _mapa_variaveis(formulario)
+    mapa_variaveis = _mapa_variaveis(formularios)
     linhas = []
     for linha_bruta in leitor:
         dados = {}
@@ -255,10 +388,10 @@ def ler_csv(arquivo, formulario=None):
     return linhas
 
 
-def ler_xlsx(arquivo, formulario=None):
+def ler_xlsx(arquivo, formularios=None):
     """Lê a primeira planilha de um arquivo .xlsx enviado via upload — mesma
     saída de `ler_csv()` (lista de dicionários com os campos já normalizados,
-    incluindo as colunas do `formulario` do perfil quando houver), só que
+    incluindo as colunas dos `formularios` do perfil quando houver), só que
     lendo célula a célula em vez de linha de texto."""
     pasta = load_workbook(arquivo, data_only=True, read_only=True)
     aba = pasta.active
@@ -270,7 +403,7 @@ def ler_xlsx(arquivo, formulario=None):
     cabecalho = [_normalizar_cabecalho(c) for c in cabecalho_bruto]
 
     mapa_profissoes = _mapa_profissoes()
-    mapa_variaveis = _mapa_variaveis(formulario)
+    mapa_variaveis = _mapa_variaveis(formularios)
     linhas = []
     for linha_bruta in linhas_brutas:
         dados = {}
@@ -287,13 +420,13 @@ def ler_xlsx(arquivo, formulario=None):
     return linhas
 
 
-def ler_planilha(arquivo, formulario=None):
+def ler_planilha(arquivo, formularios=None):
     """Ponto de entrada único do wizard de importação: aceita tanto .csv
     quanto .xlsx e despacha pro leitor certo com base na extensão do
-    arquivo enviado. `formulario` (opcional) é o formulário do perfil
-    escolhido no wizard — quando presente, as respostas dele também são
+    arquivo enviado. `formularios` (opcional) são os formulários do perfil
+    escolhido no wizard — quando presentes, as respostas deles também são
     lidas da planilha."""
     nome = (arquivo.name or "").lower()
     if nome.endswith(".xlsx"):
-        return ler_xlsx(arquivo, formulario)
-    return ler_csv(arquivo, formulario)
+        return ler_xlsx(arquivo, formularios)
+    return ler_csv(arquivo, formularios)

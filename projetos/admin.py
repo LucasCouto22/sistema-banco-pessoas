@@ -12,6 +12,6 @@ class ProjetoAdmin(admin.ModelAdmin):
 
 @admin.register(Perfil)
 class PerfilAdmin(admin.ModelAdmin):
-    list_display = ("nome", "projeto", "formulario", "criado_em")
+    list_display = ("nome", "projeto", "criado_em")
     list_filter = ("projeto",)
     search_fields = ("nome", "projeto__nome")

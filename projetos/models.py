@@ -87,19 +87,21 @@ class Projeto(models.Model):
 
 class Perfil(models.Model):
     """Um projeto tem de 1 a N perfis (ex.: "Mulheres 18-25", "Homens 25-40") —
-    é o perfil, não mais o projeto direto, que carrega o formulário de coleta
-    e recebe os participantes. `formulario` referencia `formularios.Formulario`
-    por string (não por import direto) porque `formularios/models.py` já
-    importa `Projeto` daqui — importar `Formulario` de volta criaria um ciclo."""
+    é o perfil, não mais o projeto direto, que carrega o(s) formulário(s) de
+    coleta e recebe os participantes. Um perfil pode ter 0 a N formulários
+    associados, numa ordem escolhida (`formularios`, M2M via `PerfilFormulario`
+    — mesmo padrão de `Formulario`↔`Variavel`/`FormularioVariavel`).
+    `"formularios.Formulario"` é referenciado por string (não por import
+    direto) porque `formularios/models.py` já importa `Projeto` daqui —
+    importar `Formulario` de volta criaria um ciclo."""
 
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name="perfis")
     nome = models.CharField(max_length=150)
-    formulario = models.ForeignKey(
+    formularios = models.ManyToManyField(
         "formularios.Formulario",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
+        through="PerfilFormulario",
         related_name="perfis",
+        blank=True,
     )
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -115,3 +117,33 @@ class Perfil(models.Model):
     @property
     def ocupadas(self):
         return self.participacoes.count()
+
+    @property
+    def formularios_ordenados(self):
+        """`self.formularios.all()` NÃO respeita a ordem do through
+        (`PerfilFormulario.ordem`) — o M2M manager ordena pelo `Meta.ordering`
+        do `Formulario` (nome), não do through. Esse é o jeito certo de
+        pegar os formulários do perfil na ordem escolhida; usado tanto nas
+        views quanto direto nos templates."""
+        return [pf.formulario for pf in self.perfil_formularios.select_related("formulario").all()]
+
+
+class PerfilFormulario(models.Model):
+    """Liga um Perfil aos Formularios escolhidos, com a ordem de exibição —
+    mesmo papel que `formularios.FormularioVariavel` tem pra Variavel dentro
+    de um Formulario."""
+
+    perfil = models.ForeignKey(Perfil, on_delete=models.CASCADE, related_name="perfil_formularios")
+    formulario = models.ForeignKey(
+        "formularios.Formulario", on_delete=models.PROTECT, related_name="perfil_associacoes"
+    )
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordem"]
+        constraints = [
+            models.UniqueConstraint(fields=["perfil", "formulario"], name="uniq_perfil_formulario")
+        ]
+
+    def __str__(self):
+        return f"{self.perfil} — {self.formulario}"

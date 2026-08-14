@@ -3,19 +3,36 @@
    ViaCEP (bairro, cidade, UF) e, sempre que o estado é conhecido — vindo da
    ViaCEP ou escolhido manualmente —, a lista de cidades daquele estado é
    buscada na API de localidades do IBGE, em ordem alfabética
-   (`orderBy=nome`), pra popular o <select> de Cidade. As duas são APIs
+   (`orderBy=nome`), pra popular o <select> de Cidade. A Região também é
+   preenchida sozinha a partir da UF (mapeamento fixo — os 5 grupos de
+   estado são geografia oficial, não muda). As duas APIs (ViaCEP e IBGE) são
    públicas e gratuitas, sem chave de acesso. */
 (function () {
   "use strict";
+
+  var REGIAO_POR_UF = {
+    AC: "NORTE", AP: "NORTE", AM: "NORTE", PA: "NORTE", RO: "NORTE", RR: "NORTE", TO: "NORTE",
+    AL: "NORDESTE", BA: "NORDESTE", CE: "NORDESTE", MA: "NORDESTE", PB: "NORDESTE",
+    PE: "NORDESTE", PI: "NORDESTE", RN: "NORDESTE", SE: "NORDESTE",
+    DF: "CENTRO_OESTE", GO: "CENTRO_OESTE", MT: "CENTRO_OESTE", MS: "CENTRO_OESTE",
+    ES: "SUDESTE", MG: "SUDESTE", RJ: "SUDESTE", SP: "SUDESTE",
+    PR: "SUL", RS: "SUL", SC: "SUL",
+  };
 
   var campoCep = document.getElementById("id_cep");
   var campoBairro = document.getElementById("id_bairro");
   var campoUf = document.getElementById("id_uf");
   var campoCidade = document.getElementById("id_cidade");
+  var campoRegiao = document.getElementById("id_regiao");
   if (!campoUf || !campoCidade) return;
 
   function apenasDigitos(valor) {
     return (valor || "").replace(/\D/g, "");
+  }
+
+  function definirRegiao(uf) {
+    if (!campoRegiao) return;
+    campoRegiao.value = REGIAO_POR_UF[(uf || "").toUpperCase()] || "";
   }
 
   function popularCidades(uf, cidadeParaSelecionar) {
@@ -41,6 +58,7 @@
   campoUf.addEventListener("change", function () {
     if (campoUf.value) {
       popularCidades(campoUf.value, null);
+      definirRegiao(campoUf.value);
     } else {
       campoCidade.innerHTML = '<option value="">Selecione o estado primeiro</option>';
     }
@@ -58,6 +76,7 @@
           if (dados.uf) {
             campoUf.value = dados.uf;
             popularCidades(dados.uf, dados.localidade || null);
+            definirRegiao(dados.uf);
           }
         })
         .catch(function () {});

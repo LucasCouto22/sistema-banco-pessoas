@@ -56,22 +56,76 @@ class Participante(models.Model):
         SE = "SE", "Sergipe"
         TO = "TO", "Tocantins"
 
+    # Choices desta classe (Genero, Escolaridade, Renda*, Raca, EstadoCivil,
+    # Ocupacao, Regiao) foram todas realinhadas com o BP.xlsx (aba "Modelo",
+    # colunas H a Y) — cada aba com o nome da coluna (ex.: aba "N" pra
+    # Gênero) é considerada a fonte da verdade das opções, por pedido
+    # explícito do usuário ("o que temos hoje é um princípio de teste, o da
+    # planilha é a versão final").
     class Genero(models.TextChoices):
-        FEMININO = "FEMININO", "Feminino"
-        MASCULINO = "MASCULINO", "Masculino"
-        OUTRO = "OUTRO", "Outro"
-        NAO_INFORMA = "NAO_INFORMA", "Prefere não informar"
+        MULHER_CIS = "MULHER_CIS", "Mulher cisgênero"
+        HOMEM_CIS = "HOMEM_CIS", "Homem cisgênero"
+        MULHER_TRANS = "MULHER_TRANS", "Mulher transgênero"
+        HOMEM_TRANS = "HOMEM_TRANS", "Homem transgênero"
+        NAO_BINARIA = "NAO_BINARIA", "Pessoa não binária"
+        OUTRA = "OUTRA", "Outra identidade de gênero"
+        NAO_RESPONDE = "NAO_RESPONDE", "Prefiro não responder"
+
+    class Raca(models.TextChoices):
+        BRANCA = "BRANCA", "Branca"
+        PRETA = "PRETA", "Preta"
+        PARDA = "PARDA", "Parda"
+        AMARELA = "AMARELA", "Amarela"
+        INDIGENA = "INDIGENA", "Indígena"
+
+    class EstadoCivil(models.TextChoices):
+        SOLTEIRO = "SOLTEIRO", "Solteiro(a)"
+        CASADO = "CASADO", "Casado(a)"
+        UNIAO_ESTAVEL = "UNIAO_ESTAVEL", "União estável"
+        SEPARADO = "SEPARADO", "Separado(a)"
+        DIVORCIADO = "DIVORCIADO", "Divorciado(a)"
+        VIUVO = "VIUVO", "Viúvo(a)"
+
+    class Ocupacao(models.TextChoices):
+        OCUPACAO_REMUNERADA = "OCUPACAO_REMUNERADA", "Ocupação remunerada"
+        ESTUDANTE_E_OCUPACAO = "ESTUDANTE_E_OCUPACAO", "Estudante e ocupação remunerada"
+        ESTUDANTE = "ESTUDANTE", "Estudante"
+        DESEMPREGADO = "DESEMPREGADO", "Desempregado(a)"
+        APOSENTADO = "APOSENTADO", "Aposentado(a)"
+        ATIVIDADES_DO_LAR = "ATIVIDADES_DO_LAR", "Atividades do lar"
+
+    class Regiao(models.TextChoices):
+        NORTE = "NORTE", "Norte"
+        NORDESTE = "NORDESTE", "Nordeste"
+        CENTRO_OESTE = "CENTRO_OESTE", "Centro-Oeste"
+        SUDESTE = "SUDESTE", "Sudeste"
+        SUL = "SUL", "Sul"
 
     class Escolaridade(models.TextChoices):
-        FUNDAMENTAL = "FUNDAMENTAL", "Fundamental"
-        MEDIO = "MEDIO", "Médio"
-        SUPERIOR = "SUPERIOR", "Superior"
-        POS = "POS", "Pós-graduação"
+        MEDIO_INCOMPLETO = "MEDIO_INCOMPLETO", "Ensino Médio Incompleto"
+        MEDIO_COMPLETO = "MEDIO_COMPLETO", "Ensino Médio Completo"
+        SUPERIOR_INCOMPLETO = "SUPERIOR_INCOMPLETO", "Ensino Superior Incompleto"
+        SUPERIOR_COMPLETO = "SUPERIOR_COMPLETO", "Ensino Superior Completo"
+        POS_GRADUACAO = "POS_GRADUACAO", "Pós Graduação"
+        MESTRADO = "MESTRADO", "Mestrado"
+        DOUTORADO = "DOUTORADO", "Doutorado"
 
-    class FaixaRenda(models.TextChoices):
-        A_B = "A_B", "Classes A/B"
-        C = "C", "Classe C"
-        D_E = "D_E", "Classes D/E"
+    # Códigos A-E iguais aos da planilha ("Classe Social"), mas com rótulo
+    # próprio pra cada uma — individual e familiar têm faixas de valor
+    # diferentes pro mesmo código de classe.
+    class FaixaRendaIndividual(models.TextChoices):
+        A = "A", "A — a partir de R$ 9.738"
+        B = "B", "B — R$ 4.869 a R$ 9.737"
+        C = "C", "C — R$ 1.883 a R$ 4.868"
+        D = "D", "D — R$ 974 a R$ 1.882"
+        E = "E", "E — até R$ 973"
+
+    class FaixaRendaFamiliar(models.TextChoices):
+        A = "A", "A — 20 salários mínimos"
+        B = "B", "B — 10 a 20 salários mínimos"
+        C = "C", "C — 4 a 10 salários mínimos"
+        D = "D", "D — 2 a 4 salários mínimos"
+        E = "E", "E — até 2 salários mínimos"
 
     class Situacao(models.TextChoices):
         PENDENTE = "PENDENTE", "Pendente"
@@ -93,21 +147,34 @@ class Participante(models.Model):
     # padrão de unicidade em NULL no Postgres).
     cpf = models.CharField(max_length=14, unique=True, null=True, validators=[validar_cpf])
     data_nascimento = models.DateField()
-    genero = models.CharField(max_length=20, choices=Genero.choices, blank=True)
+    genero = models.CharField(max_length=20, choices=Genero.choices)
+    # `null=True` nos campos novos abaixo segue o mesmo padrão do CPF: são
+    # obrigatórios pra qualquer cadastro passando pelo formulário normal
+    # (`blank` controla isso), mas ficam `None` em quem já estava cadastrado
+    # antes dessa mudança — sem precisar de uma migração de dado inventando
+    # valor pra gente que nunca respondeu essas perguntas.
+    raca = models.CharField(max_length=20, choices=Raca.choices, null=True)
     telefone = models.CharField(max_length=20)
-    email = models.EmailField(blank=True)
-    cep = models.CharField(max_length=9, blank=True)
-    bairro = models.CharField(max_length=100, blank=True)
+    email = models.EmailField()
+    cep = models.CharField(max_length=9)
+    bairro = models.CharField(max_length=100)
     uf = models.CharField(max_length=2, choices=UF.choices)
     cidade = models.CharField(max_length=100)
-    escolaridade = models.CharField(max_length=20, choices=Escolaridade.choices, blank=True)
+    regiao = models.CharField(max_length=20, choices=Regiao.choices, null=True)
+    escolaridade = models.CharField(max_length=20, choices=Escolaridade.choices)
     profissao = models.ForeignKey(
-        Profissao, null=True, blank=True, on_delete=models.SET_NULL, related_name="participantes"
+        Profissao, null=True, blank=False, on_delete=models.SET_NULL, related_name="participantes"
     )
     especialidade = models.CharField(
         max_length=150, blank=True, help_text="Só preenchido quando a profissão tem especialidade."
     )
-    faixa_renda = models.CharField(max_length=10, choices=FaixaRenda.choices, blank=True)
+    ocupacao = models.CharField(max_length=25, choices=Ocupacao.choices, null=True)
+    estado_civil = models.CharField(max_length=20, choices=EstadoCivil.choices, null=True)
+    # Faixa de renda passa a ser 2 perguntas separadas (a planilha trata como
+    # duas colunas distintas, P e Q) — mesmo código de classe (A-E), rótulo
+    # diferente pra cada uma.
+    renda_individual = models.CharField(max_length=1, choices=FaixaRendaIndividual.choices, null=True)
+    renda_familiar = models.CharField(max_length=1, choices=FaixaRendaFamiliar.choices, null=True)
     situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.PENDENTE)
 
     cadastro_incompleto = models.BooleanField(
