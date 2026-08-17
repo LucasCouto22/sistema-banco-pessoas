@@ -14,6 +14,10 @@ urlpatterns = [
     path("variaveis/novo/", views.variavel_novo, name="variavel_novo"),
     path("variaveis/<uuid:pk>/editar/", views.variavel_editar, name="variavel_editar"),
     path("variaveis/<uuid:pk>/excluir/", views.variavel_excluir, name="variavel_excluir"),
+    path("categorias/", views.categorias_lista, name="categorias_lista"),
+    path("categorias/novo/", views.categoria_novo, name="categoria_novo"),
+    path("categorias/<uuid:pk>/editar/", views.categoria_editar, name="categoria_editar"),
+    path("categorias/<uuid:pk>/excluir/", views.categoria_excluir, name="categoria_excluir"),
     path(
         "participacoes/<int:participacao_id>/responder/<uuid:formulario_id>/",
         views.responder_formulario,

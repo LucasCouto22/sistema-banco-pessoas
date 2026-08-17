@@ -26,7 +26,7 @@
             <div class="cell-sub mono">{{ linha.permissao.codigo }}</div>
           </td>
           {% for c in linha.checks %}
-          <td><input type="checkbox" name="perm_{{ c.nivel }}_{{ linha.permissao.id }}" {% if c.marcado %}checked{% endif %}></td>
+          <td data-label="{{ c.label }}"><input type="checkbox" name="perm_{{ c.nivel }}_{{ linha.permissao.id }}" {% if c.marcado %}checked{% endif %}></td>
           {% endfor %}
         </tr>
         {% endfor %}

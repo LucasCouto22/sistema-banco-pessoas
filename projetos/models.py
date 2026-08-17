@@ -95,8 +95,21 @@ class Perfil(models.Model):
     direto) porque `formularios/models.py` já importa `Projeto` daqui —
     importar `Formulario` de volta criaria um ciclo."""
 
+    class Tipo(models.TextChoices):
+        CAPTACAO = "CAPTACAO", "Captação"
+        RESPOSTAS = "RESPOSTAS", "Respostas"
+
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name="perfis")
     nome = models.CharField(max_length=150)
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.CAPTACAO,
+        help_text=(
+            "Captação: perfil recebe gente nova (link público, associação manual/lote). "
+            "Respostas: perfil só coleta respostas de quem já foi captado antes."
+        ),
+    )
     formularios = models.ManyToManyField(
         "formularios.Formulario",
         through="PerfilFormulario",
@@ -125,7 +138,10 @@ class Perfil(models.Model):
         do `Formulario` (nome), não do through. Esse é o jeito certo de
         pegar os formulários do perfil na ordem escolhida; usado tanto nas
         views quanto direto nos templates."""
-        return [pf.formulario for pf in self.perfil_formularios.select_related("formulario").all()]
+        return [
+            pf.formulario
+            for pf in self.perfil_formularios.select_related("formulario__categoria").all()
+        ]
 
 
 class PerfilFormulario(models.Model):

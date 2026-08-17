@@ -82,12 +82,12 @@
     <tbody>
     {% for aceite in aceites_termos %}
       <tr>
-        <td class="cell-main">{{ aceite.versao.termo.nome }}</td>
-        <td class="mono">{{ aceite.versao.versao }}</td>
-        <td>{{ aceite.aceito_em|date:"d/m/Y H:i" }}</td>
-        <td>{% if aceite.origem == "PUBLICO" %}<span class="badge b-blue">Cadastro público</span>{% else %}<span class="badge b-violet">Operador</span>{% endif %}</td>
-        <td class="mono">{{ aceite.ip|default:"—" }}</td>
-        <td>{{ aceite.registrado_por|nome_usuario }}</td>
+        <td class="cell-main" data-label="Documento">{{ aceite.versao.termo.nome }}</td>
+        <td class="mono" data-label="Versão">{{ aceite.versao.versao }}</td>
+        <td data-label="Aceito em">{{ aceite.aceito_em|date:"d/m/Y H:i" }}</td>
+        <td data-label="Origem">{% if aceite.origem == "PUBLICO" %}<span class="badge b-blue">Cadastro público</span>{% else %}<span class="badge b-violet">Operador</span>{% endif %}</td>
+        <td class="mono" data-label="IP">{{ aceite.ip|default:"—" }}</td>
+        <td data-label="Registrado por">{{ aceite.registrado_por|nome_usuario }}</td>
         <td>
           <details>
             <summary style="cursor:pointer;font-size:.78rem;color:var(--violet-deep)">Ver texto</summary>
@@ -125,11 +125,11 @@
     <tbody>
     {% for part in participante.participacoes.all %}
       <tr onclick="window.location='{% url 'participacoes:detalhe' part.pk %}'" style="cursor:pointer">
-        <td class="cell-main">{{ part.perfil.projeto.nome }}</td>
-        <td>{{ part.perfil.nome }}</td>
-        <td>{{ part.get_etapa_display }}</td>
-        <td>{{ part.get_status_display|default:"—" }}</td>
-        <td>{{ part.avaliacao.nota_geral|default:"—" }}</td>
+        <td class="cell-main" data-label="Projeto">{{ part.perfil.projeto.nome }}</td>
+        <td data-label="Perfil">{{ part.perfil.nome }}</td>
+        <td data-label="Etapa">{{ part.get_etapa_display }}</td>
+        <td data-label="Status">{{ part.get_status_display|default:"—" }}</td>
+        <td data-label="Nota">{{ part.avaliacao.nota_geral|default:"—" }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="5" class="empty">Ainda não participou de nenhum projeto.</td></tr>

@@ -49,10 +49,10 @@
     <tbody>
     {% for part in participacoes %}
       <tr>
-        <td class="cell-main">{{ part.participante.nome }}</td>
-        <td>{{ part.perfil.projeto.nome }}</td>
-        <td>{{ part.perfil.nome }}</td>
-        <td>
+        <td class="cell-main" data-label="Participante">{{ part.participante.nome }}</td>
+        <td data-label="Projeto">{{ part.perfil.projeto.nome }}</td>
+        <td data-label="Perfil">{{ part.perfil.nome }}</td>
+        <td data-label="Etapa">
           {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
           <form method="post" action="{% url 'participacoes:mudar_etapa' part.pk %}" class="status-form">
             {% csrf_token %}
@@ -67,7 +67,7 @@
           <span class="badge {{ part.etapa_badge }}">{{ part.get_etapa_display }}</span>
           {% endif %}
         </td>
-        <td>
+        <td data-label="Status">
           {% if request.user|tem_permissao:"participacoes.mover_etapa" %}
           <form method="post" action="{% url 'participacoes:mudar_status' part.pk %}" class="status-form">
             {% csrf_token %}
@@ -83,9 +83,9 @@
           <span class="badge {{ part.status_badge }}">{{ part.get_status_display }}</span>
           {% else %}—{% endif %}
         </td>
-        <td>{{ part.responsavel|nome_usuario }}</td>
-        <td>{{ part.avaliacao.nota_geral|default:"—" }}</td>
-        <td style="display:flex;gap:6px;justify-content:flex-end">
+        <td data-label="Responsável">{{ part.responsavel|nome_usuario }}</td>
+        <td data-label="Nota">{{ part.avaliacao.nota_geral|default:"—" }}</td>
+        <td class="td-acoes">
           <a class="btn btn-ghost btn-sm" href="{% url 'participacoes:detalhe' part.pk %}">Ver</a>
           {% if request.user|tem_permissao:"avaliacao.criar" %}
           <button

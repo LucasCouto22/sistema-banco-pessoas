@@ -58,8 +58,8 @@
     <tbody>
     {% for p in participantes %}
       <tr>
-        <td class="mono">{{ p.codigo }}</td>
-        <td>
+        <td class="mono" data-label="Código">{{ p.codigo }}</td>
+        <td data-label="Nome">
           <div style="display:flex;align-items:center;gap:9px">
             <span class="av {{ p.cor_avatar }}">{{ p.iniciais }}</span>
             <div>
@@ -68,20 +68,20 @@
             </div>
           </div>
         </td>
-        <td>{% include "pessoas/_pii_campo.html" with participante=p campo="cpf" mascarado=p.cpf_mascarado %}</td>
-        <td>
+        <td data-label="CPF">{% include "pessoas/_pii_campo.html" with participante=p campo="cpf" mascarado=p.cpf_mascarado %}</td>
+        <td data-label="Contato">
           <div>{% include "pessoas/_pii_campo.html" with participante=p campo="telefone" mascarado=p.telefone_mascarado %}</div>
           <div>{% include "pessoas/_pii_campo.html" with participante=p campo="email" mascarado=p.email_mascarado %}</div>
         </td>
-        <td>{{ p.idade }} anos</td>
-        <td>{{ p.get_renda_individual_display|default:"—" }}</td>
-        <td>
+        <td data-label="Idade">{{ p.idade }} anos</td>
+        <td data-label="Classe social">{{ p.get_renda_individual_display|default:"—" }}</td>
+        <td data-label="Situação">
           {% if p.situacao == "APROVADO" %}<span class="badge b-green">Aprovado</span>
           {% elif p.situacao == "DESCARTADO" %}<span class="badge b-red">Descartado</span>
           {% else %}<span class="badge b-amber">Pendente</span>{% endif %}
         </td>
-        <td>{{ p.data_ultima_participacao|default:"—" }}</td>
-        <td>
+        <td data-label="Última participação">{{ p.data_ultima_participacao|default:"—" }}</td>
+        <td data-label="Consentimento">
           {% if p.consentimento_versao %}<span class="badge b-green">{{ p.consentimento_versao.versao }}</span>
           {% elif p.consentimento_lgpd %}<span class="badge b-amber">Aceito</span>
           {% else %}<span class="badge b-red">Não aceito</span>{% endif %}

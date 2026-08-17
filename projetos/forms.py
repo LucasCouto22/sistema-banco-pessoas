@@ -52,8 +52,8 @@ class ProjetoForm(forms.ModelForm):
 class PerfilForm(forms.ModelForm):
     class Meta:
         model = Perfil
-        fields = ["nome"]
-        labels = {"nome": "Nome do perfil"}
+        fields = ["nome", "tipo"]
+        labels = {"nome": "Nome do perfil", "tipo": "Tipo de perfil"}
 
 
 class FormularioSelecaoForm(forms.Form):

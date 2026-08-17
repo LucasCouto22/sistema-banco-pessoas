@@ -16,14 +16,14 @@
     {% for termo in termos %}
       {% with vigente=termo.versao_vigente %}
       <tr>
-        <td class="cell-main">{{ termo.nome }}</td>
-        <td>{{ termo.get_tipo_display }}</td>
-        <td>
+        <td class="cell-main" data-label="Documento">{{ termo.nome }}</td>
+        <td data-label="Tipo">{{ termo.get_tipo_display }}</td>
+        <td data-label="Versão vigente">
           {% if vigente %}<span class="badge b-green">{{ vigente.versao }}</span>
           {% else %}<span class="badge b-gray">Sem versão vigente</span>{% endif %}
         </td>
-        <td>{% if vigente %}{{ vigente.inicio_vigencia }}{% if vigente.fim_vigencia %} — {{ vigente.fim_vigencia }}{% endif %}{% else %}—{% endif %}</td>
-        <td>{% if vigente %}{{ vigente.aceites }}{% else %}0{% endif %}</td>
+        <td data-label="Vigência">{% if vigente %}{{ vigente.inicio_vigencia }}{% if vigente.fim_vigencia %} — {{ vigente.fim_vigencia }}{% endif %}{% else %}—{% endif %}</td>
+        <td data-label="Aceites">{% if vigente %}{{ vigente.aceites }}{% else %}0{% endif %}</td>
         <td><a class="btn btn-ghost btn-sm" href="{% url 'termos:detalhe' termo.pk %}">Detalhes</a></td>
       </tr>
       {% endwith %}

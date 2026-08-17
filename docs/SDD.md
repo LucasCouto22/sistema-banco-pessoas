@@ -2602,3 +2602,277 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     `templates/base.html`, `templates/projetos/detalhe.html`,
     `templates/projetos/perfil_detalhe.html`; `templates/projetos/perfil_link.html`
     removido.
+- **2026-08-17 (Perfil ganha "tipo" Captação/Respostas + Formulário ganha Categoria — CRUD
+  novo em "Configurações de Formulários")** — Duas peças de organização pedidas juntas,
+  preparando terreno pra uma ideia futura do usuário: só pedir **algumas** categorias de
+  formulário na hora de responder um perfil, não todas de uma vez (ver nota no fim).
+  - **`Perfil.tipo`** (`projetos/models.py`) — `TextChoices` nova (`CAPTACAO`/`RESPOSTAS`,
+    default `CAPTACAO` — mantém o comportamento de todo perfil já existente igual a antes
+    dessa migração). Migração `0009_perfil_tipo.py` (só `AddField`, sem passo de dado).
+    `PerfilForm` ganhou o campo; `perfil_form.html` mostra o dropdown ao lado do nome;
+    badge colorido (azul "Captação" / violeta "Respostas") na tabela de perfis do projeto
+    (`detalhe.html`) e no título da tela do perfil (`perfil_detalhe.html`). Só o campo em
+    si foi adicionado — nenhum comportamento downstream (link público, wizard, etc.) lê
+    esse campo ainda; é puramente informativo por enquanto.
+  - **`CategoriaFormulario`** (novo model em `formularios/models.py`) — `nome` (único),
+    `observacao`, `id` (UUID, mesmo padrão de `Formulario`/`Variavel`/`TipoResposta`).
+    `Formulario` ganhou `categoria` (FK, `null=True, blank=True, on_delete=SET_NULL` —
+    de propósito **não** é `PROTECT`: apagar uma categoria não trava nem apaga os
+    formulários que estavam nela, só solta a associação, porque categoria aqui é
+    organização/rótulo, não uma dependência estrutural como Variável→Formulário é).
+    Migração `0007_categoria_formulario.py`.
+  - **CRUD de Categoria** — `formularios/views.py::categorias_lista/categoria_novo/
+    categoria_editar/categoria_excluir`, `formularios/forms.py::CategoriaFormularioForm`,
+    rotas em `formularios/urls.py` (`/formularios/categorias/...`), templates
+    `categorias_lista.html`/`categoria_form.html`/`categoria_excluir.html` — cópia
+    estrutural do CRUD de Variável (o mais simples que já existia: sem sub-formset,
+    excluir sem `ProtectedError` porque a FK é `SET_NULL`). Entra em "Configurações de
+    Formulários" no menu lateral, terceiro item depois de Variáveis e Formulários.
+    `formulario_form.html` ganhou o dropdown de categoria (`empty_label="Sem categoria"`);
+    `formularios_lista.html` ganhou a coluna com badge da categoria.
+  - **Permissões novas** — `categorias_formulario.ver/gerenciar/excluir`, mesmo padrão
+    (trio ver/gerenciar/excluir) que Variável e Formulário já têm cada um o seu, em vez de
+    reaproveitar os códigos de `formularios.*` — mantém a granularidade que o resto do
+    catálogo já usa. Adicionadas ao catálogo de referência
+    (`accounts/permissions.py::CATALOGO_PERMISSOES`) e semeadas de verdade via
+    `accounts/migrations/0011_seed_categorias_formulario_permissoes.py` (mesmo formato de
+    `0007_seed_variaveis_permissoes.py`: Administrador e Operador ganham os 3, Visualizador
+    só "ver").
+  - **Nota importante — o que NÃO foi implementado ainda**: a frase final do pedido ("minha
+    ideia é fazer com que ao responder um perfil, o usuário responda no final, apenas
+    algumas categorias, e não todas") descreve a motivação/objetivo final, não uma
+    especificação de como isso deve funcionar — não ficou claro, por exemplo, se a escolha
+    de quais categorias entram é manual (quem monta o perfil escolhe quais categorias
+    quer), automática/aleatória (sorteia N categorias por resposta), ou fixa por perfil.
+    Essa rodada só constrói a base (categorizar formulários) — o mecanismo de **filtrar**
+    quais categorias aparecem na hora de responder ainda não existe; fica pra confirmar
+    com o usuário como deve funcionar antes de implementar.
+  - Testado com Playwright: (1) criei uma categoria de teste, apareceu certinho na lista
+    (nome, observação truncada, contagem de formulários); (2) associei essa categoria a um
+    formulário existente pelo dropdown — badge apareceu na lista de formulários; (3)
+    dropdown de tipo de perfil mostra as 2 opções certas, mudei um perfil de teste pra
+    "Respostas" e confirmei o badge aparecendo tanto na tabela de perfis do projeto quanto
+    no título da tela do próprio perfil; (4) desfiz todas as mudanças de teste depois —
+    perfil voltou pra "Captação", formulário voltou "sem categoria", categoria de teste
+    excluída — não sobrou nada no banco. `makemigrations --check --dry-run` limpo. Zero
+    erros de console.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/models.py`,
+    `projetos/forms.py`, `projetos/migrations/0009_perfil_tipo.py` (novo),
+    `formularios/models.py`, `formularios/forms.py`, `formularios/views.py`,
+    `formularios/urls.py`, `formularios/migrations/0007_categoria_formulario.py` (novo),
+    `accounts/permissions.py`, `accounts/migrations/
+    0011_seed_categorias_formulario_permissoes.py` (novo), `templates/base.html`,
+    `templates/projetos/perfil_form.html`, `templates/projetos/detalhe.html`,
+    `templates/projetos/perfil_detalhe.html`, `templates/formularios/formulario_form.html`,
+    `templates/formularios/formularios_lista.html`, e os 3 templates novos de Categoria.
+- **2026-08-17 (Tabelas de listagem viram cards no mobile — sem grid de calendário no
+  projeto)** — Pedido do usuário: aplicar aqui o mesmo padrão de responsividade mobile já
+  validado em outro sistema dele, pra telas de listagem (tabelas) e grades de calendário.
+  Busquei por grid de calendário no projeto e não existe nenhuma feature desse tipo aqui
+  (só CSS interno do Django admin bateu com "calendar" na busca, irrelevante) — então essa
+  rodada cobre só a parte de tabelas, que é 100% do escopo aplicável ao Qualy Vortice hoje.
+  - **Padrão CSS** (`static/css/base.css`) — bloco novo dentro de `@media
+    (max-width:700px)`: `.tbl-wrap thead{display:none}`, cada `<tr>` vira um cartão
+    (`display:block`, borda, padding, `margin-bottom`), cada `<td>` vira
+    `display:flex;justify-content:space-between` com `::before{content:attr(data-label)}`
+    mostrando o rótulo da coluna à esquerda e o valor à direita — exatamente o mecanismo
+    descrito pelo usuário. Coluna de ações (sem `data-label`) usa
+    `justify-content:flex-start;flex-wrap:wrap` em vez de `space-between`, pra botões não
+    ficarem espalhados com buracos grandes entre eles. Acima de 700px nada muda — é tudo
+    dentro da media query, view desktop intacta.
+  - **`.td-acoes`** (classe nova) — 6 templates tinham a célula de ações com
+    `style="display:flex;gap:6px;justify-content:flex-end"` inline; como estilo inline
+    sempre vence regra de stylesheet (mesmo dentro de media query), isso bloquearia
+    silenciosamente a responsividade nessas células. Extraí pra uma classe compartilhada e
+    troquei `<td style="...">` por `<td class="td-acoes">` em `accounts/usuarios_lista.html`,
+    `formularios/categorias_lista.html`, `formularios/formularios_lista.html`,
+    `formularios/variaveis_lista.html`, `participacoes/lista.html`, `projetos/detalhe.html`.
+  - **`data-label` em todos os `<td>` de dado** (coluna de ações sempre excluída) nas 16
+    telas com tabela do projeto: `pessoas/lista.html`, `pessoas/detalhe.html` (tabelas
+    "Termos aceitos" e "Participações" — a tabela "Dados cadastrais"/"Pagamento" já é
+    2-colunas simples fora de `.tbl-wrap`, não precisa do tratamento),
+    `pessoas/wizard_revisao.html`, `participacoes/lista.html`, `participacoes/detalhe.html`,
+    `projetos/detalhe.html`, `projetos/perfil_detalhe.html`, `projetos/perfil_form.html`,
+    `formularios/formularios_lista.html`, `formularios/formulario_form.html`,
+    `formularios/variaveis_lista.html`, `formularios/categorias_lista.html`,
+    `accounts/usuarios_lista.html`, `accounts/painel_permissoes.html`, `termos/lista.html`,
+    `auditoria/lista.html`.
+  - **Caso especial: linha de correção do wizard** — em `pessoas/wizard_revisao.html`,
+    linhas inválidas ganham uma segunda `<tr class="wiz-linha-correcao">` logo abaixo, com
+    um único `<td colspan="6">` contendo um `.form-row` de campos de correção — não é um
+    par rótulo→valor, então a regra genérica `.tbl-wrap td{display:flex}` a deixaria
+    espremida. Adicionei um override específico (`.tbl-wrap tr.wiz-linha-correcao{...}` /
+    `.tbl-wrap tr.wiz-linha-correcao td{display:block;...}`) que devolve essa linha pro
+    fluxo de bloco normal, exibindo o formulário de correção por baixo do cartão da linha
+    com erro, sem cortar nem espremer os campos.
+  - **Caso especial: matriz de permissões** — `accounts/painel_permissoes.html` não é uma
+    lista de entidades, é uma matriz Permissão × Nível com um checkbox por célula. Pra cada
+    célula de nível mostrar qual nível ela representa no cartão mobile, adicionei `label`
+    (o `get_nivel_display` de cada nível) em cada item de `linha.checks`
+    (`accounts/views.py::painel_permissoes`) e usei `data-label="{{ c.label }}"` — no
+    mobile, cada permissão vira um cartão com uma linha "ADMINISTRADOR ☑", "OPERADOR ☐"
+    etc., em vez de uma tabela de 4+ colunas apertada.
+  - Testado com Playwright em três larguras (375px, 700px e 1280px/desktop) nas 8 telas de
+    listagem principais: **nenhuma teve `scrollWidth > clientWidth`** (zero rolagem
+    horizontal) em nenhuma largura, e zero erros de console/página em qualquer navegação.
+    Inspecionei visualmente os screenshots de `pessoas/lista.html`,
+    `participacoes/lista.html`, `formularios/categorias_lista.html` (confirmando view
+    desktop 100% inalterada) — cartões renderizam com rótulo à esquerda/valor à direita,
+    botões de ação agrupados sem buracos. Testei também `pessoas/detalhe.html` (tabelas
+    "Termos aceitos" e "Participações" viram cartões, "Dados cadastrais" permanece tabela
+    simples inalterada), `projetos/detalhe.html` e `projetos/perfil_detalhe.html` (cartões
+    corretos, botões de ação agrupados), e `accounts/painel_permissoes.html` (confirmei via
+    screenshot recortado que cada permissão vira um cartão com os 4 níveis rotulados
+    corretamente e o estado do checkbox preservado). O caso da linha de correção do wizard
+    foi validado isoladamente com uma página HTML estática carregando o `base.css` real
+    (evitando rodar o fluxo completo de upload/associação do wizard sobre dados reais) —
+    confirmou que a linha de correção renderiza em bloco normal, sem ser espremida pela
+    regra genérica de card. Nenhum dado do banco foi alterado durante os testes.
+  - **Segue sem commitar.** `git status` agora também inclui `static/css/base.css`,
+    `accounts/views.py`, e os 16 templates listados acima com `data-label`/`td-acoes`
+    (`pessoas/lista.html`, `pessoas/detalhe.html`, `pessoas/wizard_revisao.html`,
+    `participacoes/lista.html`, `participacoes/detalhe.html`, `projetos/detalhe.html`,
+    `projetos/perfil_detalhe.html`, `projetos/perfil_form.html`,
+    `formularios/formularios_lista.html`, `formularios/formulario_form.html`,
+    `formularios/variaveis_lista.html`, `formularios/categorias_lista.html`,
+    `accounts/usuarios_lista.html`, `accounts/painel_permissoes.html`, `termos/lista.html`,
+    `auditoria/lista.html`).
+- **2026-08-17 (Logo virou imagem de verdade — antes era um círculo preto em CSS)** — O
+  elemento de marca no cabeçalho (`.brand-mark`) nunca teve a logo de fato: era um
+  `<span>` com `background:#121216` formando só um círculo preto sólido ao lado do texto
+  "Qualy Vortice". O usuário forneceu o arquivo original da logo (espiral colorida +
+  wordmark "Qualy Vortice") e pediu pra usar essa imagem em todas as telas do site.
+  - Arquivo salvo pelo usuário em `static/img/imglogo.png` (384×164px, RGB sem
+    transparência, fundo #1A1A1A — bem próximo do `--side:#0B0B0D` da sidebar, então
+    funde quase sem borda visível ali; nas telas de fundo branco o badge escuro
+    arredondado é intencional, mesma linguagem visual do resto da UI).
+  - Como a imagem já traz o wordmark "Qualy Vortice" desenhado, troquei
+    `<span class="brand-mark"></span><h1>Qualy Vortice</h1>` por uma única
+    `<img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo">`
+    — o `<h1>` separado foi removido pra não duplicar o nome (uma vez na imagem, outra em
+    texto). Trocado nos 5 lugares que mostravam a marca: `templates/base.html` (sidebar,
+    autenticado), `templates/accounts/login.html`, e as 3 telas públicas
+    (`templates/publico/cadastro.html`, `cadastro_ok.html`, `link_invalido.html`).
+    `accounts/login.html` precisou ganhar `{% load static_v %}` próprio (os outros 4 já
+    carregavam a tag).
+  - `static/css/base.css`: `.brand-mark` (círculo) virou `.brand-logo`
+    (`height:40px;width:auto;border-radius:10px`, mesma sombra rosada que já existia).
+    Removidas as regras mortas `.brand h1` e `.sidebar .brand h1` (não sobrou `<h1>` dentro
+    de `.brand` em lugar nenhum).
+  - Testado com Playwright: confirmei via `naturalWidth`/`complete` no DOM que a imagem
+    carrega de fato (não é um link quebrado) na tela de login, na sidebar autenticada e na
+    tela pública `link_invalido` (mesma estrutura de `cadastro.html`/`cadastro_ok.html`).
+    Inspecionei os 3 screenshots visualmente: logo aparece nítida e proporcional nos três
+    contextos (fundo escuro da sidebar, card branco do login, card branco centralizado da
+    tela pública), cantos arredondados sem distorcer a imagem. Zero erro de rede/console.
+  - **Segue sem commitar.** `git status` agora também inclui `static/css/base.css`,
+    `templates/base.html`, `templates/accounts/login.html`,
+    `templates/publico/cadastro.html`, `templates/publico/cadastro_ok.html`,
+    `templates/publico/link_invalido.html`, e `static/img/imglogo.png` (novo, arquivo
+    binário fornecido pelo usuário).
+- **2026-08-17 (Ajustes finos da logo — sombra removida e fundo preto virou
+  transparência)** — Dois retornos do usuário sobre a rodada anterior:
+  1. **Sombra feia** — `.brand-logo` tinha herdado o `box-shadow:0 8px 20px
+     rgba(242,41,91,.5)` do antigo `.brand-mark` (pensado pra um círculo pequeno de
+     40px); aplicado na imagem retangular nova, virava um halo rosa borrado sem
+     propósito, já que a própria arte já tem cor e brilho. Removido o `box-shadow`
+     inteiro e reduzida a altura de 40px pra 36px (proporção mais discreta ao lado do
+     texto de navegação da sidebar).
+  2. **Fundo preto sólido** — `static/img/imglogo.png`, como fornecida, era RGB opaco com
+     fundo #1A1A1A preenchendo o retângulo inteiro (sem canal alfa). Contra o card branco
+     do login/cadastro público, isso aparecia como uma caixa preta em volta do desenho.
+     Removido via script Python (Pillow, sem dependência nova — só usa a mesma lib já
+     instalada no projeto): (a) `ImageChops.difference` contra uma imagem sólida da cor de
+     fundo pra gerar uma máscara de alfa (pixel igual ao fundo → alfa 0; pixel do
+     desenho/texto → alfa 255, com transição suave nas bordas anti-aliased); (b) correção
+     de "des-mistura" nos pixels de borda parcialmente transparentes (`cor_real = (cor_obs
+     - (1-alfa)·cor_fundo) / alfa`), pra tirar o resíduo escuro que sobra nas bordas quando
+     a imagem original foi anti-aliased contra o preto — sem essa etapa a logo ficava com
+     uma auréola cinza-escura sutil ao redor do espiral e das letras em fundos claros.
+     `static/img/imglogo.png` foi sobrescrita com a versão RGBA (384×164, fundo
+     transparente); nenhum outro arquivo mudou nessa etapa. `.brand-logo` perdeu também o
+     `border-radius` (não fazia mais sentido recortar cantos de uma imagem sem caixa
+     visível).
+  - Testado: recompus a logo sobre 3 fundos de teste (branco, azul, e a cor da sidebar)
+    pra confirmar que não sobrou nenhuma auréola/franja escura perceptível — ok nos três.
+    Depois recarreguei a tela de login e a sidebar autenticada de verdade no navegador
+    (Playwright): confirmado visualmente que o fundo preto sumiu por completo no card
+    branco (só aparece o espiral colorido + "Qualy Vortice") e que na sidebar escura a
+    logo continua se misturando bem ao fundo, sem sombra.
+  - **Segue sem commitar.** Mesma lista de arquivos da rodada anterior — só o conteúdo de
+    `static/img/imglogo.png` e mais uma pequena alteração em `static/css/base.css` (sombra
+    e border-radius removidos, altura ajustada).
+- **2026-08-17 (Logo centralizada e maior)** — Pedido rápido de ajuste: centralizar a logo
+  e aumentar o tamanho. `.brand` (`static/css/base.css`) ganhou `justify-content:center`
+  (antes só tinha `align-items:center`, então a imagem ficava grudada na esquerda do
+  card/sidebar); `.brand-logo` subiu de 36px pra 56px de altura. Como centralizar virou
+  comportamento padrão da classe, removi o `style="justify-content:center"` inline que
+  `templates/publico/link_invalido.html` e `templates/publico/cadastro_ok.html` já tinham
+  (redundante agora).
+  - Testado com Playwright nos 3 layouts que usam `.brand`: tela de login (card estreito),
+    sidebar autenticada (coluna de 250px) e tela pública centralizada
+    (`link_invalido.html`) — logo aparece centralizada e proporcionalmente maior nos três,
+    sem cortar nem estourar o container.
+  - **Segue sem commitar.** Só `static/css/base.css`, `templates/publico/link_invalido.html`
+    e `templates/publico/cadastro_ok.html` (remoção do style inline redundante) mudaram
+    nessa rodada.
+- **2026-08-17 (Cadastro público: perfil de Captação com mais de 3 categorias pede escolha
+  de 3 antes de abrir os formulários)** — Implementa o mecanismo que tinha ficado pendente
+  na rodada de `CategoriaFormulario` (documentado ali como "ainda não implementado, falta
+  confirmar como deve funcionar"). O usuário definiu a regra: perfil de Captação cujos
+  formulários cobrem mais de 3 categorias distintas pede pra pessoa escolher 3 antes de
+  ver qualquer pergunta, e só os formulários dessas 3 categorias abrem pra responder.
+  - **`pessoas/views.py`** — `NUM_CATEGORIAS_A_ESCOLHER = 3` (constante, caso vire
+    configurável no futuro). `_categorias_disponiveis_para_escolha(perfil)` devolve as
+    categorias distintas entre os formulários ativos do perfil, ordenadas por nome.
+    `_form_dinamico_do_perfil` ganhou o parâmetro `categorias_ids=None` — quando não é
+    `None`, filtra pra só os formulários cuja categoria está no conjunto (formulário
+    **sem** categoria sempre aparece, categorizar é opcional e nunca deveria esconder uma
+    pergunta). `cadastro_publico` calcula `exige_escolha_categorias` (`perfil.tipo ==
+    CAPTACAO and` mais de 3 categorias disponíveis) logo no início; se `True`, tanto o GET
+    quanto o POST exigem exatamente 3 ids válidos em `?categorias=` (GET) ou no campo
+    `categorias` do POST — sem isso (link recém-aberto, ids inválidos/adulterados, POST
+    forjado sem os 3), renderiza `publico/escolha_categorias.html` em vez do formulário.
+    Perfil de Respostas, ou de Captação com 3 categorias ou menos, nunca vê essa tela —
+    comportamento idêntico ao de antes desta rodada (testado explicitamente, ver abaixo).
+  - **`templates/publico/escolha_categorias.html`** (novo) — reaproveita o layout de
+    `login-card wide` das outras telas públicas. Texto exato pedido pelo usuário: "Escolha
+    3 categorias que tem mais domínio para responder perguntas e participar de pesquisas:"
+    (o "3" vem de `num_categorias` no contexto, não craveado no template). Checkboxes com
+    `name="categorias"`; formulário `method="get"` — ao enviar, os ids escolhidos viram
+    query string na mesma URL, e `cadastro_publico` já entende isso na próxima requisição.
+  - **`static/js/escolha_categorias.js`** (novo) — só UX no cliente (a validação de
+    verdade é sempre no servidor): contador "N de 3 selecionadas", desabilita as caixas
+    não marcadas assim que 3 são escolhidas (evita marcar uma 4ª), botão "Continuar" só
+    habilita com exatamente 3 marcadas.
+  - **`templates/publico/cadastro.html`** — as categorias escolhidas viajam como campos
+    ocultos (`<input type="hidden" name="categorias">`) dentro do próprio POST de envio do
+    cadastro, pra sobreviver a um reenvio com erro de validação sem perder a escolha. Link
+    "‹ Trocar categorias escolhidas" no topo (usa `{{ request.path }}`, sem querystring)
+    volta pra tela de escolha.
+  - **`projetos/models.py::Perfil.formularios_ordenados`** — ganhou
+    `select_related("formulario__categoria")` (era só `select_related("formulario")`) pra
+    não gerar uma query por formulário toda vez que algo lê `formulario.categoria` agora
+    que isso passou a acontecer em todo carregamento da página pública.
+  - `formularios/models.py::CategoriaFormulario` — docstring atualizada (não fala mais em
+    "ainda não implementado").
+  - Testado com Playwright contra o perfil real "Perfil Único Geral" (projeto "Captação de
+    Pessoas Instagram", 9 categorias — Alimentação, Banco, Bebidas, Beleza, Entretenimento,
+    Esporte, LifeStyle, Saúde, Tecnologia): (1) abrir o link mostra a tela de escolha com o
+    texto pedido, contador "0 de 3", botão desabilitado; marcar 2 mantém desabilitado,
+    marcar a 3ª habilita e desabilita as demais caixas; (2) "Continuar" leva ao formulário
+    mostrando só as 3 seções escolhidas (Alimentação/Banco/Bebidas) mais "Perguntas
+    Básicas" (fixo, não é afetado pela escolha); (3) `?categorias=` com ids inválidos/
+    adulterados devolve a tela de escolha em vez do formulário; (4) link "Trocar
+    categorias" volta pra tela de escolha; (5) preenchi um cadastro de teste completo
+    escolhendo LifeStyle/Saúde/Tecnologia e enviei de verdade — no banco, só 3
+    `RespostaFormulario` foram criadas (Tecnologia, Saúde, LifeStyle), nenhuma pras outras
+    6 categorias não escolhidas; apaguei esse participante de teste (e sua participação e
+    aceite de termo) depois de conferir, não sobrou nada; (6) perfil de Captação com 3
+    categorias ou menos (projeto "Campanha Tenis Playwright") continua indo direto pro
+    formulário completo, sem tela de escolha — confirma que não há regressão pra perfis
+    que não se enquadram na regra. Zero erro de página/console em qualquer etapa.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/views.py`,
+    `projetos/models.py`, `formularios/models.py`, `templates/publico/cadastro.html`,
+    `templates/publico/escolha_categorias.html` (novo), `static/js/escolha_categorias.js`
+    (novo).

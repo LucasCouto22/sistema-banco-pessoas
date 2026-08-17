@@ -3,7 +3,7 @@ from django.forms import formset_factory, inlineformset_factory
 
 from core.form_utils import personalizar_opcoes_vazias
 
-from .models import Formulario, TipoResposta, Variavel, VariavelOpcao
+from .models import CategoriaFormulario, Formulario, TipoResposta, Variavel, VariavelOpcao
 
 
 class VariavelForm(forms.ModelForm):
@@ -43,9 +43,16 @@ VariavelOpcaoFormSet = inlineformset_factory(
 
 
 class FormularioForm(forms.ModelForm):
+    categoria = forms.ModelChoiceField(
+        queryset=CategoriaFormulario.objects.all(),
+        required=False,
+        empty_label="Sem categoria",
+        label="Categoria",
+    )
+
     class Meta:
         model = Formulario
-        fields = ["nome", "descricao", "inclui_campos_fixos", "ativo"]
+        fields = ["nome", "descricao", "categoria", "inclui_campos_fixos", "ativo"]
         widgets = {"descricao": forms.Textarea(attrs={"rows": 3})}
         labels = {
             "nome": "Nome do formulário",
@@ -58,6 +65,14 @@ class FormularioForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance._state.adding:
             self.fields.pop("ativo")
+
+
+class CategoriaFormularioForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaFormulario
+        fields = ["nome", "observacao"]
+        widgets = {"observacao": forms.Textarea(attrs={"rows": 3})}
+        labels = {"nome": "Nome da categoria", "observacao": "Observação"}
 
 
 class VariavelSelecaoForm(forms.Form):

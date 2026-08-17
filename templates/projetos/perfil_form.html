@@ -11,6 +11,7 @@
     {% csrf_token %}
     <div class="form-row">
       {% include "core/_campo_form.html" with campo=form.nome %}
+      {% include "core/_campo_form.html" with campo=form.tipo %}
     </div>
     <fieldset>
       <legend>Formulários do perfil</legend>
@@ -28,9 +29,9 @@
         {% for formulario, subform in linhas %}
           <tr>
             <td>{{ subform.incluir }}{{ subform.formulario_id }}</td>
-            <td class="cell-main">{{ formulario.nome }}</td>
-            <td>{{ formulario.descricao|default:"—" }}</td>
-            <td>{{ subform.ordem }}</td>
+            <td class="cell-main" data-label="Nome">{{ formulario.nome }}</td>
+            <td data-label="Descrição">{{ formulario.descricao|default:"—" }}</td>
+            <td data-label="Ordem">{{ subform.ordem }}</td>
           </tr>
         {% endfor %}
         </tbody>

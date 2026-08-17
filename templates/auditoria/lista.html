@@ -51,15 +51,15 @@
     <tbody>
     {% for r in registros %}
       <tr>
-        <td class="mono">{{ r.quando|date:"d/m/Y H:i" }}</td>
-        <td>{{ r.usuario.get_full_name|default:r.usuario.username|default:"—" }}</td>
-        <td class="mono">{{ r.titular }}</td>
-        <td>
+        <td class="mono" data-label="Quando">{{ r.quando|date:"d/m/Y H:i" }}</td>
+        <td data-label="Usuário">{{ r.usuario.get_full_name|default:r.usuario.username|default:"—" }}</td>
+        <td class="mono" data-label="Titular">{{ r.titular }}</td>
+        <td data-label="Ação">
           {% if r.acao == "PAGAMENTO" %}<span class="badge b-green">{{ r.get_acao_display }}</span>
           {% elif r.acao == "ALTERACAO" %}<span class="badge b-amber">{{ r.get_acao_display }}</span>
           {% else %}<span class="badge b-blue">{{ r.get_acao_display }}</span>{% endif %}
         </td>
-        <td class="cell-sub">{{ r.detalhe }}</td>
+        <td class="cell-sub" data-label="Detalhe">{{ r.detalhe }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="5" class="empty">Nenhum registro de auditoria encontrado para os filtros informados.</td></tr>

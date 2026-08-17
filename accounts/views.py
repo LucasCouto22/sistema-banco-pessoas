@@ -95,8 +95,8 @@ def painel_permissoes(request):
         linha = {
             "permissao": permissao,
             "checks": [
-                {"nivel": nivel, "marcado": (nivel, permissao.id) in concedidas}
-                for nivel, _ in niveis
+                {"nivel": nivel, "label": label, "marcado": (nivel, permissao.id) in concedidas}
+                for nivel, label in niveis
             ],
         }
         grupos.setdefault(permissao.grupo, []).append(linha)

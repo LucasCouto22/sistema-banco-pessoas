@@ -15,12 +15,12 @@
     <tbody>
     {% for v in variaveis %}
       <tr>
-        <td class="cell-main">{{ v.nome }}</td>
-        <td class="mono">{{ v.chave }}</td>
-        <td>{{ v.tipo_resposta.descricao }}</td>
-        <td>{% if v.obrigatoria %}<span class="badge b-amber">Sim</span>{% else %}<span class="badge b-gray">Não</span>{% endif %}</td>
-        <td>{% if v.ativa %}<span class="badge b-green">Ativa</span>{% else %}<span class="badge b-gray">Inativa</span>{% endif %}</td>
-        <td style="display:flex;gap:6px;justify-content:flex-end">
+        <td class="cell-main" data-label="Nome">{{ v.nome }}</td>
+        <td class="mono" data-label="Chave">{{ v.chave }}</td>
+        <td data-label="Tipo de resposta">{{ v.tipo_resposta.descricao }}</td>
+        <td data-label="Obrigatória">{% if v.obrigatoria %}<span class="badge b-amber">Sim</span>{% else %}<span class="badge b-gray">Não</span>{% endif %}</td>
+        <td data-label="Status">{% if v.ativa %}<span class="badge b-green">Ativa</span>{% else %}<span class="badge b-gray">Inativa</span>{% endif %}</td>
+        <td class="td-acoes">
           {% if request.user|tem_permissao:"variaveis.gerenciar" %}
           <a class="btn btn-ghost btn-sm" href="{% url 'formularios:variavel_editar' v.pk %}">Editar</a>
           {% endif %}

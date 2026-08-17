@@ -28,15 +28,15 @@
       <tbody>
       {% for linha in linhas %}
         <tr>
-          <td>{{ forloop.counter }}</td>
-          <td class="cell-main">{{ linha.dados.nome|default:"—" }}</td>
-          <td class="mono">{{ linha.dados.cpf|default:"—" }}</td>
-          <td>{{ linha.dados.cidade|default:"—" }}{% if linha.dados.uf %}/{{ linha.dados.uf }}{% endif %}</td>
-          <td>
+          <td data-label="#">{{ forloop.counter }}</td>
+          <td class="cell-main" data-label="Nome">{{ linha.dados.nome|default:"—" }}</td>
+          <td class="mono" data-label="CPF">{{ linha.dados.cpf|default:"—" }}</td>
+          <td data-label="Cidade/UF">{{ linha.dados.cidade|default:"—" }}{% if linha.dados.uf %}/{{ linha.dados.uf }}{% endif %}</td>
+          <td data-label="Situação">
             {% if linha.existente_pk %}<span class="badge b-blue">Atualiza {{ linha.existente_codigo }}</span>
             {% else %}<span class="badge b-violet">Novo</span>{% endif %}
           </td>
-          <td>
+          <td data-label="Status">
             {% if linha.valido %}<span class="badge badge-ok b-green">OK</span>
               {% if linha.cadastro_incompleto %}<span class="badge b-amber">Dado incompleto</span>{% endif %}
             {% else %}<span class="badge badge-erro b-red">Erro</span>
@@ -45,7 +45,7 @@
               </ul>
             {% endif %}
           </td>
-          <td>
+          <td data-label="Consentimento LGPD">
             {% if linha.valido %}<input type="checkbox" name="consentimento_{{ linha.indice }}">
             {% else %}<input type="checkbox" name="consentimento_{{ linha.indice }}" {% if linha.consentimento %}checked{% endif %}>{% endif %}
           </td>

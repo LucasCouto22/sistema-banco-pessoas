@@ -49,9 +49,9 @@
     <tbody>
     {% for item in formularios_do_projeto %}
       <tr>
-        <td class="cell-main">{{ item.formulario.nome }}</td>
-        <td>{% if item.resposta %}<span class="badge b-green">Respondido</span>{% else %}<span class="badge b-gray">Pendente</span>{% endif %}</td>
-        <td style="text-align:right">
+        <td class="cell-main" data-label="Formulário">{{ item.formulario.nome }}</td>
+        <td data-label="Status">{% if item.resposta %}<span class="badge b-green">Respondido</span>{% else %}<span class="badge b-gray">Pendente</span>{% endif %}</td>
+        <td class="td-acoes" style="text-align:right">
           {% if pode_preencher_respostas %}
           <a class="btn btn-ghost btn-sm" href="{% url 'formularios:responder_formulario' participacao.pk item.formulario.pk %}">{% if item.resposta %}Editar respostas{% else %}Responder{% endif %}</a>
           {% endif %}

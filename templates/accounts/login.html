@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load static_v %}
 {% block titulo %}Entrar · Qualy Vortice{% endblock %}
 {% block conteudo_publico %}
 <section id="viewLogin">
   <div class="login-card">
-    <div class="brand"><span class="brand-mark"></span><h1>Qualy Vortice</h1></div>
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
     <p class="login-sub">Captação e gestão de participantes de pesquisa</p>
 
     {% if form.errors %}

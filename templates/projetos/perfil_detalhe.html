@@ -4,7 +4,7 @@
 {% block crumbs %}Projetos / {{ perfil.projeto.nome }} / <b>{{ perfil.nome }}</b>{% endblock %}
 {% block conteudo %}
 <div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
-  <div><h2>{{ perfil.nome }}</h2>
+  <div><h2>{{ perfil.nome }} {% if perfil.tipo == "RESPOSTAS" %}<span class="badge b-violet">Respostas</span>{% else %}<span class="badge b-blue">Captação</span>{% endif %}</h2>
     <p class="sub">{{ perfil.projeto.nome }}{% for f in perfil.formularios_ordenados %} · {{ f.nome }}{% endfor %}</p></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     {% if pode_editar %}
@@ -31,10 +31,10 @@
     <tbody>
     {% for part in participacoes %}
       <tr onclick="window.location='{% url 'participacoes:detalhe' part.pk %}'" style="cursor:pointer">
-        <td class="cell-main">{{ part.participante.nome }}</td>
-        <td>{{ part.get_etapa_display }}</td>
-        <td>{{ part.get_status_display|default:"—" }}</td>
-        <td>{{ part.responsavel|nome_usuario }}</td>
+        <td class="cell-main" data-label="Participante">{{ part.participante.nome }}</td>
+        <td data-label="Etapa">{{ part.get_etapa_display }}</td>
+        <td data-label="Status">{{ part.get_status_display|default:"—" }}</td>
+        <td data-label="Responsável">{{ part.responsavel|nome_usuario }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="4" class="empty">Nenhum participante associado ainda.</td></tr>

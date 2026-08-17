@@ -13,12 +13,12 @@
     <tbody>
     {% for u in usuarios %}
       <tr>
-        <td class="cell-main">{{ u.get_full_name|default:u.username }}</td>
-        <td>{{ u.email }}</td>
-        <td class="mono">{{ u.username }}</td>
-        <td><span class="badge b-violet">{{ u.get_nivel_display }}</span></td>
-        <td>{% if u.is_active %}<span class="badge b-green">Ativo</span>{% else %}<span class="badge b-gray">Inativo</span>{% endif %}</td>
-        <td style="display:flex;gap:6px;justify-content:flex-end">
+        <td class="cell-main" data-label="Nome">{{ u.get_full_name|default:u.username }}</td>
+        <td data-label="E-mail">{{ u.email }}</td>
+        <td class="mono" data-label="Usuário">{{ u.username }}</td>
+        <td data-label="Nível"><span class="badge b-violet">{{ u.get_nivel_display }}</span></td>
+        <td data-label="Status">{% if u.is_active %}<span class="badge b-green">Ativo</span>{% else %}<span class="badge b-gray">Inativo</span>{% endif %}</td>
+        <td class="td-acoes">
           <a class="btn btn-ghost btn-sm" href="{% url 'accounts:usuario_editar' u.pk %}">Editar</a>
           {% if request.user|tem_permissao:"usuarios.excluir" and u.pk != request.user.pk %}
           <a class="btn btn-ghost btn-sm" style="border-color:#F7C9C0;color:#B03225" href="{% url 'accounts:usuario_excluir' u.pk %}">Excluir</a>

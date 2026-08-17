@@ -11,15 +11,16 @@
 </div>
 <div class="panel">
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Nome</th><th>Campos fixos</th><th>Variáveis</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>Categoria</th><th>Campos fixos</th><th>Variáveis</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for f in formularios %}
       <tr>
-        <td class="cell-main">{{ f.nome }}</td>
-        <td>{% if f.inclui_campos_fixos %}<span class="badge b-violet">Inclui</span>{% else %}<span class="badge b-gray">Não inclui</span>{% endif %}</td>
-        <td>{{ f.variaveis.count }}</td>
-        <td>{% if f.ativo %}<span class="badge b-green">Ativo</span>{% else %}<span class="badge b-gray">Inativo</span>{% endif %}</td>
-        <td style="display:flex;gap:6px;justify-content:flex-end">
+        <td class="cell-main" data-label="Nome">{{ f.nome }}</td>
+        <td data-label="Categoria">{% if f.categoria %}<span class="badge b-blue">{{ f.categoria.nome }}</span>{% else %}—{% endif %}</td>
+        <td data-label="Campos fixos">{% if f.inclui_campos_fixos %}<span class="badge b-violet">Inclui</span>{% else %}<span class="badge b-gray">Não inclui</span>{% endif %}</td>
+        <td data-label="Variáveis">{{ f.variaveis.count }}</td>
+        <td data-label="Status">{% if f.ativo %}<span class="badge b-green">Ativo</span>{% else %}<span class="badge b-gray">Inativo</span>{% endif %}</td>
+        <td class="td-acoes">
           <a class="btn btn-ghost btn-sm" href="{% url 'formularios:formulario_visualizar' f.pk %}">Visualizar</a>
           {% if request.user|tem_permissao:"formularios.gerenciar" %}
           <a class="btn btn-ghost btn-sm" href="{% url 'formularios:formulario_editar' f.pk %}">Editar</a>
@@ -30,7 +31,7 @@
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="5" class="empty">Nenhum formulário cadastrado.</td></tr>
+      <tr><td colspan="6" class="empty">Nenhum formulário cadastrado.</td></tr>
     {% endfor %}
     </tbody>
   </table></div>

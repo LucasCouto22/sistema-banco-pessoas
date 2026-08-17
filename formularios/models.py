@@ -87,10 +87,32 @@ class VariavelOpcao(models.Model):
         return self.valor
 
 
+class CategoriaFormulario(models.Model):
+    """Agrupa formulários por assunto (ex.: "Saúde", "Lifestyle"). Além de
+    organização, é usada em `pessoas/views.py::cadastro_publico` pra limitar
+    a quantas categorias a pessoa escolhe responder quando um perfil de
+    captação tem mais de 3 categorias associadas (ver
+    `_categorias_disponiveis_para_escolha`)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nome = models.CharField(max_length=100, unique=True)
+    observacao = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class Formulario(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nome = models.CharField(max_length=150)
     descricao = models.TextField(blank=True)
+    categoria = models.ForeignKey(
+        CategoriaFormulario, null=True, blank=True, on_delete=models.SET_NULL, related_name="formularios"
+    )
     inclui_campos_fixos = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
     variaveis = models.ManyToManyField(

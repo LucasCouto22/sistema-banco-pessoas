@@ -18,6 +18,9 @@
         {% include "core/_campo_form.html" with campo=form.descricao %}
       </div>
       <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.categoria %}
+      </div>
+      <div class="form-row">
         <div class="check">{{ form.inclui_campos_fixos }}<label for="{{ form.inclui_campos_fixos.id_for_label }}">{{ form.inclui_campos_fixos.label }}</label></div>
         {% if form.ativo %}
         <div class="check">{{ form.ativo }}<label for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label></div>
@@ -38,9 +41,9 @@
         {% for variavel, subform in linhas %}
           <tr>
             <td>{{ subform.incluir }}{{ subform.variavel_id }}</td>
-            <td class="cell-main">{{ variavel.nome }}{% if variavel.obrigatoria %} <span class="badge b-amber">Obrigatória</span>{% endif %}</td>
-            <td>{{ variavel.tipo_resposta.descricao }}</td>
-            <td>{{ subform.ordem }}</td>
+            <td class="cell-main" data-label="Nome">{{ variavel.nome }}{% if variavel.obrigatoria %} <span class="badge b-amber">Obrigatória</span>{% endif %}</td>
+            <td data-label="Tipo de resposta">{{ variavel.tipo_resposta.descricao }}</td>
+            <td data-label="Ordem">{{ subform.ordem }}</td>
           </tr>
         {% endfor %}
         </tbody>

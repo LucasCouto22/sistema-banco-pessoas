@@ -836,15 +836,40 @@ def descartar(request, pk):
 # =========================================================================
 
 
-def _form_dinamico_do_perfil(perfil, data=None):
+NUM_CATEGORIAS_A_ESCOLHER = 3
+
+
+def _categorias_disponiveis_para_escolha(perfil):
+    """Categorias distintas entre os formulários ativos do perfil, em ordem
+    alfabética — a lista que a pessoa vê na tela de escolha. Formulário sem
+    categoria não entra aqui (esses sempre aparecem pra todo mundo, ver
+    `_form_dinamico_do_perfil`)."""
+    vistas = {}
+    for formulario in perfil.formularios_ordenados:
+        if not formulario.ativo or formulario.categoria_id is None:
+            continue
+        vistas.setdefault(formulario.categoria_id, formulario.categoria)
+    return sorted(vistas.values(), key=lambda categoria: categoria.nome)
+
+
+def _form_dinamico_do_perfil(perfil, data=None, categorias_ids=None):
     """Devolve uma lista com um item por formulário ativo do perfil (na
     ordem escolhida na tela do perfil), cada um já montado por
     `formularios/respostas.py::construir_form_resposta` — pronta pra
-    iterar num único `{% for %}` no template."""
+    iterar num único `{% for %}` no template.
+
+    `categorias_ids`, quando não é `None`, restringe aos formulários cuja
+    categoria está nesse conjunto (formulário sem categoria sempre entra,
+    categorizar é opcional e não deveria esconder pergunta nenhuma). É
+    `None` sempre que o perfil não exige escolha de categorias (perfil de
+    Respostas, ou perfil de Captação com 3 categorias ou menos)."""
     itens = []
     for formulario in perfil.formularios_ordenados:
         if not formulario.ativo:
             continue
+        if categorias_ids is not None and formulario.categoria_id is not None:
+            if str(formulario.categoria_id) not in categorias_ids:
+                continue
         form_dinamico, linhas = construir_form_resposta(formulario, data=data)
         itens.append({"formulario": formulario, "form": form_dinamico, "linhas": linhas})
     return itens
@@ -877,13 +902,43 @@ def cadastro_publico(request, token):
     recrutador = Usuario.objects.filter(pk=payload["recrutador_id"]).first()
     versao_lgpd = _versao_lgpd_vigente()
 
+    # Perfil de Captação com mais de 3 categorias de formulário associadas:
+    # a pessoa escolhe 3 antes de ver qualquer pergunta, e só os formulários
+    # dessas 3 categorias (mais os sem categoria) abrem pra responder — ver
+    # `_categorias_disponiveis_para_escolha`/`_form_dinamico_do_perfil`.
+    categorias_disponiveis = _categorias_disponiveis_para_escolha(perfil)
+    exige_escolha_categorias = (
+        perfil.tipo == Perfil.Tipo.CAPTACAO and len(categorias_disponiveis) > NUM_CATEGORIAS_A_ESCOLHER
+    )
+    categorias_ids_validos = {str(categoria.id) for categoria in categorias_disponiveis}
+
+    def _categorias_selecionadas(fonte):
+        ids = [cid for cid in fonte.getlist("categorias") if cid in categorias_ids_validos]
+        # dedup preservando ordem, caso o mesmo id venha repetido
+        return list(dict.fromkeys(ids))
+
     if request.method == "POST":
+        categorias_selecionadas = _categorias_selecionadas(request.POST) if exige_escolha_categorias else []
+        if exige_escolha_categorias and len(categorias_selecionadas) != NUM_CATEGORIAS_A_ESCOLHER:
+            # POST forjado/adulterado sem as 3 categorias — volta pra tela de
+            # escolha em vez de tentar validar um formulário incompleto.
+            return render(
+                request,
+                "publico/escolha_categorias.html",
+                {
+                    "projeto": projeto, "perfil": perfil, "categorias": categorias_disponiveis,
+                    "num_categorias": NUM_CATEGORIAS_A_ESCOLHER,
+                    "erro": "Selecione exatamente 3 categorias.",
+                },
+            )
         existente = encontrar_participante_existente(
             request.POST.get("cpf", ""), request.POST.get("email", ""), request.POST.get("telefone", "")
         )
         valores_originais = capturar_valores_atuais(existente) if existente else None
         form = CadastroPublicoForm(request.POST, instance=existente)
-        forms_dinamicos = _form_dinamico_do_perfil(perfil, data=request.POST)
+        forms_dinamicos = _form_dinamico_do_perfil(
+            perfil, data=request.POST, categorias_ids=categorias_selecionadas if exige_escolha_categorias else None
+        )
         valido = form.is_valid() and all(fd["form"].is_valid() for fd in forms_dinamicos)
         if valido:
             with transaction.atomic():
@@ -926,8 +981,20 @@ def cadastro_publico(request, token):
                 request, "publico/cadastro_ok.html", {"participante": participante, "projeto": projeto, "perfil": perfil}
             )
     else:
+        categorias_selecionadas = _categorias_selecionadas(request.GET) if exige_escolha_categorias else []
+        if exige_escolha_categorias and len(categorias_selecionadas) != NUM_CATEGORIAS_A_ESCOLHER:
+            return render(
+                request,
+                "publico/escolha_categorias.html",
+                {
+                    "projeto": projeto, "perfil": perfil, "categorias": categorias_disponiveis,
+                    "num_categorias": NUM_CATEGORIAS_A_ESCOLHER,
+                },
+            )
         form = CadastroPublicoForm()
-        forms_dinamicos = _form_dinamico_do_perfil(perfil)
+        forms_dinamicos = _form_dinamico_do_perfil(
+            perfil, categorias_ids=categorias_selecionadas if exige_escolha_categorias else None
+        )
 
     return render(
         request,
@@ -938,5 +1005,6 @@ def cadastro_publico(request, token):
             "perfil": perfil,
             "versao_lgpd": versao_lgpd,
             "forms_dinamicos": forms_dinamicos,
+            "categorias_selecionadas": categorias_selecionadas if exige_escolha_categorias else None,
         },
     )

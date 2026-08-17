@@ -11,7 +11,7 @@
 {% if user.is_authenticated %}
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><span class="brand-mark"></span><h1>Qualy Vortice</h1></div>
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
 
     <p class="nav-label">Operação</p>
 
@@ -46,7 +46,7 @@
     </details>
     {% endif %}
 
-    {% if request.user|tem_permissao:"variaveis.ver" or request.user|tem_permissao:"formularios.ver" %}
+    {% if request.user|tem_permissao:"variaveis.ver" or request.user|tem_permissao:"formularios.ver" or request.user|tem_permissao:"categorias_formulario.ver" %}
     <details class="nav-group" {% if request.resolver_match.app_name == "formularios" %}open{% endif %}>
       <summary>Configurações de Formulários <span class="chev">▾</span></summary>
       <div class="nav-sub">
@@ -55,6 +55,9 @@
         {% endif %}
         {% if request.user|tem_permissao:"formularios.ver" %}
         <a class="nav-item {% if request.resolver_match.url_name == 'formularios_lista' or request.resolver_match.url_name == 'formulario_novo' or request.resolver_match.url_name == 'formulario_editar' or request.resolver_match.url_name == 'formulario_excluir' %}active{% endif %}" href="{% url 'formularios:formularios_lista' %}">Formulários</a>
+        {% endif %}
+        {% if request.user|tem_permissao:"categorias_formulario.ver" %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'categorias_lista' or request.resolver_match.url_name == 'categoria_novo' or request.resolver_match.url_name == 'categoria_editar' or request.resolver_match.url_name == 'categoria_excluir' %}active{% endif %}" href="{% url 'formularios:categorias_lista' %}">Categorias</a>
         {% endif %}
       </div>
     </details>

@@ -1,14 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import ProtectedError
+from django.db.models import Count, ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.permissions import requer_permissao
 from participacoes.models import Participacao
 
-from .forms import FormularioForm, VariavelForm, VariavelOpcaoFormSet, montar_formset_variaveis
-from .models import Formulario, FormularioVariavel, RespostaFormulario, TipoResposta, Variavel
+from .forms import CategoriaFormularioForm, FormularioForm, VariavelForm, VariavelOpcaoFormSet, montar_formset_variaveis
+from .models import CategoriaFormulario, Formulario, FormularioVariavel, RespostaFormulario, TipoResposta, Variavel
 from .respostas import construir_form_resposta
 
 
@@ -120,9 +120,59 @@ def variavel_excluir(request, pk):
 
 
 @login_required
+@requer_permissao("categorias_formulario.ver")
+def categorias_lista(request):
+    categorias = CategoriaFormulario.objects.annotate(total_formularios=Count("formularios"))
+    return render(request, "formularios/categorias_lista.html", {"categorias": categorias})
+
+
+@login_required
+@requer_permissao("categorias_formulario.gerenciar")
+def categoria_novo(request):
+    if request.method == "POST":
+        form = CategoriaFormularioForm(request.POST)
+        if form.is_valid():
+            categoria = form.save()
+            messages.success(request, f'Categoria "{categoria.nome}" criada.')
+            return redirect("formularios:categorias_lista")
+    else:
+        form = CategoriaFormularioForm()
+    return render(request, "formularios/categoria_form.html", {"form": form, "titulo": "Nova categoria"})
+
+
+@login_required
+@requer_permissao("categorias_formulario.gerenciar")
+def categoria_editar(request, pk):
+    categoria = get_object_or_404(CategoriaFormulario, pk=pk)
+    if request.method == "POST":
+        form = CategoriaFormularioForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Categoria "{categoria.nome}" atualizada.')
+            return redirect("formularios:categorias_lista")
+    else:
+        form = CategoriaFormularioForm(instance=categoria)
+    return render(
+        request, "formularios/categoria_form.html", {"form": form, "titulo": f"Editar {categoria.nome}"}
+    )
+
+
+@login_required
+@requer_permissao("categorias_formulario.excluir")
+def categoria_excluir(request, pk):
+    categoria = get_object_or_404(CategoriaFormulario, pk=pk)
+    if request.method == "POST":
+        nome = categoria.nome
+        categoria.delete()
+        messages.success(request, f'Categoria "{nome}" excluída.')
+        return redirect("formularios:categorias_lista")
+    return render(request, "formularios/categoria_excluir.html", {"categoria": categoria})
+
+
+@login_required
 @requer_permissao("formularios.ver")
 def formularios_lista(request):
-    formularios = Formulario.objects.all().prefetch_related("variaveis")
+    formularios = Formulario.objects.all().select_related("categoria").prefetch_related("variaveis")
     return render(request, "formularios/formularios_lista.html", {"formularios": formularios})
 
 

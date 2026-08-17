@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
+{% block crumbs %}Categorias / <b>{{ titulo }}</b>{% endblock %}
+{% block conteudo %}
+<div class="view-title" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+  <div><h2>{{ titulo }}</h2></div>
+  <a class="btn btn-ghost" href="{% url 'formularios:categorias_lista' %}">‹ Voltar</a>
+</div>
+<div class="panel"><div style="padding:20px 22px;max-width:560px">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-row">
+      {% include "core/_campo_form.html" with campo=form.nome %}
+    </div>
+    <div class="form-row">
+      {% include "core/_campo_form.html" with campo=form.observacao %}
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <a class="btn btn-ghost" href="{% url 'formularios:categorias_lista' %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar categoria</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

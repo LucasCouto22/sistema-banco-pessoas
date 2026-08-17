@@ -1,0 +1,39 @@
+{% load static_v %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escolha suas categorias · Qualy Vortice</title>
+<link rel="stylesheet" href="{% static_v 'css/base.css' %}">
+</head>
+<body>
+<section id="viewLogin">
+  <div class="login-card wide">
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
+    <p class="login-sub">Cadastro de participante — pesquisa <b>{{ projeto.nome }}</b> · {{ perfil.nome }}</p>
+
+    {% if erro %}
+    <div class="form-erro">{{ erro }}</div>
+    {% endif %}
+
+    <form method="get" id="formCategorias">
+      <div class="cadastro-secao" style="padding-top:0;margin-top:0;border-top:none">
+        <h3 class="cadastro-secao-titulo">Escolha {{ num_categorias }} categorias que tem mais domínio para
+          responder perguntas e participar de pesquisas:</h3>
+        <div id="categoriasLista">
+          {% for categoria in categorias %}
+          <div class="check">
+            <input type="checkbox" name="categorias" value="{{ categoria.id }}" id="cat-{{ forloop.counter }}">
+            <label for="cat-{{ forloop.counter }}">{{ categoria.nome }}</label>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="hint" id="categoriasContador" data-limite="{{ num_categorias }}">0 de {{ num_categorias }} selecionadas</p>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="btnContinuarCategorias" disabled>Continuar</button>
+    </form>
+  </div>
+</section>
+<script src="{% static_v 'js/escolha_categorias.js' %}" defer></script>
+</body>
+</html>
