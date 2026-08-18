@@ -20,7 +20,7 @@
       <summary>Dashboards <span class="chev">▾</span></summary>
       <div class="nav-sub">
         <a class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'core:home' %}">Visão participantes</a>
-        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard_segmento' %}active{% endif %}" href="{% url 'core:dashboard_segmento' %}">Visão por segmento</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard_segmento' %}active{% endif %}" href="{% url 'core:dashboard_segmento' %}">Visão por categoria</a>
       </div>
     </details>
     {% endif %}

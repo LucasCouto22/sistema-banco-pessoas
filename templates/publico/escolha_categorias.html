@@ -18,8 +18,10 @@
 
     <form method="get" id="formCategorias">
       <div class="cadastro-secao" style="padding-top:0;margin-top:0;border-top:none">
-        <h3 class="cadastro-secao-titulo">Escolha {{ num_categorias }} categorias que tem mais domínio para
-          responder perguntas e participar de pesquisas:</h3>
+        {% if texto_boas_vindas %}
+        <p style="margin-bottom:14px;white-space:pre-wrap">{{ texto_boas_vindas }}</p>
+        {% endif %}
+        <h3 class="cadastro-secao-titulo">{{ texto_pergunta }}</h3>
         <div id="categoriasLista">
           {% for categoria in categorias %}
           <div class="check">

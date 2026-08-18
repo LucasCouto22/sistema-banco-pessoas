@@ -1,0 +1,53 @@
+{% load static_v %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Renovar {{ termo.nome }} · Qualy Vortice</title>
+<link rel="stylesheet" href="{% static_v 'css/base.css' %}">
+</head>
+<body>
+<section id="viewLogin">
+  <div class="login-card wide">
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
+    <p class="login-sub">Olá, {{ participante.nome }} — o documento abaixo tem uma versão nova desde a última
+      vez que você aceitou.</p>
+
+    <div class="cadastro-secao" style="padding-top:0;margin-top:0;border-top:none">
+      <h3 class="cadastro-secao-titulo">{{ termo.nome }} — versão {{ versao.versao }}</h3>
+      <div class="lock-note" style="margin:10px 0 18px;max-height:220px;overflow:auto;white-space:pre-wrap">{{ versao.texto }}</div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="field">
+            <label for="{{ form.cpf.id_for_label }}">{{ form.cpf.label }}</label>
+            {{ form.cpf }}
+            <p class="hint">CPF cadastrado: {{ participante.cpf_mascarado }}</p>
+            {% for erro in form.cpf.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            {{ form.email }}
+            <p class="hint">E-mail cadastrado: {{ participante.email_mascarado }} — pode informar outro, sem problema.</p>
+            {% for erro in form.email.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          </div>
+        </div>
+
+        <div class="check" style="margin:16px 0 14px">
+          {{ form.aceite }}<label for="{{ form.aceite.id_for_label }}">{{ form.aceite.label }}</label>
+        </div>
+        {% for erro in form.aceite.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+
+        <button class="btn btn-primary btn-block" type="submit">Aceitar nova versão</button>
+      </form>
+    </div>
+
+    <div class="login-lgpd">
+      Confirmamos sua identidade pelo CPF antes de registrar o aceite — o e-mail é só uma
+      informação de contato e não impede o aceite se for diferente do que já temos.
+    </div>
+  </div>
+</section>
+</body>
+</html>

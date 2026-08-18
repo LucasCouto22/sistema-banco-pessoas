@@ -11,23 +11,31 @@
   var elDados = document.getElementById("dados-participantes");
   if (!elDados) return;
   var dados = JSON.parse(elDados.textContent);
+  var elCategorias = document.getElementById("categorias-disponiveis");
+  var elFaixasRenda = document.getElementById("faixas-renda-disponiveis");
+  var elGeneros = document.getElementById("generos-disponiveis");
 
-  var SEGMENTOS = ["Saúde", "Cosméticos", "Alimentação", "Banco", "Tecnologia"];
-  var SEG_COR = {
-    "Saúde": "#149A5B", "Cosméticos": "#F2295B", "Alimentação": "#D98A0F",
-    "Banco": "#3B6FD4", "Tecnologia": "#0F8B8D",
-  };
-  var GEN_ORDEM = ["Feminino", "Masculino", "Outro", "Prefere não informar"];
-  var GEN_COR = {
-    "Feminino": "var(--violet)", "Masculino": "var(--blue)",
-    "Outro": "var(--pink)", "Prefere não informar": "#C9BEC2",
-  };
-  var CLS_ORDEM = ["Classes A/B", "Classe C", "Classes D/E"];
+  // Categorias de formulário cadastradas (Configurações de Formulários ›
+  // Categorias) — substituem os antigos "segmentos" fixos do Projeto. Cor
+  // por posição numa paleta que se repete, já que a lista agora é dinâmica.
+  var SEGMENTOS = elCategorias ? JSON.parse(elCategorias.textContent) : [];
+  var SEG_PALETA = ["#149A5B", "#F2295B", "#D98A0F", "#3B6FD4", "#0F8B8D", "#9B59B6", "#E8590C", "#8A7078"];
+  function corSeg(s) { return SEG_PALETA[SEGMENTOS.indexOf(s) % SEG_PALETA.length]; }
+  // Opções de `Participante.Genero` cadastradas — mesma ideia de SEGMENTOS,
+  // pra não ficar hardcoded e descolar de novo se as opções mudarem.
+  var GEN_ORDEM = elGeneros ? JSON.parse(elGeneros.textContent) : [];
+  var GEN_PALETA = ["var(--violet)", "var(--blue)", "var(--pink)", "var(--amber)", "var(--green)", "#9B59B6", "#C9BEC2"];
+  function corGen(g) { return GEN_PALETA[GEN_ORDEM.indexOf(g) % GEN_PALETA.length]; }
+  // Faixas de renda individual cadastradas (a pergunta "Renda individual" do
+  // formulário) — [[codigo, rótulo], ...] na ordem A→E, uma barra por faixa.
+  var CLS_ORDEM = elFaixasRenda ? JSON.parse(elFaixasRenda.textContent) : [];
+  var CLS_LABEL = {};
+  CLS_ORDEM.forEach(function (par) { CLS_LABEL[par[0]] = par[1]; });
   var FX_ORDEM = ["18-24", "25-34", "35-44", "45-54", "55+"];
   var PROF_PALETA = ["#F2295B", "#3B6FD4", "#149A5B", "#D98A0F", "#9B59B6", "#0F8B8D", "#E8590C", "#8A7078"];
 
   var segSel = SEGMENTOS.filter(function (s) {
-    return dados.some(function (p) { return p.segs.indexOf(s) >= 0; });
+    return dados.some(function (p) { return p.cats.indexOf(s) >= 0; });
   })[0] || SEGMENTOS[0];
 
   function $(id) { return document.getElementById(id); }
@@ -50,16 +58,16 @@
   function render() {
     var porSeg = {};
     SEGMENTOS.forEach(function (s) {
-      porSeg[s] = dados.filter(function (p) { return p.segs.indexOf(s) >= 0; }).length;
+      porSeg[s] = dados.filter(function (p) { return p.cats.indexOf(s) >= 0; }).length;
     });
 
     $("segTabs").innerHTML = SEGMENTOS.map(function (s) {
       return '<button class="seg-tab ' + (s === segSel ? "sel" : "") + '" onclick="QVDashSeg.selSeg(\'' + s +
-        '\')"><span class="sw" style="background:' + SEG_COR[s] + '"></span>' + s +
+        '\')"><span class="sw" style="background:' + corSeg(s) + '"></span>' + s +
         '<span class="ct">' + fmt(porSeg[s]) + "</span></button>";
     }).join("");
 
-    var dadosSeg = dados.filter(function (p) { return p.segs.indexOf(segSel) >= 0; });
+    var dadosSeg = dados.filter(function (p) { return p.cats.indexOf(segSel) >= 0; });
     var tot = dadosSeg.length;
     $("sgTotal").textContent = fmt(tot);
     $("sgPct").textContent = dados.length ? Math.round((tot / dados.length) * 100) + "% da base" : "—";
@@ -67,24 +75,24 @@
     var porCap = contar(dadosSeg, "cid");
     var topCap = maiorPar(porCap);
     $("sgCap").textContent = topCap ? topCap[0] : "—";
-    $("sgCapFoot").textContent = topCap ? fmt(topCap[1]) + " participante(s) no segmento" : "—";
+    $("sgCapFoot").textContent = topCap ? fmt(topCap[1]) + " participante(s) na categoria" : "—";
 
     var porGen = contar(dadosSeg, "gen");
     var topGen = maiorPar(porGen);
     $("sgGen").textContent = topGen ? topGen[0] : "—";
-    $("sgGenFoot").textContent = topGen ? Math.round((topGen[1] / tot) * 100) + "% do segmento" : "—";
+    $("sgGenFoot").textContent = topGen ? Math.round((topGen[1] / tot) * 100) + "% da categoria" : "—";
 
     var porCls = contar(dadosSeg, "cls");
     var topCls = maiorPar(porCls);
-    $("sgCls").textContent = topCls ? topCls[0] : "—";
-    $("sgClsFoot").textContent = topCls ? Math.round((topCls[1] / tot) * 100) + "% do segmento" : "—";
+    $("sgCls").textContent = topCls ? (CLS_LABEL[topCls[0]] || topCls[0]) : "—";
+    $("sgClsFoot").textContent = topCls ? Math.round((topCls[1] / tot) * 100) + "% da categoria" : "—";
 
-    /* Comparativo entre segmentos */
+    /* Comparativo entre categorias */
     var maxSeg = Math.max.apply(null, [1].concat(SEGMENTOS.map(function (s) { return porSeg[s]; })));
     $("sgComp").innerHTML = SEGMENTOS.map(function (s) {
       return '<button class="vbar ' + (s === segSel ? "sel" : "") + '" onclick="QVDashSeg.selSeg(\'' + s + '\')">' +
         '<span class="ct">' + fmt(porSeg[s]) + '</span><b style="height:' + Math.max(3, (porSeg[s] / maxSeg) * 100) +
-        "%;background:" + SEG_COR[s] + '"></b><span>' + s + "</span></button>";
+        "%;background:" + corSeg(s) + '"></b><span>' + s + "</span></button>";
     }).join("");
 
     /* Top estados */
@@ -94,29 +102,31 @@
     $("sgUfs").innerHTML = topUfs.length
       ? topUfs.map(function (p) {
           return '<div class="hbar-row"><span class="lb">' + p[0] + '</span><div class="hbar"><i style="width:' +
-            (p[1] / maxUf) * 100 + "%;background:" + SEG_COR[segSel] + '"></i></div><span class="ct">' +
+            (p[1] / maxUf) * 100 + "%;background:" + corSeg(segSel) + '"></i></div><span class="ct">' +
             fmt(p[1]) + " · " + Math.round((p[1] / tot) * 100) + "%</span></div>";
         }).join("")
-      : '<p class="empty" style="padding:8px 0">Sem dados de estado neste segmento ainda.</p>';
+      : '<p class="empty" style="padding:8px 0">Sem dados de estado nesta categoria ainda.</p>';
 
     /* Gênero — barra empilhada + legenda (informativo, não filtra) */
     var stack = GEN_ORDEM.map(function (g) {
       var n = porGen[g] || 0;
-      return '<i style="width:' + (tot ? (n / tot) * 100 : 0) + "%;background:" + GEN_COR[g] + '" title="' + g + ": " + fmt(n) + '"></i>';
+      return '<i style="width:' + (tot ? (n / tot) * 100 : 0) + "%;background:" + corGen(g) + '" title="' + g + ": " + fmt(n) + '"></i>';
     }).join("");
     var legendGen = GEN_ORDEM.map(function (g) {
       var n = porGen[g] || 0;
-      return '<span class="lg" style="cursor:default"><span class="sw" style="background:' + GEN_COR[g] + '"></span>' + g +
+      return '<span class="lg" style="cursor:default"><span class="sw" style="background:' + corGen(g) + '"></span>' + g +
         '<span class="ct">' + fmt(n) + " · " + (tot ? Math.round((n / tot) * 100) : 0) + "%</span></span>";
     }).join("");
     $("sgGenCh").innerHTML = '<div class="stackbar">' + stack + "</div><div class=\"legend\">" + legendGen + "</div>";
 
-    /* Classe social */
-    var maxCls = Math.max.apply(null, [1].concat(CLS_ORDEM.map(function (c) { return porCls[c] || 0; })));
-    $("sgClsCh").innerHTML = CLS_ORDEM.map(function (c) {
-      var n = porCls[c] || 0;
-      return '<span class="vbar" style="cursor:default"><span class="ct">' + fmt(n) + '</span><b style="height:' +
-        Math.max(3, (n / maxCls) * 100) + "%;background:" + SEG_COR[segSel] + '"></b><span>' + c + "</span></span>";
+    /* Classe social — uma barra por faixa cadastrada (A-E) */
+    var maxCls = Math.max.apply(null, [1].concat(CLS_ORDEM.map(function (par) { return porCls[par[0]] || 0; })));
+    $("sgClsCh").innerHTML = CLS_ORDEM.map(function (par) {
+      var codigo = par[0], rotulo = par[1];
+      var n = porCls[codigo] || 0;
+      return '<span class="vbar" style="cursor:default" title="' + rotulo + '"><span class="ct">' + fmt(n) +
+        '</span><b style="height:' + Math.max(3, (n / maxCls) * 100) + "%;background:" + corSeg(segSel) +
+        '"></b><span>' + codigo + "</span></span>";
     }).join("");
 
     /* Faixa etária */
@@ -125,7 +135,7 @@
     $("sgFxCh").innerHTML = FX_ORDEM.map(function (f) {
       var n = porFx[f] || 0;
       return '<span class="vbar" style="cursor:default"><span class="ct">' + fmt(n) + '</span><b style="height:' +
-        Math.max(3, (n / maxFx) * 100) + "%;background:" + SEG_COR[segSel] + '"></b><span>' + f + "</span></span>";
+        Math.max(3, (n / maxFx) * 100) + "%;background:" + corSeg(segSel) + '"></b><span>' + f + "</span></span>";
     }).join("");
 
     /* Profissão — pizza (texto livre no cadastro: agrupa as 7 mais frequentes + "Outro") */
@@ -148,7 +158,7 @@
     }).join("");
     $("sgProf").innerHTML = topProf.length
       ? '<div class="donut pie" style="background:conic-gradient(' + fatiasProf.join(",") + ')"></div><div class="donut-legend">' + legendaProf + "</div>"
-      : '<p class="empty" style="padding:8px 0">Sem dados de profissão neste segmento ainda.</p>';
+      : '<p class="empty" style="padding:8px 0">Sem dados de profissão nesta categoria ainda.</p>';
   }
 
   render();

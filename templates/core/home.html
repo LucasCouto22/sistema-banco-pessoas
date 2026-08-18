@@ -66,8 +66,8 @@
 </div>
 
 <div class="panel" style="margin-top:18px">
-  <div class="panel-head"><h3 style="font-size:.95rem">Sobreposição entre segmentos</h3>
-    <span class="chart-note">selecione de 2 a 3 segmentos para ver quem atua em mais de um</span></div>
+  <div class="panel-head"><h3 style="font-size:.95rem">Sobreposição entre categorias</h3>
+    <span class="chart-note">selecione de 2 a 3 categorias para ver quem atua em mais de uma</span></div>
   <div class="chart-body">
     <div class="seg-tabs" id="vennPills"></div>
     <div id="vennBox"></div>
@@ -75,6 +75,9 @@
   </div>
 </div>
 {{ dash_participantes_json|json_script:"dados-participantes" }}
+{{ categorias_json|json_script:"categorias-disponiveis" }}
+{{ faixas_renda_json|json_script:"faixas-renda-disponiveis" }}
+{{ generos_json|json_script:"generos-disponiveis" }}
 {% endif %}
 
 {% if barras_pipeline %}

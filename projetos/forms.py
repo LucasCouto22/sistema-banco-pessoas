@@ -52,8 +52,25 @@ class ProjetoForm(forms.ModelForm):
 class PerfilForm(forms.ModelForm):
     class Meta:
         model = Perfil
-        fields = ["nome", "tipo"]
-        labels = {"nome": "Nome do perfil", "tipo": "Tipo de perfil"}
+        fields = [
+            "nome",
+            "tipo",
+            "qtd_categorias_escolha",
+            "texto_boas_vindas_categorias",
+            "texto_escolha_categorias",
+        ]
+        labels = {
+            "nome": "Nome do perfil",
+            "tipo": "Tipo de perfil",
+            "qtd_categorias_escolha": "Quantidade de categorias a escolher",
+            "texto_boas_vindas_categorias": "Texto de boas-vindas (opcional)",
+            "texto_escolha_categorias": "Pergunta da escolha de categorias",
+        }
+        widgets = {
+            "qtd_categorias_escolha": forms.NumberInput(attrs={"min": 1}),
+            "texto_boas_vindas_categorias": forms.Textarea(attrs={"rows": 2}),
+            "texto_escolha_categorias": forms.Textarea(attrs={"rows": 2}),
+        }
 
 
 class FormularioSelecaoForm(forms.Form):

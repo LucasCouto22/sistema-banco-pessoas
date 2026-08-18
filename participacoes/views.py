@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.permissions import requer_permissao
 from formularios.models import RespostaFormulario
+from formularios.respostas import construir_form_resposta
 from projetos.models import Projeto
 
 from . import exportacao
@@ -122,8 +123,18 @@ def detalhe(request, pk):
             for r in RespostaFormulario.objects.filter(participacao=participacao)
         }
         for formulario in participacao.perfil.formularios_ordenados:
+            resposta = respostas_por_formulario.get(formulario.pk)
+            linhas_leitura = None
+            if resposta:
+                # Só monta o formulário somente-leitura (usado no modal "Ver
+                # respostas") quando já existe resposta — sem isso não tem o
+                # que mostrar, e evita montar formulário dinâmico à toa pras
+                # linhas pendentes.
+                _form, linhas_leitura = construir_form_resposta(
+                    formulario, dados_iniciais=resposta.respostas_variaveis, somente_leitura=True
+                )
             formularios_do_projeto.append(
-                {"formulario": formulario, "resposta": respostas_por_formulario.get(formulario.pk)}
+                {"formulario": formulario, "resposta": resposta, "linhas_leitura": linhas_leitura}
             )
     avaliacao = getattr(participacao, "avaliacao", None)
     pode_avaliar = request.user.tem_permissao("avaliacao.criar")

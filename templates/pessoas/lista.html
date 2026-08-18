@@ -82,7 +82,12 @@
         </td>
         <td data-label="Última participação">{{ p.data_ultima_participacao|default:"—" }}</td>
         <td data-label="Consentimento">
-          {% if p.consentimento_versao %}<span class="badge b-green">{{ p.consentimento_versao.versao }}</span>
+          {% if p.consentimento_versao %}
+            {% if p.consentimento_versao.status == "VIGENTE" %}
+            <span class="badge b-green">{{ p.consentimento_versao.versao }}</span>
+            {% else %}
+            <span class="badge b-amber" title="Aceitou {{ p.consentimento_versao.versao }} — já existe uma versão mais recente do termo">{{ p.consentimento_versao.versao }} · desatualizado</span>
+            {% endif %}
           {% elif p.consentimento_lgpd %}<span class="badge b-amber">Aceito</span>
           {% else %}<span class="badge b-red">Não aceito</span>{% endif %}
         </td>

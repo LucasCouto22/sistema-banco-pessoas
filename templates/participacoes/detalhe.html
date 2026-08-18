@@ -52,6 +52,9 @@
         <td class="cell-main" data-label="Formulário">{{ item.formulario.nome }}</td>
         <td data-label="Status">{% if item.resposta %}<span class="badge b-green">Respondido</span>{% else %}<span class="badge b-gray">Pendente</span>{% endif %}</td>
         <td class="td-acoes" style="text-align:right">
+          {% if item.resposta %}
+          <button class="btn btn-ghost btn-sm" type="button" onclick="QVModal.abrir('mVer{{ forloop.counter }}')">Ver respostas</button>
+          {% endif %}
           {% if pode_preencher_respostas %}
           <a class="btn btn-ghost btn-sm" href="{% url 'formularios:responder_formulario' participacao.pk item.formulario.pk %}">{% if item.resposta %}Editar respostas{% else %}Responder{% endif %}</a>
           {% endif %}
@@ -63,6 +66,34 @@
     </tbody>
   </table></div>
 </div>
+
+{% for item in formularios_do_projeto %}
+{% if item.resposta %}
+<div class="overlay" id="mVer{{ forloop.counter }}">
+  <div class="modal wide">
+    <div class="modal-head"><h3>{{ item.formulario.nome }}</h3>
+      <button class="modal-x" type="button" onclick="QVModal.fechar('mVer{{ forloop.counter }}')">×</button></div>
+    <div class="modal-body">
+      {% if item.linhas_leitura %}
+      <div class="form-row" style="grid-template-columns:1fr">
+        {% for fv, campo in item.linhas_leitura %}
+        <div class="field">
+          <label>{{ campo.label }}</label>
+          {{ campo }}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">Este formulário não tem nenhuma variável associada.</p>
+      {% endif %}
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" onclick="QVModal.fechar('mVer{{ forloop.counter }}')">Fechar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
 {% endif %}
 
 {% if pode_avaliar %}
@@ -96,7 +127,5 @@
 {% endblock %}
 
 {% block scripts %}
-{% if pode_avaliar %}
 <script src="{% static_v 'js/modal.js' %}" defer></script>
-{% endif %}
 {% endblock %}

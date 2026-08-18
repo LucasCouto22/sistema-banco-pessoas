@@ -151,6 +151,18 @@ class CadastroPublicoForm(ParticipanteForm):
         self.fields.pop("situacao", None)
 
 
+class RenovarTermoForm(forms.Form):
+    """Tela pública de renovação de termo/contrato (`pessoas:renovar_termo`)
+    — confirma identidade pelo CPF (tem que bater com o cadastro pra aceitar
+    o documento) e pede e-mail só como informação de contato, sem comparar
+    com o que já está salvo: a mesma pessoa pode ter mais de um e-mail ao
+    longo do tempo, então um e-mail diferente não deveria travar o aceite."""
+
+    cpf = forms.CharField(label="CPF")
+    email = forms.EmailField(label="E-mail")
+    aceite = forms.BooleanField(label="Li o texto acima e aceito esta versão do documento.", required=True)
+
+
 class EscolherProjetoWizardForm(forms.Form):
     # Perfis de projeto concluído continuam na lista de propósito — é
     # exatamente o caso de uso de um lote legado (`legado` abaixo), que

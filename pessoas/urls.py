@@ -16,6 +16,7 @@ urlpatterns = [
     path("wizard/revisao/", views.wizard_revisao, name="wizard_revisao"),
     path("wizard/cancelar/", views.wizard_cancelar, name="wizard_cancelar"),
     path("cadastro/<str:token>/", views.cadastro_publico, name="cadastro_publico"),
+    path("termo/renovar/<str:token>/", views.renovar_termo, name="renovar_termo"),
     path("<int:pk>/", views.detalhe, name="detalhe"),
     path("<int:pk>/editar/", views.editar, name="editar"),
     path("<int:pk>/excluir/", views.excluir, name="excluir"),

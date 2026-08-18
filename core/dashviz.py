@@ -42,6 +42,31 @@ FAIXAS_ETARIAS = [
     ("55+", 55, 200),
 ]
 
+def generos_disponiveis():
+    """Rótulos de todas as opções de `Participante.Genero`, na ordem do
+    cadastro — a lista de barras/legenda do gráfico "Gênero" dos dois
+    dashboards. Antes disso era uma lista fixa de 4 rótulos no código
+    (`Feminino/Masculino/Outro/Prefere não informar`) que sobrou de antes da
+    realinhada de opções com o BP.xlsx (migração
+    `pessoas/migrations/0008_campos_perfilamento_bp.py`, que trocou pra 7
+    opções) — igual ao que tinha acontecido com "Classe social", ninguém
+    tinha atualizado o dashboard nessa hora."""
+    from pessoas.models import Participante
+
+    return [rotulo for _codigo, rotulo in Participante.Genero.choices]
+
+
+def faixas_renda_disponiveis():
+    """(código, rótulo) de cada faixa de `Participante.FaixaRendaIndividual`,
+    na ordem do cadastro (A→E) — a mesma pergunta "Renda individual" do
+    formulário de participante. O gráfico "Classe social" dos dois
+    dashboards usa essa lista pra montar as barras: quantas faixas o
+    formulário tiver, é isso que aparece ali, sem juntar A/B nem D/E num
+    bucket arbitrário como a versão anterior fazia."""
+    from pessoas.models import Participante
+
+    return list(Participante.FaixaRendaIndividual.choices)
+
 
 def _idade_em(nascimento, hoje):
     anos = hoje.year - nascimento.year
@@ -58,24 +83,42 @@ def _faixa_etaria(nascimento, hoje):
     return None
 
 
+def categorias_disponiveis():
+    """Nomes de todas as `CategoriaFormulario` cadastradas, em ordem
+    alfabética — a lista de abas/segmentos dos dois dashboards. Antes disso
+    era uma lista fixa de 5 `Projeto.Segmento` no código; agora reflete o
+    cadastro de verdade em "Configurações de Formulários / Categorias", e
+    cresce/encolhe junto com ele sem precisar mexer em código."""
+    from formularios.models import CategoriaFormulario
+
+    return list(CategoriaFormulario.objects.order_by("nome").values_list("nome", flat=True))
+
+
 def dados_participantes_dashboard(participantes):
     """Um registro compacto por participante — só os campos que o dashboard
     interativo usa pra filtrar e contar (`uf`, `gen`, `cls`, `fx`, `cid`,
-    `segs`), no mesmo formato dos registros de `base1000` no protótipo."""
-    from participacoes.models import Participacao
-    from projetos.models import Projeto
+    `cats`), no mesmo formato dos registros de `base1000` no protótipo.
 
-    rotulos_segmento = dict(Projeto.Segmento.choices)
-    segs_por_participante = {}
+    `cats` (antes `segs`, ligado a `Projeto.Segmento`) agora vem das
+    categorias dos formulários que o participante de fato respondeu
+    (`RespostaFormulario.formulario.categoria`) — reflete quem essa pessoa
+    é de verdade (que assuntos ela já respondeu perguntas sobre), não em que
+    projeto/segmento comercial ela foi recrutada.
+
+    `cls` é o código bruto de `Participante.FaixaRendaIndividual` (A-E, ou
+    `None` se ainda não preenchida) — o cliente busca o rótulo de cada
+    código em `faixas_renda_disponiveis()` (ver essa função)."""
+    from formularios.models import RespostaFormulario
+
+    cats_por_participante = {}
     linhas = (
-        Participacao.objects.filter(participante__in=participantes)
-        .exclude(perfil__projeto__segmento="")
-        .exclude(perfil__projeto__segmento=Projeto.Segmento.OUTRO)
-        .values_list("participante_id", "perfil__projeto__segmento")
+        RespostaFormulario.objects.filter(participacao__participante__in=participantes)
+        .exclude(formulario__categoria__isnull=True)
+        .values_list("participacao__participante_id", "formulario__categoria__nome")
         .distinct()
     )
-    for participante_id, segmento in linhas:
-        segs_por_participante.setdefault(participante_id, set()).add(rotulos_segmento[segmento])
+    for participante_id, categoria_nome in linhas:
+        cats_por_participante.setdefault(participante_id, set()).add(categoria_nome)
 
     capitais_por_nome_lower = {nome.lower(): nome for nome in CAPITAIS_PRINCIPAIS}
     hoje = timezone.localdate()
@@ -86,10 +129,10 @@ def dados_participantes_dashboard(participantes):
             {
                 "uf": (p.uf or "").strip().upper(),
                 "gen": p.get_genero_display(),
-                "cls": p.get_renda_individual_display(),
+                "cls": p.renda_individual,
                 "fx": _faixa_etaria(p.data_nascimento, hoje) if p.data_nascimento else None,
                 "cid": capitais_por_nome_lower.get((p.cidade or "").strip().lower(), ""),
-                "segs": sorted(segs_por_participante.get(p.id, ())),
+                "cats": sorted(cats_por_participante.get(p.id, ())),
                 "prof": str(p.profissao) if p.profissao_id else "",
             }
         )

@@ -1,5 +1,10 @@
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
+
+TEXTO_ESCOLHA_CATEGORIAS_PADRAO = (
+    "Escolha 3 categorias que tem mais domínio para responder perguntas e participar de pesquisas:"
+)
 
 
 class Projeto(models.Model):
@@ -116,6 +121,29 @@ class Perfil(models.Model):
         related_name="perfis",
         blank=True,
     )
+    # Escolha de categorias no cadastro público (só tem efeito em perfil de
+    # Captação com mais categorias de formulário do que `qtd_categorias_escolha`
+    # — ver `pessoas/views.py::cadastro_publico`). Editável por perfil porque
+    # o texto/quantidade pode fazer sentido diferente pra cada pesquisa.
+    qtd_categorias_escolha = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[MinValueValidator(1)],
+        help_text=(
+            "Quando este perfil é de Captação e tem mais categorias de formulário do que "
+            "esse número, a pessoa escolhe essa quantidade de categorias antes de "
+            "responder — só os formulários das categorias escolhidas abrem pra ela."
+        ),
+    )
+    texto_escolha_categorias = models.CharField(
+        max_length=300,
+        blank=True,
+        default=TEXTO_ESCOLHA_CATEGORIAS_PADRAO,
+        help_text="Pergunta mostrada na tela de escolha de categorias (em branco usa o texto padrão).",
+    )
+    texto_boas_vindas_categorias = models.TextField(
+        blank=True,
+        help_text="Texto opcional mostrado acima da pergunta, na tela de escolha de categorias.",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -130,6 +158,13 @@ class Perfil(models.Model):
     @property
     def ocupadas(self):
         return self.participacoes.count()
+
+    @property
+    def texto_escolha_categorias_efetivo(self):
+        """`texto_escolha_categorias` com fallback pro texto padrão quando
+        vazio — deixado em branco não deveria virar um título sumido na tela
+        de escolha de categorias."""
+        return self.texto_escolha_categorias or TEXTO_ESCOLHA_CATEGORIAS_PADRAO
 
     @property
     def formularios_ordenados(self):

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
@@ -31,10 +32,11 @@ from .forms import (
     EscolherProjetoWizardForm,
     ParticipanteForm,
     ParticipanteWizardForm,
+    RenovarTermoForm,
     UploadCSVForm,
     participante_wizard_formset,
 )
-from .links import ler_token_captacao
+from .links import gerar_token_renovacao_termo, ler_token_captacao, ler_token_renovacao_termo
 from .matching import (
     aplicar_dados_legado,
     capturar_valores_atuais,
@@ -43,6 +45,7 @@ from .matching import (
     restaurar_campos_vazios,
 )
 from .models import Participante
+from .validators import normalizar_cpf
 from .wizard_csv import (
     CABECALHO_MODELO,
     LINHA_EXEMPLO,
@@ -63,6 +66,42 @@ def _versao_lgpd_vigente():
     return termo.versao_vigente if termo else None
 
 
+def _link_renovacao_termo(request, participante, termo):
+    token = gerar_token_renovacao_termo(participante.id, termo.id)
+    return request.build_absolute_uri(reverse("pessoas:renovar_termo", args=[token]))
+
+
+def _termos_pendentes_renovacao(request, participante, aceites_termos):
+    """Documentos que a pessoa já aceitou antes, mas cuja versão vigente
+    mudou desde então — um link de renovação por documento pendente, pra
+    reenviar pra ela ler e aceitar a versão atual. Não cobre documento nunca
+    aceito (aqui é só sobre atualizar consentimento já dado, não pedir um
+    novo do zero).
+
+    `aceites_termos` já vem carregado (ordenado por `-aceito_em`, o padrão
+    do model) — usa isso em vez de fazer outra consulta: o primeiro aceite
+    de cada `termo_id` encontrado na lista já é o mais recente."""
+    vistos = set()
+    pendentes = []
+    for aceite in aceites_termos:
+        termo_id = aceite.versao.termo_id
+        if termo_id in vistos:
+            continue
+        vistos.add(termo_id)
+        termo = aceite.versao.termo
+        vigente = termo.versao_vigente
+        if vigente and vigente.id != aceite.versao_id:
+            pendentes.append(
+                {
+                    "termo": termo,
+                    "versao_aceita": aceite.versao,
+                    "versao_vigente": vigente,
+                    "link": _link_renovacao_termo(request, participante, termo),
+                }
+            )
+    return pendentes
+
+
 def _participantes_filtrados(request):
     q = request.GET.get("q", "").strip()
     situacao = request.GET.get("situacao", "").strip()
@@ -70,7 +109,7 @@ def _participantes_filtrados(request):
     uf = request.GET.get("uf", "").strip()
     incompleto = request.GET.get("incompleto", "").strip()
 
-    participantes = Participante.objects.all()
+    participantes = Participante.objects.select_related("consentimento_versao")
     if q:
         participantes = participantes.filter(
             Q(nome__icontains=q) | Q(cpf__icontains=q) | Q(codigo__icontains=q)
@@ -153,12 +192,15 @@ def exportar(request, formato):
 @requer_permissao("participantes.ver")
 @ensure_csrf_cookie
 def detalhe(request, pk):
-    participante = get_object_or_404(Participante, pk=pk)
+    participante = get_object_or_404(
+        Participante.objects.select_related("consentimento_versao"), pk=pk
+    )
     pode_revelar = request.user.tem_permissao("participantes.revelar_pii")
     pode_pagamento = request.user.tem_permissao("pagamento.ver")
     pode_editar = request.user.tem_permissao("participantes.gerenciar")
     pode_excluir = request.user.tem_permissao("participantes.excluir")
-    aceites_termos = participante.aceites_termos.select_related("versao__termo", "registrado_por")
+    aceites_termos = list(participante.aceites_termos.select_related("versao__termo", "registrado_por"))
+    termos_pendentes = _termos_pendentes_renovacao(request, participante, aceites_termos)
     return render(
         request,
         "pessoas/detalhe.html",
@@ -169,6 +211,7 @@ def detalhe(request, pk):
             "pode_editar": pode_editar,
             "pode_excluir": pode_excluir,
             "aceites_termos": aceites_termos,
+            "termos_pendentes": termos_pendentes,
         },
     )
 
@@ -836,9 +879,6 @@ def descartar(request, pk):
 # =========================================================================
 
 
-NUM_CATEGORIAS_A_ESCOLHER = 3
-
-
 def _categorias_disponiveis_para_escolha(perfil):
     """Categorias distintas entre os formulários ativos do perfil, em ordem
     alfabética — a lista que a pessoa vê na tela de escolha. Formulário sem
@@ -862,7 +902,8 @@ def _form_dinamico_do_perfil(perfil, data=None, categorias_ids=None):
     categoria está nesse conjunto (formulário sem categoria sempre entra,
     categorizar é opcional e não deveria esconder pergunta nenhuma). É
     `None` sempre que o perfil não exige escolha de categorias (perfil de
-    Respostas, ou perfil de Captação com 3 categorias ou menos)."""
+    Respostas, ou perfil de Captação com poucas categorias — ver
+    `Perfil.qtd_categorias_escolha`)."""
     itens = []
     for formulario in perfil.formularios_ordenados:
         if not formulario.ativo:
@@ -902,14 +943,16 @@ def cadastro_publico(request, token):
     recrutador = Usuario.objects.filter(pk=payload["recrutador_id"]).first()
     versao_lgpd = _versao_lgpd_vigente()
 
-    # Perfil de Captação com mais de 3 categorias de formulário associadas:
-    # a pessoa escolhe 3 antes de ver qualquer pergunta, e só os formulários
-    # dessas 3 categorias (mais os sem categoria) abrem pra responder — ver
+    # Perfil de Captação com mais categorias de formulário associadas do que
+    # `qtd_categorias_escolha`: a pessoa escolhe essa quantidade antes de ver
+    # qualquer pergunta, e só os formulários dessas categorias (mais os sem
+    # categoria) abrem pra responder — ver
     # `_categorias_disponiveis_para_escolha`/`_form_dinamico_do_perfil`.
+    # Quantidade, pergunta e texto de boas-vindas são configurados por
+    # perfil (`projetos/forms.py::PerfilForm`), não fixos no código.
     categorias_disponiveis = _categorias_disponiveis_para_escolha(perfil)
-    exige_escolha_categorias = (
-        perfil.tipo == Perfil.Tipo.CAPTACAO and len(categorias_disponiveis) > NUM_CATEGORIAS_A_ESCOLHER
-    )
+    qtd_categorias = perfil.qtd_categorias_escolha
+    exige_escolha_categorias = perfil.tipo == Perfil.Tipo.CAPTACAO and len(categorias_disponiveis) > qtd_categorias
     categorias_ids_validos = {str(categoria.id) for categoria in categorias_disponiveis}
 
     def _categorias_selecionadas(fonte):
@@ -917,19 +960,27 @@ def cadastro_publico(request, token):
         # dedup preservando ordem, caso o mesmo id venha repetido
         return list(dict.fromkeys(ids))
 
+    def _contexto_escolha_categorias(erro=None):
+        contexto = {
+            "projeto": projeto, "perfil": perfil, "categorias": categorias_disponiveis,
+            "num_categorias": qtd_categorias,
+            "texto_pergunta": perfil.texto_escolha_categorias_efetivo,
+            "texto_boas_vindas": perfil.texto_boas_vindas_categorias,
+        }
+        if erro:
+            contexto["erro"] = erro
+        return contexto
+
     if request.method == "POST":
         categorias_selecionadas = _categorias_selecionadas(request.POST) if exige_escolha_categorias else []
-        if exige_escolha_categorias and len(categorias_selecionadas) != NUM_CATEGORIAS_A_ESCOLHER:
-            # POST forjado/adulterado sem as 3 categorias — volta pra tela de
-            # escolha em vez de tentar validar um formulário incompleto.
+        if exige_escolha_categorias and len(categorias_selecionadas) != qtd_categorias:
+            # POST forjado/adulterado sem a quantidade certa de categorias —
+            # volta pra tela de escolha em vez de tentar validar um
+            # formulário incompleto.
             return render(
                 request,
                 "publico/escolha_categorias.html",
-                {
-                    "projeto": projeto, "perfil": perfil, "categorias": categorias_disponiveis,
-                    "num_categorias": NUM_CATEGORIAS_A_ESCOLHER,
-                    "erro": "Selecione exatamente 3 categorias.",
-                },
+                _contexto_escolha_categorias(erro=f"Selecione exatamente {qtd_categorias} categorias."),
             )
         existente = encontrar_participante_existente(
             request.POST.get("cpf", ""), request.POST.get("email", ""), request.POST.get("telefone", "")
@@ -982,15 +1033,8 @@ def cadastro_publico(request, token):
             )
     else:
         categorias_selecionadas = _categorias_selecionadas(request.GET) if exige_escolha_categorias else []
-        if exige_escolha_categorias and len(categorias_selecionadas) != NUM_CATEGORIAS_A_ESCOLHER:
-            return render(
-                request,
-                "publico/escolha_categorias.html",
-                {
-                    "projeto": projeto, "perfil": perfil, "categorias": categorias_disponiveis,
-                    "num_categorias": NUM_CATEGORIAS_A_ESCOLHER,
-                },
-            )
+        if exige_escolha_categorias and len(categorias_selecionadas) != qtd_categorias:
+            return render(request, "publico/escolha_categorias.html", _contexto_escolha_categorias())
         form = CadastroPublicoForm()
         forms_dinamicos = _form_dinamico_do_perfil(
             perfil, categorias_ids=categorias_selecionadas if exige_escolha_categorias else None
@@ -1007,4 +1051,77 @@ def cadastro_publico(request, token):
             "forms_dinamicos": forms_dinamicos,
             "categorias_selecionadas": categorias_selecionadas if exige_escolha_categorias else None,
         },
+    )
+
+
+def renovar_termo(request, token):
+    """Tela pública (sem login) de renovação de um termo/contrato — link
+    gerado em `pessoas:detalhe` (ver `_link_renovacao_termo`) pra reenviar
+    pra uma pessoa que já aceitou uma versão antiga do documento. Identidade
+    confirmada pelo CPF (tem que bater com o cadastro); e-mail é só
+    informativo, de propósito não trava o aceite (a mesma pessoa pode ter
+    mais de um e-mail com o tempo)."""
+    try:
+        payload = ler_token_renovacao_termo(token)
+    except ValueError as exc:
+        return render(request, "publico/link_invalido.html", {"mensagem": str(exc)}, status=410)
+
+    participante = Participante.objects.filter(pk=payload["participante_id"]).first()
+    termo = Termo.objects.filter(pk=payload["termo_id"]).first()
+    if participante is None or termo is None:
+        return render(
+            request,
+            "publico/link_invalido.html",
+            {"mensagem": "Este link de renovação não é mais válido."},
+            status=410,
+        )
+
+    versao_vigente = termo.versao_vigente
+    if versao_vigente is None:
+        return render(
+            request,
+            "publico/link_invalido.html",
+            {"mensagem": "Este documento não tem uma versão vigente no momento."},
+            status=410,
+        )
+
+    ja_esta_em_dia = AceiteTermo.objects.filter(participante=participante, versao=versao_vigente).exists()
+    if ja_esta_em_dia:
+        return render(
+            request,
+            "publico/termo_renovado_ok.html",
+            {"participante": participante, "termo": termo, "versao": versao_vigente, "ja_estava_em_dia": True},
+        )
+
+    if request.method == "POST":
+        form = RenovarTermoForm(request.POST)
+        if form.is_valid():
+            cpf_confere = normalizar_cpf(form.cleaned_data["cpf"]) == normalizar_cpf(participante.cpf or "")
+            if not cpf_confere:
+                form.add_error("cpf", "Esse CPF não confere com o cadastro — confira e tente de novo.")
+            else:
+                registrar_aceite(
+                    participante, versao_vigente, origem=AceiteTermo.Origem.PUBLICO, request=request
+                )
+                # `consentimento_versao` só existe pro termo de Consentimento
+                # LGPD especificamente (é o único documento com esse ponteiro
+                # dedicado em Participante) — outros tipos de termo/contrato
+                # ficam só no histórico de `AceiteTermo`, sem campo próprio.
+                termo_lgpd = Termo.objects.filter(tipo=Termo.Tipo.CONSENTIMENTO).order_by("id").first()
+                if termo_lgpd and termo_lgpd.pk == termo.pk:
+                    participante.consentimento_versao = versao_vigente
+                    participante.consentimento_lgpd = True
+                    participante.save(update_fields=["consentimento_versao", "consentimento_lgpd"])
+                return render(
+                    request,
+                    "publico/termo_renovado_ok.html",
+                    {"participante": participante, "termo": termo, "versao": versao_vigente},
+                )
+    else:
+        form = RenovarTermoForm()
+
+    return render(
+        request,
+        "publico/renovar_termo.html",
+        {"participante": participante, "termo": termo, "versao": versao_vigente, "form": form},
     )

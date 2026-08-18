@@ -51,7 +51,12 @@
     <tr><td class="cell-sub">Origem</td><td>Cadastro público, indicado por <b>{{ participante.origem_recrutador|nome_usuario }}</b></td></tr>
     {% endif %}
     <tr><td class="cell-sub">Consentimento LGPD</td><td>
-      {% if participante.consentimento_versao %}<span class="badge b-green">{{ participante.consentimento_versao.versao }}</span>
+      {% if participante.consentimento_versao %}
+        {% if participante.consentimento_versao.status == "VIGENTE" %}
+        <span class="badge b-green">{{ participante.consentimento_versao.versao }}</span>
+        {% else %}
+        <span class="badge b-amber" title="Já existe uma versão mais recente do termo">{{ participante.consentimento_versao.versao }} · desatualizado</span>
+        {% endif %}
       {% elif participante.consentimento_lgpd %}<span class="badge b-amber">Aceito (versão não registrada)</span>
       {% else %}<span class="badge b-red">Não aceito</span>{% endif %}
     </td></tr>
@@ -74,6 +79,29 @@
   </table>
   {% endif %}
 </div>
+
+{% if termos_pendentes %}
+<div class="panel" style="margin-top:16px">
+  <div class="panel-head"><h3 style="font-size:.95rem">Documentos pendentes de renovação</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Documento</th><th>Versão aceita</th><th>Versão vigente</th><th></th></tr></thead>
+    <tbody>
+    {% for item in termos_pendentes %}
+      <tr>
+        <td class="cell-main" data-label="Documento">{{ item.termo.nome }}</td>
+        <td class="mono" data-label="Versão aceita">{{ item.versao_aceita.versao }}</td>
+        <td data-label="Versão vigente"><span class="badge b-green">{{ item.versao_vigente.versao }}</span></td>
+        <td class="td-acoes">
+          <button type="button" class="btn btn-ghost btn-sm" data-copiar="{{ item.link }}">Copiar link de renovação</button>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <div class="lock-note" style="margin:14px 18px">Envie esse link pra pessoa ler o texto novo e confirmar o
+    aceite — ela mesma confirma a identidade pelo CPF na hora de aceitar.</div>
+</div>
+{% endif %}
 
 <div class="panel" style="margin-top:16px">
   <div class="panel-head"><h3 style="font-size:.95rem">Termos aceitos</h3></div>

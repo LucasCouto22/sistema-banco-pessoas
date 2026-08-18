@@ -313,6 +313,7 @@ legend{font-family:var(--disp);font-weight:700;font-size:.9rem;color:var(--ink);
 .overlay.on{display:flex}
 .modal{background:#fff;border-radius:20px;width:100%;max-width:640px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
 .modal.slim{max-width:480px}
+.modal.wide{max-width:760px}
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line)}
 .modal-head h3{font-size:1.08rem;font-weight:800}
 .modal-x{background:#F2F0F9;border:none;font-size:1.15rem;color:var(--mut);line-height:1;

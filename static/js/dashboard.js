@@ -10,6 +10,9 @@
   var elDados = document.getElementById("dados-participantes");
   if (!elDados) return;
   var dados = JSON.parse(elDados.textContent);
+  var elCategorias = document.getElementById("categorias-disponiveis");
+  var elFaixasRenda = document.getElementById("faixas-renda-disponiveis");
+  var elGeneros = document.getElementById("generos-disponiveis");
 
   var TILES = {
     RR: [2, 0], AP: [4, 0],
@@ -25,25 +28,36 @@
     "Rio de Janeiro": "#F2295B", "São Paulo": "#FF7A3D", "Brasília": "#FFB15C",
     "Fortaleza": "#3B6FD4", "Salvador": "#149A5B",
   };
-  var GEN_ORDEM = ["Feminino", "Masculino", "Outro", "Prefere não informar"];
-  var GEN_COR = {
-    "Feminino": "var(--violet)", "Masculino": "var(--blue)",
-    "Outro": "var(--pink)", "Prefere não informar": "#C9BEC2",
-  };
-  var CLS_ORDEM = ["Classes A/B", "Classe C", "Classes D/E"];
+  // Opções de `Participante.Genero` cadastradas — [rótulo, ...] na ordem do
+  // model. Antes era uma lista fixa de 4 rótulos que sobrou de antes da
+  // realinhada de opções com o BP.xlsx (hoje são 7); cor por posição numa
+  // paleta que se repete, mesmo padrão de `corSeg`.
+  var GEN_ORDEM = elGeneros ? JSON.parse(elGeneros.textContent) : [];
+  var GEN_PALETA = ["var(--violet)", "var(--blue)", "var(--pink)", "var(--amber)", "var(--green)", "#9B59B6", "#C9BEC2"];
+  function corGen(g) { return GEN_PALETA[GEN_ORDEM.indexOf(g) % GEN_PALETA.length]; }
+  // Faixas de renda individual cadastradas em `Participante.FaixaRendaIndividual`
+  // (a mesma pergunta "Renda individual" do formulário) — [[codigo, rótulo], ...]
+  // na ordem A→E. O gráfico mostra uma barra por faixa (o rótulo completo vira
+  // tooltip via `title`), em vez de juntar em buckets fixos como antes.
+  var CLS_ORDEM = elFaixasRenda ? JSON.parse(elFaixasRenda.textContent) : [];
+  var CLS_LABEL = {};
+  CLS_ORDEM.forEach(function (par) { CLS_LABEL[par[0]] = par[1]; });
   var FX_ORDEM = ["18-24", "25-34", "35-44", "45-54", "55+"];
-  var SEGMENTOS = ["Saúde", "Cosméticos", "Alimentação", "Banco", "Tecnologia"];
-  var SEG_COR = {
-    "Saúde": "#149A5B", "Cosméticos": "#F2295B", "Alimentação": "#D98A0F",
-    "Banco": "#3B6FD4", "Tecnologia": "#0F8B8D",
-  };
+  // Categorias de formulário cadastradas (Configurações de Formulários ›
+  // Categorias) — substituem os antigos "segmentos" fixos do Projeto
+  // (Saúde/Cosméticos/Alimentação/Banco/Tecnologia): a lista agora reflete
+  // o cadastro de verdade, então a cor de cada uma é por posição (paleta
+  // que se repete), não mais por nome fixo.
+  var SEGMENTOS = elCategorias ? JSON.parse(elCategorias.textContent) : [];
+  var SEG_PALETA = ["#149A5B", "#F2295B", "#D98A0F", "#3B6FD4", "#0F8B8D", "#9B59B6", "#E8590C", "#8A7078"];
+  function corSeg(s) { return SEG_PALETA[SEGMENTOS.indexOf(s) % SEG_PALETA.length]; }
   var VENN_FONT = "'Plus Jakarta Sans',system-ui,sans-serif";
   var VENN_DEEP = "#C4143F", VENN_DARK = "#750A26";
 
   var filtros = { uf: null, gen: null, cls: null, fx: null, cid: null };
   var FILTRO_NOME = { uf: "Estado", gen: "Gênero", cls: "Classe", fx: "Faixa etária", cid: "Capital" };
   var vennSel = SEGMENTOS.filter(function (s) {
-    return dados.some(function (p) { return p.segs.indexOf(s) >= 0; });
+    return dados.some(function (p) { return p.cats.indexOf(s) >= 0; });
   }).slice(0, 3);
 
   function $(id) { return document.getElementById(id); }
@@ -94,8 +108,9 @@
       .filter(function (d) { return filtros[d]; })
       .map(function (d) {
         var v = filtros[d];
+        var texto = d === "cls" ? CLS_LABEL[v] || v : v;
         return '<button class="fchip" onclick="QVDash.toggleF(\'' + d + "','" + v + '\')"><small>' +
-          FILTRO_NOME[d] + ":</small> " + esc(v) + " ✕</button>";
+          FILTRO_NOME[d] + ":</small> " + esc(texto) + " ✕</button>";
       });
     $("fchips").innerHTML = chips.length
       ? '<span class="lbl">Filtros ativos:</span> ' + chips.join("") +
@@ -142,23 +157,25 @@
     var porGen = contar(filtrados, "gen");
     var stack = GEN_ORDEM.map(function (g) {
       var n = porGen[g] || 0;
-      return '<i style="width:' + (tot ? (n / tot) * 100 : 0) + "%;background:" + GEN_COR[g] + '" title="' + g + ": " + fmt(n) + '"></i>';
+      return '<i style="width:' + (tot ? (n / tot) * 100 : 0) + "%;background:" + corGen(g) + '" title="' + g + ": " + fmt(n) + '"></i>';
     }).join("");
     var legendGen = GEN_ORDEM.map(function (g) {
       var n = porGen[g] || 0;
       return '<button class="lg ' + (filtros.gen === g ? "sel" : "") + '" onclick="QVDash.toggleF(\'gen\',\'' + g +
-        '\')"><span class="sw" style="background:' + GEN_COR[g] + '"></span>' + g +
+        '\')"><span class="sw" style="background:' + corGen(g) + '"></span>' + g +
         '<span class="ct">' + fmt(n) + " · " + (tot ? Math.round((n / tot) * 100) : 0) + "%</span></button>";
     }).join("");
     $("chGen").innerHTML = '<div class="stackbar">' + stack + "</div><div class=\"legend\">" + legendGen + "</div>";
 
-    /* Classe social — barras verticais */
+    /* Classe social — barras verticais, uma por faixa cadastrada (A-E) */
     var porCls = contar(filtrados, "cls");
-    var maxCls = Math.max.apply(null, [1].concat(CLS_ORDEM.map(function (c) { return porCls[c] || 0; })));
-    $("chCls").innerHTML = CLS_ORDEM.map(function (c) {
-      var n = porCls[c] || 0;
-      return '<button class="vbar ' + (filtros.cls === c ? "sel" : "") + '" onclick="QVDash.toggleF(\'cls\',\'' + c + '\')">' +
-        '<span class="ct">' + fmt(n) + '</span><b style="height:' + Math.max(3, (n / maxCls) * 100) + '%"></b><span>' + c + "</span></button>";
+    var maxCls = Math.max.apply(null, [1].concat(CLS_ORDEM.map(function (par) { return porCls[par[0]] || 0; })));
+    $("chCls").innerHTML = CLS_ORDEM.map(function (par) {
+      var codigo = par[0], rotulo = par[1];
+      var n = porCls[codigo] || 0;
+      return '<button class="vbar ' + (filtros.cls === codigo ? "sel" : "") + '" title="' + esc(rotulo) +
+        '" onclick="QVDash.toggleF(\'cls\',\'' + codigo + '\')">' +
+        '<span class="ct">' + fmt(n) + '</span><b style="height:' + Math.max(3, (n / maxCls) * 100) + '%"></b><span>' + codigo + "</span></button>";
     }).join("");
 
     /* Faixa etária — barras verticais */
@@ -185,18 +202,18 @@
 
     $("vennPills").innerHTML = SEGMENTOS.map(function (s) {
       return '<button class="seg-tab ' + (vennSel.indexOf(s) >= 0 ? "sel" : "") + '" onclick="QVDash.toggleVennSeg(\'' + s +
-        '\')"><span class="sw" style="background:' + SEG_COR[s] + '"></span>' + s + "</button>";
+        '\')"><span class="sw" style="background:' + corSeg(s) + '"></span>' + s + "</button>";
     }).join("");
 
     if (vennSel.length < 2) {
-      box.innerHTML = '<p class="empty" style="padding:36px 20px">Selecione ao menos 2 segmentos acima para ver quantos participantes atuam em mais de um.</p>';
+      box.innerHTML = '<p class="empty" style="padding:36px 20px">Selecione ao menos 2 categorias acima para ver quantos participantes atuam em mais de uma.</p>';
       $("vennFoot").textContent = "";
       return;
     }
 
     var counts = {};
     dadosVenn.forEach(function (p) {
-      var presente = vennSel.map(function (s) { return p.segs.indexOf(s) >= 0; });
+      var presente = vennSel.map(function (s) { return p.cats.indexOf(s) >= 0; });
       if (!presente.some(Boolean)) return;
       var chave = presente.map(function (b) { return b ? "1" : "0"; }).join("");
       counts[chave] = (counts[chave] || 0) + 1;
@@ -216,7 +233,7 @@
       var oA = get("100"), oB = get("010"), oC = get("001");
       var ab = get("110"), ac = get("101"), bc = get("011"), abc = get("111");
       box.innerHTML = svgVenn3(Aa, Bb, Cc, oA, oB, oC, ab, ac, bc, abc);
-      $("vennFoot").textContent = fmt(abc) + " participante(s) atuam nos três segmentos ao mesmo tempo (" + Aa + ", " + Bb + " e " + Cc + ").";
+      $("vennFoot").textContent = fmt(abc) + " participante(s) atuam nas três categorias ao mesmo tempo (" + Aa + ", " + Bb + " e " + Cc + ").";
     }
   }
 
@@ -227,7 +244,7 @@
   }
 
   function svgVenn2(A, B, onlyA, onlyB, both) {
-    var cA = SEG_COR[A], cB = SEG_COR[B];
+    var cA = corSeg(A), cB = corSeg(B);
     return '<svg viewBox="0 0 350 250" width="100%" style="max-width:420px;display:block;margin:0 auto">' +
       '<circle cx="135" cy="135" r="95" fill="' + cA + '" fill-opacity=".42" style="mix-blend-mode:multiply"/>' +
       '<circle cx="215" cy="135" r="95" fill="' + cB + '" fill-opacity=".42" style="mix-blend-mode:multiply"/>' +
@@ -240,7 +257,7 @@
   }
 
   function svgVenn3(A, B, C, onlyA, onlyB, onlyC, ab, ac, bc, abc) {
-    var cA = SEG_COR[A], cB = SEG_COR[B], cC = SEG_COR[C];
+    var cA = corSeg(A), cB = corSeg(B), cC = corSeg(C);
     return '<svg viewBox="0 0 380 320" width="100%" style="max-width:420px;display:block;margin:0 auto">' +
       '<circle cx="150" cy="140" r="100" fill="' + cA + '" fill-opacity=".38" style="mix-blend-mode:multiply"/>' +
       '<circle cx="230" cy="140" r="100" fill="' + cB + '" fill-opacity=".38" style="mix-blend-mode:multiply"/>' +

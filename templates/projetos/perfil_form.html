@@ -14,6 +14,24 @@
       {% include "core/_campo_form.html" with campo=form.tipo %}
     </div>
     <fieldset>
+      <legend>Escolha de categorias no cadastro público</legend>
+      <p class="hint" style="margin-bottom:10px">
+        Só tem efeito em perfil de Captação com mais categorias de formulário do que a
+        quantidade abaixo — nesse caso, quem preenche o link público escolhe essa
+        quantidade de categorias antes de ver qualquer pergunta, e só os formulários das
+        categorias escolhidas abrem pra responder.
+      </p>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.qtd_categorias_escolha %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.texto_boas_vindas_categorias %}
+      </div>
+      <div class="form-row">
+        {% include "core/_campo_form.html" with campo=form.texto_escolha_categorias %}
+      </div>
+    </fieldset>
+    <fieldset>
       <legend>Formulários do perfil</legend>
       <p class="hint" style="margin-bottom:10px">
         Marque os formulários que entram neste perfil e defina a ordem de exibição

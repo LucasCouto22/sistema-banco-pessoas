@@ -2876,3 +2876,348 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     `projetos/models.py`, `formularios/models.py`, `templates/publico/cadastro.html`,
     `templates/publico/escolha_categorias.html` (novo), `static/js/escolha_categorias.js`
     (novo).
+- **2026-08-18 (Escolha de categorias vira configurável por perfil — quantidade, pergunta
+  e texto de boas-vindas)** — Na rodada anterior a pergunta, a quantidade (3) e o texto
+  ficaram fixos no código. O usuário pediu pra virarem editáveis por perfil, na própria
+  tela de edição do perfil.
+  - **`projetos/models.py::Perfil`** — 3 campos novos: `qtd_categorias_escolha`
+    (`PositiveSmallIntegerField`, default `3`, `MinValueValidator(1)` — substitui a
+    constante `NUM_CATEGORIAS_A_ESCOLHER` que existia em `pessoas/views.py`),
+    `texto_escolha_categorias` (`CharField`, pode ficar em branco) e
+    `texto_boas_vindas_categorias` (`TextField`, opcional, novo — texto que aparece acima
+    da pergunta, só mostrado quando preenchido). Constante de módulo
+    `TEXTO_ESCOLHA_CATEGORIAS_PADRAO` guarda o texto padrão (mesmo da rodada anterior) —
+    usada tanto como `default=` do campo quanto na property nova
+    `Perfil.texto_escolha_categorias_efetivo` (fallback pro padrão se o campo for salvo em
+    branco, pra nunca sumir a pergunta da tela). Migração
+    `projetos/migrations/0010_perfil_qtd_categorias_escolha_and_more.py` — só `AddField`
+    (os 3 defaults cobrem os perfis já existentes, sem precisar de passo de dado).
+  - **`projetos/forms.py::PerfilForm`** — ganhou os 3 campos, com `Textarea` pros dois de
+    texto (`rows=2`) e labels/help_text explicando quando cada um tem efeito.
+  - **`templates/projetos/perfil_form.html`** — novo fieldset "Escolha de categorias no
+    cadastro público", entre o nome/tipo do perfil e a tabela de formulários, com uma nota
+    deixando claro que só faz efeito em perfil de Captação com mais categorias que a
+    quantidade escolhida.
+  - **`pessoas/views.py::cadastro_publico`** — a constante `NUM_CATEGORIAS_A_ESCOLHER`
+    saiu; toda a lógica de gatilho/validação usa `perfil.qtd_categorias_escolha` agora
+    (efeito colateral útil: setar uma quantidade igual ou maior que o total de categorias
+    do perfil desliga a exigência de escolha pra aquele perfil específico, sem precisar de
+    um campo liga/desliga separado). `_contexto_escolha_categorias()` (novo, local à view)
+    centraliza o contexto passado pra `escolha_categorias.html`, incluindo
+    `texto_pergunta` (`perfil.texto_escolha_categorias_efetivo`) e `texto_boas_vindas`.
+  - **`templates/publico/escolha_categorias.html`** — título da pergunta e (quando
+    preenchido) o texto de boas-vindas acima dela agora vêm do contexto em vez de
+    hardcoded no template.
+  - Testado com Playwright contra o perfil real "Perfil Único Geral": (1) tela de edição
+    mostra os 3 campos novos pré-preenchidos com os valores atuais (quantidade 3, pergunta
+    padrão, boas-vindas em branco); (2) mudei quantidade pra 2, preenchi um texto de
+    boas-vindas e uma pergunta customizada, salvei — confirmado no banco que persistiu;
+    (3) reabri o link público do perfil: texto de boas-vindas aparece acima da pergunta
+    customizada, contador mostra "0 de 2 selecionadas", botão habilita com exatamente 2
+    marcadas (não mais 3) e desabilita a 3ª caixa ao atingir o limite — tudo reagindo à
+    nova quantidade configurada; (4) formulário final mostrou só as 2 categorias
+    escolhidas. Restaurei o perfil pros valores padrão originais (quantidade 3, texto
+    padrão, boas-vindas vazio) depois de confirmar — não sobrou alteração de teste.
+    `makemigrations --check --dry-run` limpo antes e depois de aplicar a migração.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/forms.py`,
+    `projetos/migrations/0010_perfil_qtd_categorias_escolha_and_more.py` (novo),
+    `templates/projetos/perfil_form.html`, além dos arquivos já modificados de
+    `projetos/models.py`, `pessoas/views.py` e `templates/publico/escolha_categorias.html`
+    (que já apareciam no `git status` da rodada anterior).
+- **2026-08-18 (Detalhe da participação: botão "Ver respostas" abre modal com o
+  formulário respondido completo)** — Até aqui, a única forma de ver as respostas de um
+  formulário na tela da participação era clicar em "Editar respostas" e navegar pra uma
+  página separada. Pedido do usuário: um botão que abra um modal ali mesmo, mostrando
+  todas as respostas daquele formulário sem sair da tela.
+  - **`participacoes/views.py::detalhe`** — pra cada item de `formularios_do_projeto` que
+    já tem `RespostaFormulario`, monta também `linhas_leitura` chamando
+    `formularios.respostas.construir_form_resposta(formulario,
+    dados_iniciais=resposta.respostas_variaveis, somente_leitura=True)` — o mesmo
+    renderizador dinâmico usado em `formulario_visualizar` (a prévia de formulário), só que
+    agora com os valores reais da resposta como `initial` em vez de vazio. Item sem
+    resposta (`Pendente`) fica com `linhas_leitura=None` (não monta form dinâmico à toa).
+  - **`templates/participacoes/detalhe.html`** — botão "Ver respostas" (`btn-ghost btn-sm`,
+    só aparece quando `item.resposta` existe) ao lado de "Editar respostas"/"Responder" na
+    coluna de ações; abre `QVModal.abrir('mVer<N>')`. Um modal por formulário respondido é
+    renderizado logo abaixo da tabela (`.modal.wide`, novo — 760px em vez dos 640px
+    padrão, mais confortável pro `.form-row` de perguntas), reaproveitando o mesmo layout
+    label+campo de `formulario_visualizar.html`. Como o modal já carrega os campos
+    desabilitados com o valor real (via Django `disabled=True` + `initial=`), inclusive o
+    widget de múltipla escolha (`DropdownCheckboxSelectMultiple`) mostra corretamente
+    quantas opções foram marcadas e quais são, só sem poder alterar — sem precisar de
+    nenhum JS novo, `dropdown_multiselect.js` já é carregado globalmente em `base.html`.
+    `{% block scripts %}` simplificado pra sempre carregar `modal.js` (antes só carregava
+    se `pode_avaliar`; agora o modal de "Ver respostas" também depende dele,
+    independentemente da permissão de avaliação).
+  - **`static/css/base.css`** — `.modal.wide{max-width:760px}` (novo, ao lado do já
+    existente `.modal.slim`).
+  - Testado com Playwright contra a participação real de Lucas Couto (`/participacoes/78/`,
+    9 formulários todos respondidos, do BP.xlsx): (1) os 9 botões "Ver respostas"
+    aparecem, um por formulário; (2) abri o modal de "Perguntas Básicas de Alimentação" —
+    título certo, todos os campos aparecem com o valor realmente salvo (ex.: "Sou
+    apaixonado(a) por gastronomia", "Todos os dias"); (3) os 3 campos de múltipla escolha
+    desse formulário mostram o rótulo certo ("4 selecionadas", "6 selecionadas", "5
+    selecionadas") e, abrindo o dropdown, exatamente as opções marcadas batem com o que
+    foi respondido (ex.: Gastronomia/Restaurantes/Receitas/Tendências gastronômicas),
+    todas as caixas desabilitadas (nenhuma clicável); (4) botão "Fechar" e o X fecham o
+    modal normalmente; (5) confirmei que o modal de "Avaliar" (que já existia antes)
+    continua abrindo normalmente depois da simplificação do `{% block scripts %}`. Zero
+    erro de página/console em qualquer etapa.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/views.py`,
+    `templates/participacoes/detalhe.html`, `static/css/base.css`.
+- **2026-08-18 (Dashboards: "Classe social" voltou a contar de verdade, e "Segmento" virou
+  "Categoria" — lista as categorias cadastradas de verdade)** — Dois problemas relatados
+  pelo usuário nos dois dashboards ("Visão participantes" e "Visão por segmento"):
+  1. **Classe social sempre em zero** — `core/dashviz.py::dados_participantes_dashboard`
+     mandava `p.get_renda_individual_display()` (ex.: `"A — a partir de R$ 9.738"`) no
+     campo `cls`, mas `static/js/dashboard.js`/`dashboard_segmento.js` só reconhecem 3
+     rótulos fixos (`CLS_ORDEM = ["Classes A/B", "Classe C", "Classes D/E"]`). Isso ficou
+     dessincronizado desde a rodada do BP.xlsx, quando `renda_individual` passou a usar
+     códigos A-E com rótulo próprio (["Faixa de renda individual/familiar vira 2 perguntas
+     separadas"], SDD de rodada anterior) — o cliente nunca mais bateu o rótulo esperado
+     com o que o servidor mandava, e todo gráfico de classe social ficava zerado
+     independente de quantos participantes tivessem `renda_individual` preenchida. Corrigido
+     com `BUCKETS_CLASSE_SOCIAL` (novo, em `core/dashviz.py`): mapeia os códigos A/B → 
+     `"Classes A/B"`, C → `"Classe C"`, D/E → `"Classes D/E"` a partir do código
+     (`p.renda_individual`), não do rótulo por extenso — bate exatamente com o que o JS
+     espera.
+  2. **"Segmento" → "Categoria do Perfil"** — o agrupamento dos dois dashboards vinha de
+     `Projeto.Segmento` (`Saúde/Cosméticos/Alimentação/Banco/Tecnologia`, lista fixa de 5
+     no código, atributo do Projeto). Como pedido, isso virou a Categoria de Formulário
+     (`CategoriaFormulario`, cadastrada em "Configurações de Formulários › Categorias") —
+     um participante agora "pertence" a uma categoria por ter de fato **respondido** um
+     formulário categorizado naquela categoria (`RespostaFormulario.formulario.categoria`),
+     não por ter sido recrutado num projeto com aquela tag comercial. `categorias_disponiveis()`
+     (nova, em `core/dashviz.py`) lista todas as `CategoriaFormulario` cadastradas (ordem
+     alfabética) — essa é a lista de abas/pills dos dois dashboards agora, então cresce ou
+     encolhe junto com o cadastro de categorias, sem precisar mexer em código pra isso.
+     `dados_participantes_dashboard` trocou o campo `segs` (nome antigo, ligado a segmento)
+     por `cats`, computado via `RespostaFormulario.objects.filter(participacao__participante__in=...)
+     .values_list("participacao__participante_id", "formulario__categoria__nome")`.
+     `core/views.py` (`home` e `dashboard_segmento`) passam `categorias_json` (de
+     `categorias_disponiveis()`) pro contexto, embutido via `json_script` em
+     `id="categorias-disponiveis"` (mesmo padrão do `dados-participantes`).
+     `static/js/dashboard.js` e `dashboard_segmento.js`: `SEGMENTOS` deixou de ser array
+     fixo e passou a ler esse JSON; `SEG_COR` (mapa de cor por nome fixo) virou `corSeg()`
+     — cor por posição numa paleta que se repete (mesmo padrão de `PROF_PALETA`), já que os
+     nomes das categorias não são mais conhecidos em tempo de escrita do código. Todo texto
+     visível de "segmento" nas duas telas virou "categoria" (título, breadcrumb, subtítulo,
+     cabeçalhos de painel, rodapés de KPI, item do menu lateral "Visão por segmento" →
+     "Visão por categoria") — só os identificadores internos (nome da URL/rota, nome do
+     arquivo JS, classe CSS `.seg-tab`, IDs como `segTabs`/`sgComp`) ficaram como estavam,
+     por não serem visíveis e trocar deles não mudar nada pro usuário. **Não mexi** no campo
+     `Projeto.segmento` em si nem nos lugares que ainda o mostram fora do dashboard (lista/
+     detalhe/formulário de projeto) — o pedido foi especificamente sobre os dois dashboards.
+  - Testado com Playwright, autenticado: (1) "Visão participantes" — "Classe social (faixa
+    de renda)" agora mostra contagem real (1 em "Classes A/B", antes 0/0/0 nas três barras);
+    "Sobreposição entre categorias" lista as 9 categorias cadastradas de verdade
+    (Alimentação, Banco, Bebidas, Beleza, Entretenimento, Esporte, LifeStyle, Saúde,
+    Tecnologia) em vez dos 5 segmentos fixos antigos, com Venn mostrando corretamente 1
+    participante nas 3 categorias pré-selecionadas ao mesmo tempo; (2) "Visão por
+    categoria" — as 9 abas aparecem com contagem real, cliquei em "Banco": KPIs, "Classe
+    predominante" (agora "Classes A/B" em vez de "—"), "Comparativo entre categorias" (9
+    barras coloridas por paleta) e "Classe social" (barra real em vez de zero) todos batendo
+    com os dados de verdade; confirmei que os números de cada categoria refletem
+    exatamente quem respondeu formulário daquela categoria (verifiquei no shell que a
+    diferença em relação ao antigo "Segmento: Banco" — que somava 7 participantes de um
+    projeto de teste antigo com um formulário nunca categorizado — é esperada e correta,
+    não uma regressão). Zero erro de página/console em qualquer tela.
+  - **Segue sem commitar.** `git status` agora também inclui `core/dashviz.py`,
+    `core/views.py`, `templates/core/home.html`, `templates/core/dashboard_segmento.html`,
+    `templates/base.html`, `static/js/dashboard.js`, `static/js/dashboard_segmento.js`.
+- **2026-08-18 (Classe social: 5 barras de verdade, uma por faixa do formulário — não mais
+  3 buckets fixos)** — A correção anterior consertou a contagem zerada, mas ainda juntava
+  os 5 códigos de `renda_individual` (A-E) em 3 buckets hardcoded ("Classes A/B", "Classe
+  C", "Classes D/E") herdados do protótipo original. O usuário pediu pra usar a quantidade
+  de faixas de verdade e casar com o que o formulário de participante realmente pergunta —
+  5 faixas (A a E), não 3.
+  - `core/dashviz.py::faixas_renda_disponiveis()` (nova, mesmo padrão de
+    `categorias_disponiveis()`) devolve `Participante.FaixaRendaIndividual.choices` direto
+    — `[("A", "A — a partir de R$ 9.738"), ("B", ...), ...]`, na ordem do cadastro. Removido
+    `BUCKETS_CLASSE_SOCIAL` (o mapeamento pra 3 buckets); `dados_participantes_dashboard`
+    agora manda `"cls": p.renda_individual` — o código bruto (A-E ou `None`), sem
+    transformação nenhuma no servidor.
+  - `core/views.py` (`home` e `dashboard_segmento`) passam `faixas_renda_json` pro
+    contexto; `templates/core/home.html` e `dashboard_segmento.html` embutem via
+    `{{ faixas_renda_json|json_script:"faixas-renda-disponiveis" }}` (mesmo padrão de
+    `categorias-disponiveis`).
+  - `static/js/dashboard.js` e `dashboard_segmento.js`: `CLS_ORDEM` deixou de ser o array
+    fixo de 3 buckets e passou a ler essa lista de pares `[codigo, rótulo]` do JSON — o
+    gráfico "Classe social" agora desenha uma barra por faixa cadastrada (5 hoje, mas
+    acompanha sozinho se o formulário ganhar/perder faixas no futuro). Cada barra mostra só
+    o código (A/B/C/D/E — cabe no espaço apertado do `.vbar`) com o rótulo completo
+    (`"B — R$ 4.869 a R$ 9.737"`) como `title` (tooltip ao passar o mouse, mesmo padrão já
+    usado nos tiles do mapa por estado). `CLS_LABEL` (novo, mapa código→rótulo) é usado pra
+    mostrar o rótulo completo nos dois lugares com mais espaço: o chip de filtro ativo
+    ("Visão participantes") e o KPI "Classe predominante" ("Visão por categoria") — só o
+    rótulo curto (código) aparece embaixo de cada barrinha.
+  - Corrigido no processo: a primeira versão do trecho de `dashboard_segmento.js` chamava
+    `esc(rotulo)` pro `title` da barra, mas esse arquivo nunca teve essa função (só existe
+    em `dashboard.js`) — teria quebrado com `ReferenceError` assim que a tela de categoria
+    carregasse. Pego antes de subir pro usuário: como o resto do arquivo já insere texto
+    sem escapar (rótulos vêm de `choices` do model, não de entrada de usuário), troquei
+    pra usar `rotulo` direto, consistente com o padrão já usado ali (ex.: `title` das
+    barras de gênero).
+  - Testado com Playwright: (1) "Visão participantes" — "Classe social (faixa de renda)"
+    agora mostra 5 barras (A, B, C, D, E) com o rótulo completo de cada uma no tooltip;
+    cliquei na barra "B" (única com dado real) e o chip de filtro mostrou o rótulo completo
+    "B — R$ 4.869 a R$ 9.737"; (2) "Visão por categoria" (aba Banco) — mesmas 5 barras,
+    contagem batendo (1 em B), e o KPI "Classe predominante" mostrando o rótulo completo em
+    vez do código sozinho. Zero erro de página/console nas duas telas.
+  - **Segue sem commitar.** `git status` agora também inclui as mesmas mudanças da rodada
+    anterior em `core/dashviz.py`, `core/views.py`, `templates/core/home.html`,
+    `templates/core/dashboard_segmento.html`, `static/js/dashboard.js`,
+    `static/js/dashboard_segmento.js`.
+- **2026-08-18 (Gênero: mesmo bug da classe social, mais registros legado com código de
+  gênero desatualizado)** — Dois pedidos do usuário: (1) o KPI de gênero também estava
+  desatualizado; (2) tanto gênero quanto faixa salarial tinham "registros legado" que
+  precisavam ser atualizados pra caber nas informações novas.
+  1. **Mesmo bug do "Classe social" da rodada anterior, agora em "Gênero"** —
+     `GEN_ORDEM`/`GEN_COR` em `static/js/dashboard.js`/`dashboard_segmento.js` estavam
+     hardcoded com os 4 rótulos **antigos** (`Feminino/Masculino/Outro/Prefere não
+     informar`) de antes da migração `pessoas/migrations/0008_campos_perfilamento_bp.py`,
+     que realinhou `Participante.Genero` pras 7 opções do BP.xlsx (Mulher cisgênero, Homem
+     cisgênero, Mulher transgênero, Homem transgênero, Pessoa não binária, Outra
+     identidade de gênero, Prefiro não responder) — igual ao que tinha acontecido com
+     "Classe social", ninguém tinha atualizado o dashboard nessa hora, então nenhum
+     participante batia com as 4 opções esperadas e o gráfico ficava zerado. Corrigido com
+     o mesmo padrão: `core/dashviz.py::generos_disponiveis()` (nova) devolve os rótulos de
+     `Participante.Genero.choices` de verdade; `core/views.py` passa `generos_json`;
+     `templates/core/home.html`/`dashboard_segmento.html` embutem via
+     `json_script:"generos-disponiveis"`; os dois JS leem `GEN_ORDEM` desse JSON em vez do
+     array fixo, com cor por posição numa paleta (`corGen()`, mesmo padrão de `corSeg()`)
+     em vez do mapa fixo por nome.
+  2. **Registros legado de gênero corrigidos de verdade (migração de dados)** — diferente
+     do bug de exibição acima, aqui o **dado salvo no banco** estava desatualizado: a
+     migração 0008 trocou as opções de `genero` via `AlterField` (que só muda a lista de
+     opções válidas pro Django, não toca em dado já gravado) — participantes cadastrados
+     antes dela ficaram com o código antigo (`FEMININO`/`MASCULINO`) gravado, que não bate
+     com nenhuma das 7 opções atuais. Conferido no banco: 8 dos 9 participantes cadastrados
+     tinham código antigo (`FEMININO`: 2, `MASCULINO`: 6) — só quem foi cadastrado depois
+     da migração 0008 (1 participante) já tinha código novo. Nova migração de dados
+     `pessoas/migrations/0010_corrige_genero_legado.py` (`RunPython`) atualiza esses
+     registros pro código novo mais próximo: `FEMININO→MULHER_CIS`, `MASCULINO→HOMEM_CIS`
+     (não havia pergunta sobre esse recorte no cadastro antigo — cisgênero é o padrão mais
+     razoável pra "Feminino"/"Masculino" sem mais contexto), `OUTRO→OUTRA`,
+     `NAO_INFORMA→NAO_RESPONDE`. Aplicada e conferida: os 9 participantes agora têm só
+     códigos válidos (`HOMEM_CIS`: 7, `MULHER_CIS`: 2).
+  3. **Faixa salarial legado — sem dado pra recuperar, diferente de gênero** — fui conferir
+     o mesmo tipo de problema pra `renda_individual`/`renda_familiar` e é um caso
+     diferente: a migração 0008 não só trocou as opções da faixa de renda, ela **removeu o
+     campo antigo inteiro** (`faixa_renda`, `RemoveField`) e criou dois campos novos do
+     zero (`AddField renda_individual`/`renda_familiar`) — sem nenhum passo de conversão
+     entre eles. `RemoveField` derruba a coluna do banco de vez; o valor que cada
+     participante tinha em `faixa_renda` **não existe mais em lugar nenhum do sistema**
+     (não sobrou backup, snapshot ou log com esse dado). Diferente do gênero (onde o
+     código antigo continuava salvo, só não batia mais com a lista de opções), aqui não há
+     nada pra "atualizar pra caber" — a informação original foi perdida na migração 0008,
+     antes desta sessão. Os 8 participantes com `renda_individual`/`renda_familiar` em
+     branco são conferidos no banco como sendo participantes de teste desta mesma sessão
+     (nomes como "Wizard Dinamico Teste", "Ana Wizard Teste" etc.), não dados reais — fica
+     como está (em branco, o que já é tratado corretamente pelo dashboard desde a correção
+     anterior) a menos que o usuário quiser preencher um valor de exemplo pra esses
+     participantes de teste especificamente.
+  - Testado com Playwright: "Visão participantes" — "Gênero" agora mostra as 7 opções
+    reais com contagem certa (Mulher cisgênero 2 · 22%, Homem cisgênero 7 · 78%, as outras
+    5 em 0%, batendo com os 9 participantes); "Visão por categoria" (aba Banco) — mesma
+    lista de 7 opções, "Gênero predominante" mostrando "Homem cisgênero" em vez de vazio.
+    Zero erro de página/console.
+  - **Segue sem commitar.** `git status` agora também inclui `core/dashviz.py`,
+    `core/views.py`, `templates/core/home.html`, `templates/core/dashboard_segmento.html`,
+    `static/js/dashboard.js`, `static/js/dashboard_segmento.js`,
+    `pessoas/migrations/0010_corrige_genero_legado.py` (novo — já aplicada no banco local).
+- **2026-08-18 (Badge de consentimento LGPD passa a distinguir versão vigente de versão
+  substituída)** — O usuário perguntou por que o consentimento aparecia verde com
+  "v2026.2" já existindo uma "v2026.3". Investigando: `v2026.3` é de fato a versão vigente
+  hoje (`v2026.2` está com status `SUBSTITUIDA` desde que a nova foi publicada) — os 9
+  participantes da base aceitaram todos a `v2026.2`, então tecnicamente nenhum tem consentimento
+  pra versão vigente atual. O badge, porém, sempre mostrava verde pra qualquer
+  `consentimento_versao` preenchida, sem checar se aquela versão ainda é a vigente ou já
+  foi substituída — não distinguia "em dia" de "desatualizado".
+  - **Importante, decisão consciente**: não toquei em `consentimento_versao` de ninguém.
+    Atualizar esse campo pra apontar pra `v2026.3` sem a pessoa ter de fato visto e aceito
+    o novo texto seria fabricar consentimento — problema sério de LGPD, não uma correção de
+    dado. `VersaoTermo` já guarda o histórico completo de aceite em `AceiteTermo` (log
+    imutável), então isso não é um caso de "registro legado com dado errado" como o do
+    gênero da rodada anterior — é a ausência real de consentimento pra versão atual, que só
+    a própria pessoa (ou um operador em nome dela, através do fluxo de cadastro normal)
+    pode resolver aceitando de novo.
+  - **O que mudei**: só a exibição, pra ficar honesta sobre esse estado.
+    `templates/pessoas/lista.html` e `templates/pessoas/detalhe.html` — o badge de
+    consentimento agora checa `consentimento_versao.status`: `"VIGENTE"` continua verde
+    (só o código da versão); qualquer outro status (`SUBSTITUIDA`/`EXPIRADA`) vira âmbar
+    com "· desatualizado" e um `title` explicando. `pessoas/views.py` (`lista` e
+    `detalhe`) ganharam `select_related("consentimento_versao")` nas duas queries — sem
+    isso, cada linha da lista já disparava uma query separada só pra buscar a versão
+    (N+1 pré-existente, aproveitei que já estava mexendo ali).
+  - Testado com Playwright: os 9 participantes (todos com `v2026.2`, a versão substituída)
+    agora mostram badge âmbar "v2026.2 · desatualizado" em vez de verde, tanto na listagem
+    quanto no detalhe individual — confirmado visualmente num viewport largo o bastante
+    pra não cortar o texto mais longo do badge. Zero erro de página.
+  - **Segue sem commitar.** `git status` agora também inclui `templates/pessoas/lista.html`,
+    `templates/pessoas/detalhe.html`, `pessoas/views.py`.
+- **2026-08-18 (Link público pra renovar termo/contrato desatualizado)** — Consequência
+  direta da rodada anterior: agora que o sistema sabe distinguir "aceitou a versão
+  vigente" de "aceitou uma versão substituída", o usuário pediu uma forma de resolver
+  isso — um link que a equipe manda pra pessoa, ela lê o texto novo e aceita, confirmando
+  a identidade por CPF (sem travar no e-mail, já que a mesma pessoa pode ter mais de um
+  ao longo do tempo).
+  - **`pessoas/links.py`** — `gerar_token_renovacao_termo`/`ler_token_renovacao_termo`
+    (mesmo padrão assinado de `gerar_token_captacao`, salt próprio). O token guarda
+    `participante_id` + `termo_id`, não uma versão específica — assim o link não expira
+    nem fica órfão se o documento for atualizado de novo depois de gerado: sempre mostra
+    a versão vigente *no momento em que é aberto*, mesma filosofia do link de cadastro
+    público.
+  - **`pessoas/views.py`** — `_termos_pendentes_renovacao(request, participante,
+    aceites_termos)` (nova): a partir da lista de `AceiteTermo` já carregada pra tabela
+    "Termos aceitos" (sem consulta extra — o primeiro aceite de cada `termo_id` na lista já
+    é o mais recente, dado que `AceiteTermo.Meta.ordering = ["-aceito_em"]`), separa os
+    documentos onde a versão aceita não é mais a vigente. `_link_renovacao_termo` monta a
+    URL completa (mesmo padrão de `_link_captacao` em `projetos/views.py`). `detalhe`
+    passa `termos_pendentes` pro contexto. Nova view pública `renovar_termo(request,
+    token)`: decodifica o token, resolve `termo.versao_vigente` na hora; se a pessoa já
+    tiver um `AceiteTermo` pra essa versão específica (link reaberto depois de já ter
+    aceitado), mostra direto a tela de "você já está em dia" em vez do formulário — sem
+    duplicar aceite. No POST, valida CPF (`normalizar_cpf`, comparação exata com o
+    cadastro — único campo que bloqueia) e, se bater, grava um `AceiteTermo`
+    (`origem=PUBLICO`, mesma função `registrar_aceite` que o cadastro público já usa). Se o
+    termo em questão for especificamente o de Consentimento LGPD (único tipo com um campo
+    dedicado — `Participante.consentimento_versao`), esse campo também é atualizado; os
+    demais tipos de termo/contrato ficam só no histórico de `AceiteTermo` (não têm um
+    ponteiro "versão atual" próprio no model de Participante, então não têm o que
+    atualizar além do log).
+  - **`pessoas/forms.py::RenovarTermoForm`** — `cpf` (comparado no view, não aqui — o form
+    só garante que não veio vazio), `email` (`EmailField`, só formato — nunca comparado
+    com o cadastro, de propósito, exatamente o pedido do usuário) e `aceite`
+    (`BooleanField` obrigatório).
+  - **Templates novos**: `templates/publico/renovar_termo.html` (mostra o nome da pessoa,
+    o texto completo da versão vigente, dica com CPF/e-mail mascarados pra ajudar a
+    lembrar qual usar — mesma máscara já usada em `Participante.cpf_mascarado`/
+    `email_mascarado` —, e o formulário CPF+e-mail+aceite) e
+    `templates/publico/termo_renovado_ok.html` (duas variantes de texto: acabou de
+    aceitar, ou já estava em dia).
+  - **`templates/pessoas/detalhe.html`** — novo painel "Documentos pendentes de
+    renovação" (só aparece quando `termos_pendentes` não é vazio), listando cada
+    documento com a versão aceita, a versão vigente, e um botão "Copiar link de
+    renovação" — reaproveita o `data-copiar`/`copiar_link.js` já usado pro link de
+    cadastro público de perfil (carregado globalmente em `base.html`, nada novo pra
+    incluir).
+  - Testado com Playwright de ponta a ponta, usando o participante real Lucas Couto (que
+    tinha `v2026.2 · desatualizado` desde a rodada anterior): (1) painel "Documentos
+    pendentes de renovação" aparece no detalhe dele com o botão de copiar link; (2) abri o
+    link gerado numa aba sem sessão de login — carrega a tela pública com nome, texto da
+    versão vigente, e os campos; (3) tentei aceitar com CPF errado — erro "Esse CPF não
+    confere com o cadastro", nada foi gravado; (4) aceitei de novo com o CPF certo e um
+    e-mail **diferente** do cadastrado — aceite registrado normalmente (confirmando que o
+    e-mail não trava, como pedido); (5) reabri o mesmo link depois de já ter aceitado —
+    mostrou "Você já está em dia" em vez do formulário; (6) voltando pra tela do
+    participante: painel de pendentes sumiu, badge de consentimento virou verde `v2026.3`,
+    "Termos aceitos" ganhou uma linha nova com origem "Cadastro público". Desfiz essa
+    mudança de teste depois de confirmar (apaguei o aceite criado e restaurei
+    `consentimento_versao` pra `v2026.2`) — não sobrou alteração de teste no participante
+    de demonstração. `makemigrations --check --dry-run` limpo (nenhuma mudança de model
+    nessa rodada). Zero erro de página em qualquer etapa.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/links.py`,
+    `pessoas/forms.py`, `pessoas/views.py`, `pessoas/urls.py`,
+    `templates/pessoas/detalhe.html`, `templates/publico/renovar_termo.html` (novo),
+    `templates/publico/termo_renovado_ok.html` (novo).

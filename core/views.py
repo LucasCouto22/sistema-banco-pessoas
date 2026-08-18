@@ -9,9 +9,12 @@ from projetos.models import Projeto
 from .dashviz import (
     COR_ETAPA,
     COR_SITUACAO,
+    categorias_disponiveis,
     construir_barras_horizontais,
     construir_donut,
     dados_participantes_dashboard,
+    faixas_renda_disponiveis,
+    generos_disponiveis,
 )
 
 
@@ -33,6 +36,9 @@ def home(request):
 
         if total:
             contexto["dash_participantes_json"] = dados_participantes_dashboard(participantes)
+            contexto["categorias_json"] = categorias_disponiveis()
+            contexto["faixas_renda_json"] = faixas_renda_disponiveis()
+            contexto["generos_json"] = generos_disponiveis()
 
             situacao_itens = [
                 {"label": label, "count": participantes.filter(situacao=valor).count(), "cor": COR_SITUACAO[valor]}
@@ -66,4 +72,7 @@ def dashboard_segmento(request):
     participantes = Participante.objects.all()
     if participantes.exists():
         contexto["dash_participantes_json"] = dados_participantes_dashboard(participantes)
+        contexto["categorias_json"] = categorias_disponiveis()
+        contexto["faixas_renda_json"] = faixas_renda_disponiveis()
+        contexto["generos_json"] = generos_disponiveis()
     return render(request, "core/dashboard_segmento.html", contexto)
