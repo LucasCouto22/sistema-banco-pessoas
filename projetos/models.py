@@ -13,20 +13,23 @@ class Projeto(models.Model):
         EM_CAMPO = "EM_CAMPO", "Em campo"
         CONCLUIDO = "CONCLUIDO", "Concluído"
 
-    class Segmento(models.TextChoices):
-        SAUDE = "SAUDE", "Saúde"
-        COSMETICOS = "COSMETICOS", "Cosméticos"
-        ALIMENTACAO = "ALIMENTACAO", "Alimentação"
-        BANCO = "BANCO", "Banco"
-        TECNOLOGIA = "TECNOLOGIA", "Tecnologia"
-        OUTRO = "OUTRO", "Outro"
-
     nome = models.CharField(max_length=150)
     cliente = models.CharField(max_length=150)
     marca = models.CharField(max_length=150, blank=True, help_text="Ex.: Adidas.")
     metodologia = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECRUTANDO)
-    segmento = models.CharField(max_length=20, choices=Segmento.choices, blank=True)
+    # Era uma lista fixa de 5 opções no código (`Segmento`, TextChoices) — trocado por FK
+    # pra `CategoriaFormulario` (cadastrada em "Configurações de Formulários › Categorias")
+    # pra usar a mesma fonte da verdade que os dashboards já usam desde a rodada
+    # "Segmento → Categoria" (`core/dashviz.py`), em vez de duas listas de categoria
+    # divergentes no sistema.
+    categoria = models.ForeignKey(
+        "formularios.CategoriaFormulario",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="projetos",
+    )
     data_inicio = models.DateField(null=True, blank=True)
     data_fim = models.DateField(null=True, blank=True)
     incentivo = models.DecimalField(max_digits=10, decimal_places=2, default=0)

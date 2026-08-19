@@ -1,4 +1,5 @@
 import io
+from types import SimpleNamespace
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -619,6 +620,34 @@ def wizard_dados_manual(request):
     )
 
 
+def _respostas_dinamicas_legado(dados, formularios):
+    """Monta as respostas de formulário pro lote legado — mesmo formato de
+    saída de `formularios/respostas.py::construir_form_resposta` (uma lista
+    de `(formulario, objeto_com_cleaned_data)`, pra reaproveitar o mesmo
+    laço de gravação de `RespostaFormulario` lá embaixo), só que sem passar
+    pela validação do formulário dinâmico — pega direto o que `dados` já
+    tem pra cada variável do formulário, mesma filosofia do resto do lote
+    legado (aceita o que veio, sem travar a linha por uma resposta que não
+    bateu com o tipo esperado).
+
+    Antes desta função, o lote legado sempre mandava `forms_dinamicos = []`
+    incondicionalmente — as respostas dos formulários do perfil (ex.: as
+    perguntas de "Perguntas Básicas de Bebidas") eram lidas certinho da
+    planilha por `ler_planilha()`, mas nunca chegavam a virar
+    `RespostaFormulario` nenhuma, porque o laço de gravação só rodava pro
+    caminho não-legado."""
+    resultado = []
+    for formulario in formularios or []:
+        chaves = {
+            fv.variavel.chave
+            for fv in formulario.formulario_variaveis.select_related("variavel")
+        }
+        respostas = {chave: dados[chave] for chave in chaves if dados.get(chave) not in (None, "", [])}
+        if respostas:
+            resultado.append((formulario, SimpleNamespace(cleaned_data=respostas)))
+    return resultado
+
+
 @login_required
 @requer_permissao("participantes.gerenciar")
 def wizard_revisao(request):
@@ -699,7 +728,7 @@ def wizard_revisao(request):
                 valores_originais = capturar_valores_atuais(existente) if existente else None
                 participante = existente or Participante()
                 aplicar_dados_legado(participante, dados, campos_incompletos, existente, valores_originais)
-                forms_dinamicos = []
+                forms_dinamicos = _respostas_dinamicas_legado(dados, formularios_da_planilha)
             else:
                 existente = encontrar_participante_existente(
                     dados.get("cpf", ""), dados.get("email", ""), dados.get("telefone", "")
@@ -758,6 +787,19 @@ def wizard_revisao(request):
                 # Só se aplica a cadastro novo (atualizar não rouba o
                 # crédito de quem indicou a pessoa da primeira vez).
                 participante.origem_recrutador = recrutador_escolhido or request.user
+                # Wizard é sempre a equipe cadastrando, nunca a pessoa
+                # respondendo um formulário público — por isso nunca marca
+                # `origem_cadastro` como PUBLICO aqui, só a variante certa de
+                # importação/equipe. Também só em cadastro novo, pelo mesmo
+                # motivo do recrutador acima: atualizar via wizard não deve
+                # apagar um `origem_cadastro=PUBLICO` que a pessoa já tenha
+                # conquistado respondendo o formulário de verdade.
+                if legado:
+                    participante.origem_cadastro = Participante.OrigemCadastro.IMPORTACAO_LEGADO
+                elif estado.get("modo") == "MANUAL":
+                    participante.origem_cadastro = Participante.OrigemCadastro.MANUAL_EQUIPE
+                else:
+                    participante.origem_cadastro = Participante.OrigemCadastro.IMPORTACAO
                 novo_consentimento = True
             if novo_consentimento:
                 participante.consentimento_lgpd = True
@@ -770,14 +812,28 @@ def wizard_revisao(request):
                 )
             if existente:
                 atualizados += 1
+                registrar(
+                    request.user,
+                    participante.codigo,
+                    RegistroAcesso.Acao.ALTERACAO,
+                    "Cadastro atualizado via importação em lote (participante já existia — CPF/e-mail/telefone bateu)",
+                )
             else:
                 criados += 1
 
             if perfil is not None:
+                # Lote legado é sempre gente que já participou de verdade
+                # (o objetivo de importar é só regularizar o cadastro no
+                # sistema novo) — entra direto em "Pago", sem passar pelas
+                # etapas de triagem que fariam sentido pra alguém recém-
+                # captado. `get_or_create` só aplica esse valor na criação —
+                # reimportar um CPF/e-mail que já tem participação não
+                # regride a etapa de quem já avançou mais no funil.
+                etapa_inicial = Participacao.Etapa.PAGO if legado else Participacao.Etapa.ANALISE_PERFIL
                 participacao, _criada = Participacao.objects.get_or_create(
                     participante=participante,
                     perfil=perfil,
-                    defaults={"etapa": Participacao.Etapa.ANALISE_PERFIL, "responsavel": request.user},
+                    defaults={"etapa": etapa_inicial, "responsavel": request.user},
                 )
                 for formulario, form_dinamico in forms_dinamicos:
                     RespostaFormulario.objects.update_or_create(
@@ -808,11 +864,14 @@ def wizard_revisao(request):
     linhas_exibicao = []
     for indice, linha in enumerate(linhas):
         linha_exibicao = {"indice": indice, **linha}
-        if not linha["valido"]:
-            # Só linha com erro ganha o mini-formulário editável — reaproveita
-            # o mesmo ParticipanteWizardForm do cadastro manual, já pré-cheio
-            # com o que a planilha trouxe, pra corrigir sem perder o resto.
-            linha_exibicao["form"] = ParticipanteWizardForm(initial=linha["dados"], prefix=f"dados_{indice}")
+        # Toda linha ganha o mini-formulário editável agora (reaproveita o
+        # mesmo ParticipanteWizardForm do cadastro manual, já pré-cheio com o
+        # que a planilha/formulário trouxe) — antes só linha com erro ganhava,
+        # mas a pessoa que está revisando pode querer ajustar uma linha válida
+        # também, sem esperar o servidor achar um erro nela primeiro. Linha
+        # com erro continua abrindo direto (`wiz-aberta` no template); linha
+        # válida fica fechada, só abre se quem estiver revisando clicar.
+        linha_exibicao["form"] = ParticipanteWizardForm(initial=linha["dados"], prefix=f"dados_{indice}")
         linhas_exibicao.append(linha_exibicao)
     return render(
         request,
@@ -994,6 +1053,11 @@ def cadastro_publico(request, token):
         if valido:
             with transaction.atomic():
                 participante = form.save(commit=False)
+                # A pessoa respondendo o formulário público é o único evento
+                # que pode marcar/atualizar a origem como "Cadastro público"
+                # — inclusive reenvio de quem já existia (ex.: participante
+                # legado que agora respondeu o link público de verdade).
+                participante.origem_cadastro = Participante.OrigemCadastro.PUBLICO
                 if existente:
                     restaurar_campos_vazios(participante, form.cleaned_data, valores_originais)
                 else:

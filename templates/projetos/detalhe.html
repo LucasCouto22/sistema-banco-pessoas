@@ -4,7 +4,7 @@
 {% block crumbs %}Projetos / <b>{{ projeto.nome }}</b>{% endblock %}
 {% block conteudo %}
 <div class="view-title">
-  <div><h2>{{ projeto.nome }}</h2><p class="sub">{{ projeto.cliente }}{% if projeto.marca %} — {{ projeto.marca }}{% endif %}{% if projeto.metodologia %} · {{ projeto.metodologia }}{% endif %}{% if projeto.segmento %} · {{ projeto.get_segmento_display }}{% endif %}</p></div>
+  <div><h2>{{ projeto.nome }}</h2><p class="sub">{{ projeto.cliente }}{% if projeto.marca %} — {{ projeto.marca }}{% endif %}{% if projeto.metodologia %} · {{ projeto.metodologia }}{% endif %}{% if projeto.categoria %} · {{ projeto.categoria.nome }}{% endif %}</p></div>
   <div style="display:flex;gap:8px">
     {% if pode_editar %}
     <a class="btn btn-ghost" href="{% url 'projetos:editar' projeto.pk %}">Editar</a>
@@ -38,6 +38,10 @@
         <td data-label="Formulário">{% for f in perfil.formularios_ordenados %}{{ f.nome }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
         <td data-label="Participantes">{{ perfil.ocupadas }}</td>
         <td class="td-acoes">
+          {% if pode_associar %}
+          <a class="btn btn-primary btn-sm" href="{% url 'participacoes:nova' %}?perfil={{ perfil.pk }}">＋ Associar pessoa</a>
+          <a class="btn btn-soft btn-sm" href="{% url 'projetos:perfil_associar_lote' perfil.pk %}">⬆ Em lote</a>
+          {% endif %}
           {% if pode_editar %}
           <button type="button" class="btn btn-ghost btn-sm" data-copiar="{{ perfil.link_cadastro }}">Copiar link</button>
           <a class="btn btn-ghost btn-sm" href="{% url 'projetos:perfil_editar' perfil.pk %}">Editar</a>

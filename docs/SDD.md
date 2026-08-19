@@ -3221,3 +3221,478 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     `pessoas/forms.py`, `pessoas/views.py`, `pessoas/urls.py`,
     `templates/pessoas/detalhe.html`, `templates/publico/renovar_termo.html` (novo),
     `templates/publico/termo_renovado_ok.html` (novo).
+- **2026-08-18 ("Associar pessoa"/"Associar em lote" também na tela do projeto, não só
+  dentro de cada perfil)** — O usuário perguntou onde estavam essas duas ações (association
+  individual e em lote/Excel) — já existiam, mas só dentro da tela de cada Perfil
+  (`projetos/perfil_detalhe.html`), obrigando a entrar em "Ver" antes de conseguir
+  associar alguém. Pedido: deixar isso disponível direto na tela do Projeto.
+  - **`projetos/views.py::detalhe`** — passou a calcular `pode_associar`
+    (`participacoes.mover_etapa`, mesma permissão já usada em `perfil_detalhe`) e mandar
+    pro contexto.
+  - **`templates/projetos/detalhe.html`** — a tabela "Perfis" já tinha uma coluna de ações
+    por linha (Copiar link/Editar/Ver); ganhou mais dois botões nessa mesma coluna, gated
+    por `pode_associar`: "＋ Associar pessoa" (vai pra `participacoes:nova?perfil=<id>`,
+    já chega com o perfil daquela linha pré-selecionado — mesma URL que o botão do perfil
+    já usava) e "⬆ Em lote" (vai direto pra `projetos:perfil_associar_lote` daquele
+    perfil). Não criei rota nem view nova — só expus os dois links que já existiam um
+    nível mais acima, já que cada linha da tabela já sabe exatamente a qual perfil se
+    refere (não tem ambiguidade de "qual perfil" pra resolver, diferente de tentar pôr
+    esses botões soltos no topo da página, fora da tabela, quando o projeto tem mais de um
+    perfil).
+  - Testado com Playwright: os 5 botões aparecem na linha do perfil ("Associar pessoa",
+    "Em lote", "Copiar link", "Editar", "Ver"); "Associar pessoa" leva pro formulário de
+    associação com o campo de perfil já pré-selecionado certo; "Em lote" leva pra tela de
+    upload de Excel do perfil certo. Testado também em viewport mobile (375px) — os 5
+    botões quebram em duas linhas dentro do cartão sem sobrepor nem cortar nada, mesmo
+    padrão de `flex-wrap` já usado nas outras telas. Zero erro de página.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/views.py`,
+    `templates/projetos/detalhe.html`.
+- **2026-08-18 (Wizard de importação: revisar/editar qualquer linha antes de enviar +
+  "marcar coluna toda" no consentimento)** — Na tela de Revisão (último passo do wizard de
+  importação em lote), só linha com erro ganhava um mini-formulário editável; linha válida
+  só mostrava um resumo fixo, sem chance de ajustar nada antes de concluir. Pedido do
+  usuário: poder revisar/editar qualquer linha, e um jeito rápido de marcar consentimento
+  pra todas de uma vez.
+  - **Descoberta importante que simplificou a implementação**: o back-end
+    (`pessoas/views.py::wizard_revisao`, POST) já lia `dados_<indice>-<campo>` do POST pra
+    **qualquer** índice de linha, não só as com erro — o comentário no código já dizia
+    isso ("uma linha já válida não manda nenhum `dados_<indice>_*` e mantém o que já
+    tinha"). Ou seja, o mecanismo de edição já era genérico; só a tela (GET) que só
+    montava o formulário (`ParticipanteWizardForm(initial=..., prefix=f"dados_{indice}")`)
+    pra linha com erro. A mudança de back-end virou uma linha só: tirar o `if not
+    linha["valido"]:` que gatava a montagem do form, passando a montar pra toda linha.
+  - **`templates/pessoas/wizard_revisao.html`** — cada linha ganhou um botão
+    "Editar"/"Fechar" (nova coluna de ações) que abre/fecha a mesma linha de correção que
+    já existia pra erro — só que agora **toda** linha tem uma, começando fechada se for
+    válida (evita a tela virar um formulário gigante por padrão) e já aberta se tiver erro
+    (continua precisando de atenção imediata, sem exigir clique extra). Texto de
+    instrução dentro da linha muda conforme o caso ("Confira ou ajuste..." pra válida,
+    "Corrija os campos..." pra erro).
+  - **`static/css/base.css`** — `.wiz-linha-correcao{display:none}` /
+    `.wiz-linha-correcao.wiz-aberta{display:table-row}` (e a versão mobile equivalente
+    dentro do `@media`, já que lá a linha vira bloco de cartão, não `table-row`) — antes a
+    linha de correção só existia no HTML quando precisava aparecer; agora ela sempre
+    existe, e uma classe controla se está visível.
+  - **`static/js/wizard_revisao.js`** (novo) — dois comportamentos pequenos, sem
+    framework: (1) o clique no botão "Editar"/"Fechar" alterna a classe `wiz-aberta` da
+    linha correspondente (via `data-toggle-linha="correcao-N"`) e troca o próprio texto do
+    botão; (2) o checkbox "Marcar consentimento LGPD de todas as linhas" marca/desmarca
+    todas as caixas `consentimento_*` de uma vez — e se alguém desmarcar uma linha
+    manualmente depois, o checkbox mestre se desmarca sozinho (não fica "mentindo" que
+    tudo está marcado).
+  - **Pegadinha resolvida durante o teste**: a primeira versão colocava o checkbox
+    "marcar coluna toda" dentro do `<th>` da coluna Consentimento LGPD — funciona no
+    desktop, mas o `<thead>` inteiro **some** no layout de cartão do mobile (regra já
+    existente de tabela responsiva), deixando o controle inacessível em tela pequena.
+    Corrigido movendo o checkbox pra uma barra própria acima da tabela, fora do
+    `<thead>` — sempre visível, em qualquer largura.
+  - Testado criando sessões de wizard sintéticas via shell (mais rápido que preencher
+    ~15 campos × N linhas manualmente pela wizard inteira) e abrindo a tela de Revisão com
+    o cookie de sessão direto no Playwright: (1) linhas válidas nascem fechadas com botão
+    "Editar", linha com erro nasce aberta com botão "Fechar"; (2) clicar em "Editar" abre a
+    linha e pré-preenche o formulário com os dados originais; (3) editei o telefone de uma
+    linha válida, marquei o consentimento e concluí a importação — **conferido no banco
+    que o telefone editado (não o original) foi o que ficou salvo**, provando que a edição
+    de linha válida realmente é aplicada, não só visual; (4) "marcar coluna toda" marca
+    todas as caixas, e desmarcar uma individualmente desmarca o checkbox mestre sozinho;
+    (5) testado em viewport mobile (375px) — checkbox de marcar tudo visível e funcional,
+    coluna de ações e formulário de edição empilham corretamente no cartão. Apaguei o
+    participante e as sessões de teste depois de confirmar — não sobrou nada de teste no
+    banco. `makemigrations --check --dry-run` limpo (nenhuma mudança de model). Zero erro
+    de página em qualquer etapa.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/views.py`,
+    `templates/pessoas/wizard_revisao.html`, `static/css/base.css`,
+    `static/js/wizard_revisao.js` (novo).
+- **2026-08-19 (3 bugs do lote legado corrigidos — a partir da análise do
+  `teste_import.xlsx` do usuário)** — O usuário importou esse arquivo como lote legado
+  no perfil "Consumidores de Cerveja Premium" (projeto Moments) e reportou 3 problemas.
+  Analisei o arquivo real e o código do caminho legado (`pessoas/matching.py`,
+  `pessoas/wizard_csv.py`, `pessoas/views.py::wizard_revisao`) pra achar a causa de cada
+  um.
+  1. **CPF vazio/inválido não pode ser usado pra casar nem substituir dado de
+     participante** — `preparar_linha_legado()` já tratava CPF **vazio** corretamente
+     (nunca usava pra achar/substituir ninguém, e o participante existente tinha o CPF
+     dele preservado via `restaurar_campos_vazios()`). O que faltava era CPF **presente
+     mas inválido** (dígito verificador errado, tipo "111.111.111-11") — esse passava
+     direto sem checagem nenhuma, podia ser usado pra tentar casar com alguém e podia ser
+     gravado como se fosse um CPF de verdade. Corrigido: `preparar_linha_legado()` agora
+     valida CPF presente com `validar_cpf()` (mesmo validador de dígito verificador já
+     usado no resto do sistema) — se falhar, trata exatamente como se tivesse vindo em
+     branco (vira placeholder, marca `cadastro_incompleto`), nunca chega em
+     `encontrar_participante_existente()` nem é gravado no cadastro.
+  2. **Perguntas do formulário do perfil (ex.: "Perguntas Básicas de Bebidas") nunca
+     entravam no lote legado** — achei a causa exata: em `wizard_revisao` (POST), o ramo
+     `if legado:` sempre mandava `forms_dinamicos = []` **incondicionalmente**, mesmo que
+     `ler_planilha()` já tivesse lido certinho as colunas de resposta (o cabeçalho da
+     planilha bate exatamente com o nome das variáveis do formulário — conferido no
+     banco). O laço que grava `RespostaFormulario` só rodava pro caminho não-legado, então
+     essas respostas eram lidas, guardadas em `dados`, e simplesmente descartadas na hora
+     de salvar. Nova função `_respostas_dinamicas_legado(dados, formularios)` (em
+     `pessoas/views.py`) monta o mesmo formato de saída do caminho normal
+     (`[(formulario, algo_com_.cleaned_data), ...]`), mas pega os valores direto de
+     `dados` sem passar pela validação do formulário dinâmico — mesma filosofia do resto
+     do lote legado (aceita o que veio, não trava a linha por uma resposta que não bateu
+     com o tipo esperado).
+  3. **Data de nascimento errada — todo mundo importado com 126 anos** — causa: célula de
+     data do Excel formatada como **texto** (ex.: "4/23/1986") em vez de célula de data de
+     verdade vira uma string comum na leitura, e nada no código tentava interpretar esse
+     texto como data — só `date.fromisoformat()` (que exige "aaaa-mm-dd") era tentado, e
+     "4/23/1986" não bate, então caía sempre no placeholder `DATA_NASCIMENTO_NAO_INFORMADA`
+     (1900-01-01 — daí os "126 anos"). Confirmado no arquivo: linhas onde o Excel já tinha
+     a célula formatada como data (`datetime` de verdade) importaram certo; linhas com data
+     em texto solto, não. Nova função `pessoas/validators.py::normalizar_data_nascimento()`
+     tenta uma lista de formatos — dia primeiro (`d/m/aa`, `dd/mm/aa`, `dd/mm/aaaa`, etc.,
+     conforme pedido) antes de mês primeiro (US, ex.: "4/23/1986" — formato real encontrado
+     no arquivo do usuário), pra desambiguar datas onde dia e mês caberiam nos dois jeitos
+     (`"05/04/1990"` vira 5 de abril, não 4 de maio). Usada em dois pontos, não só um: na
+     leitura da planilha (`wizard_csv.py::_normalizar_campo`, pra CSV e XLSX) **e** dentro
+     de `preparar_linha_legado()` (que tinha sua própria chamada solta a
+     `date.fromisoformat()`) — cobre tanto a leitura inicial quanto qualquer texto que
+     chegue por outro caminho (ex.: edição manual de uma linha na tela de Revisão).
+  - Testado com Playwright, contra um projeto/perfil **descartável** criado só pra esse
+    teste (reaproveitando o formulário real "Perguntas Básicas de Bebidas", sem tocar no
+    perfil real do projeto Moments nem nos 26 participantes que o usuário já tinha
+    importado de verdade): (1) rodei o fluxo completo do wizard (perfil → lote legado →
+    planilha → revisão → concluir) com um arquivo `.xlsx` sintético isolado (e-mails que
+    não batem com ninguém real), reaproveitando o cabeçalho de verdade do arquivo do
+    usuário — uma linha com data em formato US e CPF vazio, outra com data em formato BR e
+    CPF inválido; (2) conferido no banco depois: as duas pessoas ficaram com
+    `data_nascimento` certa (1988-03-15 e 1995-12-25 — não mais 1900-01-01/126 anos), CPF
+    `None` nas duas (nunca gravou o CPF inválido da segunda linha), e **as 7 respostas do
+    formulário de Bebidas foram gravadas certinho** pras duas, batendo exatamente com o
+    que estava na planilha; (3) também validei `normalizar_data_nascimento()` e a
+    validação de CPF de `preparar_linha_legado()` isoladamente via shell, com uma bateria
+    maior de formatos de data (ISO, BR com `/`/`-`/`.`, ano de 2 e 4 dígitos, US) e os 3
+    casos de CPF (vazio, inválido, válido). Apaguei os 2 participantes de teste, a
+    participação, as respostas de formulário e o projeto/perfil descartável depois de
+    confirmar — conferido que o perfil real do Moments continua com as 26 participações
+    intactas. `makemigrations --check --dry-run` e `manage.py check` limpos (nenhuma
+    mudança de model nessa rodada). Zero erro de página em qualquer etapa.
+  - **Importante**: os 26 participantes que o usuário já importou de verdade continuam
+    com a data de nascimento errada (126 anos) e sem as respostas de Bebidas — essas
+    correções valem daqui pra frente, não reprocessam automaticamente o que já foi
+    importado. Pra corrigir os que já existem, o caminho mais simples é reimportar o mesmo
+    `teste_import.xlsx` no mesmo perfil (o CPF continua protegido, e-mail casa com quem já
+    existe e atualiza os dados incompletos sem duplicar — mas preferi não fazer isso
+    automaticamente numa rodada de teste, então fica a critério do usuário decidir quando
+    rodar).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/matching.py`,
+    `pessoas/validators.py`, `pessoas/wizard_csv.py`, `pessoas/views.py`.
+- **2026-08-19 (Mais 2 ajustes no lote legado: faixa de renda em texto livre, e etapa
+  inicial "Pago")** — Continuação da rodada anterior, dois pedidos a mais depois de olhar
+  de novo o `teste_import.xlsx`.
+  1. **Faixa de renda familiar não era considerada** — causa: a coluna "Renda familiar" da
+     planilha vem como texto livre em R$ (ex.: `"Acima de R$ 10788.56"`, `"Entre R$
+     5721.73 e R$ 10788.56"`), não como letra (`"B"`) nem `"Classe B"` — o único formato
+     que `RENDA_MAP` reconhecia. Sem bater com o mapa, o valor virava `""`, tratado como
+     "não veio" (`cadastro_incompleto`), perdendo o dado mesmo ele estando presente na
+     planilha. Nova função `_mapear_renda_por_valor()` (`pessoas/wizard_csv.py`) — quando
+     o mapa de letra/"classe X" não bate, extrai o(s) número(s) do texto (`"Acima de R$
+     X"`, `"Entre R$ X e R$ Y"`, etc.) e baleia contra os mesmos limiares de
+     `Participante.FaixaRendaIndividual` (A ≥ 9738, B 4869-9737, C 1883-4868, D 974-1882,
+     E < 974) — o valor numérico é o que decide a faixa certa, não o rótulo exato que o
+     questionário original usava (R$ direto ou salários mínimos). Numa faixa "entre X e
+     Y", usa o limite de baixo (X): é ele que separa essa faixa da faixa imediatamente
+     acima. Mesmo fallback vale pra "Renda individual", caso venha descrita do mesmo jeito.
+  2. **Lote legado agora entra direto na etapa "Pago"** — antes, toda participação nova
+     (legado ou não) entrava em "Análise de Perfil", que faz sentido pra gente recém-
+     captada mas não pra quem tá sendo importada de um histórico que já rodou por completo
+     (o próprio objetivo do lote legado é regularizar cadastro de gente que já participou).
+     `pessoas/views.py::wizard_revisao` agora escolhe a etapa inicial condicionalmente:
+     `Participacao.Etapa.PAGO` se `legado`, senão continua `ANALISE_PERFIL` como sempre.
+     Como é `get_or_create` com `defaults`, isso só vale pra participação **nova** —
+     reimportar um CPF/e-mail que já tem participação em andamento não regride a etapa de
+     quem já avançou mais no funil por outro caminho.
+  - Testado com Playwright de novo contra um projeto/perfil descartável novo (mesmo
+    cuidado da rodada anterior — nada tocou no perfil real do Moments nem nos 26
+    participantes já importados de verdade): rodei o wizard completo com um `.xlsx`
+    sintético isolado reaproveitando o cabeçalho real, uma linha com `"Acima de R$
+    10788.56"` e outra com `"Entre R$ 3194.34 e R$ 5721.72"` na renda familiar — conferido
+    no banco depois que as duas ficaram com o código certo (`A` e `C`, batendo com os
+    limiares esperados) e as duas participações entraram direto em `PAGO`. Também testei
+    `_mapear_renda_por_valor()` isoladamente via shell com os 3 valores reais do arquivo do
+    usuário mais casos de borda (texto sem número, string vazia, formato letra/classe
+    continua funcionando). Apaguei os participantes de teste, a participação e o
+    projeto/perfil descartável depois — conferido que o perfil real do Moments continua
+    com as 26 participações intactas. `makemigrations --check --dry-run` e `manage.py
+    check` limpos. Zero erro de página.
+  - **Mesmo aviso da rodada anterior**: essas correções valem daqui pra frente — os 26
+    participantes já importados continuam com a faixa de renda familiar perdida e a etapa
+    que já tinham antes (não regride nem re-completa automaticamente). Reimportar o mesmo
+    arquivo no mesmo perfil resolveria os três problemas de uma vez (data, Bebidas, renda)
+    pra quem já existe — mas essa decisão fica com o usuário, não fiz isso automaticamente.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
+    (mudança nova nessa rodada) e `pessoas/views.py` (mudança nova nessa rodada).
+- **2026-08-19 (Excluir os 26 participantes do lote com bug + botão novo de excluir
+  participação)** — Pedido do usuário depois de confirmar os bugs do lote legado: apagar
+  os 26 participantes importados com dado errado, e ter um botão de excluir participação
+  (não só participante) — os dois com aviso "Quer mesmo excluir?".
+  1. **Exclusão real dos 26 participantes/participações** — conferido antes de apagar
+     (`Participacao.objects.filter(perfil_id=34)`, o perfil "Consumidores de Cerveja
+     Premium" do projeto Moments): batiam exatamente os 26 códigos `P-2026-0013` a
+     `P-2026-0038`, e nenhum deles tinha participação em nenhum outro perfil — existiam no
+     sistema só por causa dessa importação. Apaguei cada `Participante` (não só a
+     participação) — `Participacao`/`RespostaFormulario`/`AceiteTermo` já são
+     `on_delete=CASCADE` a partir de `Participante`, então tudo relacionado a cada um saiu
+     junto automaticamente, e registrei cada exclusão na Auditoria LGPD (mesma função
+     `registrar()` que a tela de exclusão de participante já usa). Conferido depois: 0
+     participantes com aqueles códigos, 0 participações restando no perfil do Moments, os
+     9 participantes de demonstração que já existiam antes continuam intactos.
+  2. **Botão de excluir participação (novo)** — não existia view nenhuma pra isso, só a
+     permissão `participacoes.excluir` (já cadastrada e seedada no catálogo desde uma
+     rodada bem anterior, mas nunca ligada a nada). Segue exatamente o mesmo formato já
+     usado em "Excluir participante" (`pessoas/views.py::excluir` +
+     `templates/pessoas/excluir.html`): tela de confirmação própria (não um `confirm()` de
+     JS), texto "Quer mesmo excluir a participação de X no perfil Y?", aviso de que
+     avaliação e respostas de formulário daquela participação saem junto (mas o cadastro
+     do participante no Banco de Pessoas **não** é afetado — só a ligação dele com aquele
+     perfil), e "Esta ação não pode ser desfeita". Nova view
+     `participacoes/views.py::excluir` (rota `participacoes/<pk>/excluir/`, gated por
+     `participacoes.excluir`), novo template `templates/participacoes/excluir.html`,
+     botão "Excluir" adicionado tanto na tela de detalhe da participação quanto na coluna
+     de ações da listagem (`templates/participacoes/lista.html`) — mesmo padrão de botão
+     vermelho fraco (`border-color:#F7C9C0;color:#B03225`) já usado nos outros "Excluir"
+     do sistema. Também registra na Auditoria LGPD.
+  3. **Texto de confirmação padronizado nos dois** — `templates/pessoas/excluir.html`
+     tinha "Tem certeza que deseja excluir..."; ajustado pra "Quer mesmo excluir...?", a
+     mesma frase pedida, igual à do novo `participacoes/excluir.html`.
+  - Testado com Playwright contra dados descartáveis (participante/perfil/projeto de
+    teste criados só pra isso, com uma `Avaliacao` de verdade anexada): (1) botão
+    "Excluir" aparece na tela de detalhe da participação; (2) tela de confirmação mostra o
+    texto certo; (3) "Cancelar" volta pro detalhe sem apagar nada; (4) "Sim, excluir"
+    apaga a participação e a avaliação junto (conferido no banco), sem tocar no cadastro
+    do participante; (5) conferi também a tela de confirmação de excluir participante
+    (sem clicar em excluir — só GET, sem risco) pra confirmar o texto "Quer mesmo excluir
+    Lucas Couto...?". Apaguei os dados de teste depois de confirmar. `manage.py check` e
+    `makemigrations --check --dry-run` limpos (nenhuma mudança de model). Zero erro de
+    página.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/views.py`,
+    `participacoes/urls.py`, `templates/participacoes/excluir.html` (novo),
+    `templates/participacoes/detalhe.html`, `templates/participacoes/lista.html`,
+    `templates/pessoas/excluir.html`. A exclusão dos 26 participantes já foi aplicada
+    direto no banco (não é uma mudança de código pra commitar — é dado, já fora da base).
+- **2026-08-19 (Mais um campo do lote legado sem mapa: Raça/cor com sufixo "(a)")** — Última
+  pergunta do usuário sobre o `teste_import.xlsx`: por que Raça não entrou, e por que só 26
+  de 31 linhas viraram participante novo (5 "atualizados").
+  1. **Raça/cor** — mesma classe de bug das rodadas anteriores (Renda familiar, Gênero):
+     `RACA_MAP` só tinha as formas femininas sem sufixo (`"branca"`, `"preta"`, `"parda"`),
+     mas a planilha usa `"Branco(a)"`, `"Pardo(a)"`, `"Preto(a)"` (confirmado nos valores
+     reais da coluna) — não bate com nenhuma chave do mapa, então a raça de todo mundo
+     importado ficava vazia (`cadastro_incompleto`) mesmo com o dado presente. Adicionadas
+     as variações `"branco"`/`"branco(a)"`, `"preto"`/`"preto(a)"`, `"pardo"`/`"pardo(a)"`,
+     `"amarelo"`/`"amarelo(a)"` ao `RACA_MAP` (`pessoas/wizard_csv.py`) — o padrão de aceitar
+     a forma com "(a)" já existia em `ESTADO_CIVIL_MAP` pra outros campos, só faltava
+     estender pra esse.
+  2. **26 criados + 5 atualizados, não é bug — é o arquivo tendo gente duplicada** —
+     conferido nos dados reais: a planilha tem **31 linhas** (não 32 — a primeira linha é
+     cabeçalho), e **5 pessoas aparecem duas vezes cada** (mesmo nome, mesmo e-mail, mesmo
+     telefone — duplicata exata, não coincidência de nome): Felipe Rigio Monteiro (linhas 2
+     e 29), Aline Santos de Carvalho (linhas 3 e 25), Tatiane Pereira da Silva (linhas 7 e
+     17), Jonathan Valerio Lopes da Silva (linhas 8 e 21) e Claudio José Tonett (linhas 10 e
+     14). 31 linhas − 5 nomes repetidos = 26 pessoas únicas → 26 "criados"; as 5 segundas
+     ocorrências batem via e-mail com quem a própria importação acabou de criar poucas
+     linhas antes (mesma lógica de `encontrar_participante_existente` que evita duplicar
+     cadastro) → contam como "atualizados". 26 + 5 = 31, bate certinho com o total de
+     linhas — não sobrou nem faltou ninguém.
+  - Testado `_normalizar_campo("raca", ...)` isoladamente via shell com os 3 valores reais
+    da planilha mais variação de maiúscula/minúscula e a forma sem sufixo — todos mapeando
+    certo agora. A investigação da duplicidade foi só leitura de planilha (nenhuma consulta
+    ou mudança no banco). `manage.py check` e `makemigrations --check --dry-run` limpos.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
+    (mudança nova nessa rodada, além da de rodadas anteriores).
+- **2026-08-19 (Renda familiar usava a escala errada de limiar; Origem confundia
+  importação com cadastro público)** — Usuário reportou dois problemas olhando o cadastro
+  de um participante importado de verdade: "Acima de R$10788.56" virou Classe A — 20
+  salários mínimos (que hoje passa de R$30 mil, muito mais que R$10.788,56), e a tela de
+  Origem dizia "Cadastro público" pra alguém que na verdade é participante legado —
+  importação.
+  1. **Renda familiar reusava os limiares de Renda individual** — causa raiz: a rodada
+     anterior (`_mapear_renda_por_valor()`) usava a **mesma** tabela de limiares em R$ pros
+     dois campos, mas `FaixaRendaIndividual` e `FaixaRendaFamiliar` são escalas diferentes
+     pro mesmo código de classe (individual é R$ direto: A ≥ 9.738; familiar é múltiplo de
+     salário mínimo: A = 20×). Como R$10.788,56 já passa de R$9.738, caía em "A" na escala
+     errada — mas 20 salários mínimos é uma renda familiar muito maior que isso. Corrigido
+     em `pessoas/wizard_csv.py`: a tabela antiga virou
+     `_FAIXAS_RENDA_INDIVIDUAL_POR_VALOR` (limiares inalterados, só renomeada), e entrou
+     `_FAIXAS_RENDA_FAMILIAR_POR_VALOR`, calculada a partir de uma constante nova
+     `SALARIO_MINIMO = 1518` (valor real vigente, não lido de lugar nenhum do banco — ajustar
+     ali quando o valor oficial mudar): A ≥ R$30.360 (20×), B ≥ R$15.180 (10×), C ≥ R$6.072
+     (4×), D ≥ R$3.036 (2×), E abaixo disso. `_mapear_renda_por_valor()` agora recebe a
+     tabela de limiares como parâmetro em vez de usar uma fixa, e `_normalizar_campo()`
+     escolhe a tabela certa por campo. Com o limiar novo, "Acima de R$10788.56" agora cai em
+     "C" (4-10 salários mínimos), não mais em "A".
+  2. **Origem confundia "quem indicou" com "veio de cadastro público"** — causa raiz:
+     `origem_recrutador` (FK) só registra quem leva o crédito pela indicação, mas era
+     preenchido tanto no cadastro público de verdade (`cadastro_publico`) quanto em
+     **qualquer** participante novo do wizard de importação (`wizard_revisao`, legado ou
+     não) — e a tela de detalhe (`templates/pessoas/detalhe.html`) interpretava
+     `origem_recrutador` preenchido como "sempre veio do cadastro público", o que é falso
+     pra quem foi importado pela equipe. Corrigido com um campo novo,
+     `Participante.origem_cadastro` (`CharField` com choices `PUBLICO`,
+     `IMPORTACAO_LEGADO`, `IMPORTACAO`, `MANUAL_EQUIPE`, `null=True` — fica em branco em
+     quem foi criado antes desta distinção existir, já que não dá pra reconstruir a origem
+     de cadastros antigos com certeza) — migração
+     `pessoas/migrations/0011_participante_origem_cadastro.py`. Gravado em três pontos:
+     `cadastro_publico` marca `PUBLICO` toda vez que a pessoa responde o formulário público
+     de verdade (cadastro novo **ou** reenvio de quem já existia — é literalmente "ela
+     respondeu o formulário", exatamente o critério que o usuário pediu: "só atualize essa
+     informação se ele responder o formulário"); `wizard_revisao` marca
+     `IMPORTACAO_LEGADO`/`IMPORTACAO`/`MANUAL_EQUIPE` (conforme o modo do lote) só em
+     participante **novo**, nunca sobrescrevendo quem já tinha uma origem registrada por
+     outro caminho — mesma regra que já valia pra `origem_recrutador` não roubar crédito de
+     indicação em atualização. `templates/pessoas/detalhe.html`: a linha "Origem" agora
+     mostra `get_origem_cadastro_display()` (com "por Fulano" quando há recrutador) quando o
+     campo novo está preenchido, e só cai no texto genérico antigo ("Cadastro público,
+     indicado por X") pra quem não tem `origem_cadastro` (cadastro antigo, de antes desta
+     mudança) — só 2 participantes no banco caem nesse caso hoje.
+  3. **Correção retroativa dos 26 participantes reais do lote legado** — mesmo lote descrito
+     nas rodadas anteriores (`P-2026-0013` a `P-2026-0038`, reimportado depois das correções
+     de CPF/data/Bebidas/Raça já aplicadas), únicos participantes reais afetados pelos dois
+     bugs. Reli `teste_import.xlsx`, recalculei a Renda familiar de cada um dos 26 com a
+     tabela nova (batendo o e-mail de cada linha com o participante correspondente) e
+     apliquei só quem realmente mudava de código — todos os 26 mudaram (13 de "A" pra "C",
+     13 de "B"/"C" pra "D"), confirmado no banco depois. Também apliquei
+     `origem_cadastro = IMPORTACAO_LEGADO` nos mesmos 26 (confirmado antes que os 26 tinham
+     `origem_cadastro` vazio e etapa "Pago" em todas as participações — a mesma marca que o
+     lote legado já usa — antes de mexer). Nenhum outro participante do banco foi tocado.
+  - Testado: `_mapear_renda_por_valor()` com os 3 valores reais do arquivo contra a tabela
+    familiar nova, batendo com o balde esperado (C/D/D pros três exemplos do arquivo, contra
+    A/B/C que dava antes). Renderizei a linha "Origem" do template isoladamente (via
+    `Engine.from_string`, sem precisar subir o servidor) pra dois dos 26 participantes reais
+    corrigidos — confirma "Participante legado — importação, por Administradora Demo".
+    Conferi que só 2 participantes no banco inteiro ainda caem no fallback antigo (cadastro
+    de antes desta mudança, com `origem_recrutador` mas sem `origem_cadastro`). `manage.py
+    check` e a migração (`makemigrations` + `migrate`) limpos. Não testei o fluxo completo
+    de cadastro público/wizard de ponta a ponta via navegador nesta rodada — a lógica nova
+    é a mesma estrutura condicional já testada em rodadas anteriores, só troquei qual valor
+    é atribuído; validação foi direto nos pontos de escrita e no template.
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/models.py`,
+    `pessoas/migrations/0011_participante_origem_cadastro.py`, `pessoas/views.py`,
+    `pessoas/wizard_csv.py`, `templates/pessoas/detalhe.html`. A correção dos 26
+    participantes reais (Renda familiar + Origem) já foi aplicada direto no banco (dado, não
+    código — nada a commitar por ela).
+- **2026-08-19 (Conferência dos "5 atualizados" do lote legado + log de auditoria pra
+  atualização via wizard)** — Usuário olhou o projeto Moments em produção
+  (`sistema-banco-pessoas-production.up.railway.app`, mesmo banco RDS que o shell local usa
+  — confirmado, não é ambiente separado) e reportou que, dos 5 participantes "atualizados"
+  na importação (em vez de criados), a participação no perfil não tinha sido criada nem as
+  respostas do formulário de Bebidas.
+  1. **Conferência direta no banco de produção** — antes de mexer em qualquer código, bati
+     as 31 linhas do `teste_import.xlsx` (26 pessoas únicas) contra o estado atual: todas as
+     31 linhas resolvem pra um `Participante` existente, e todos os 26 únicos têm
+     `Participacao` no perfil "Consumidores de Cerveja Premium" (etapa "Pago") **e**
+     `RespostaFormulario` do formulário de Bebidas — inclusive checado nome a nome os 5 que
+     geraram "atualizado" (Felipe Rigio Monteiro, Aline Santos de Carvalho, Tatiane Pereira
+     da Silva, Jonathan Valerio Lopes da Silva, Claudio José Tonett): todos com participação
+     e resposta de formulário presentes. Ou seja, pro lote que já rodou, o dado real já está
+     correto — o problema relatado não reproduz no banco de hoje (`pessoas/views.py::wizard_revisao`,
+     no bloco `if perfil is not None:`, já roda `Participacao.objects.get_or_create(...)` e
+     salva `RespostaFormulario` incondicionalmente pra toda linha, criada ou atualizada — não
+     achei nenhum caminho que pule isso só pra quem é "atualizado").
+  2. **Log de auditoria pra atualização via wizard (pedido novo, esse sim não existia)** —
+     antes desta rodada, `wizard_revisao` nunca chamava `registrar()` quando uma linha
+     atualizava um participante já existente (só exclusão/aprovação/descarte tinham log até
+     aqui). Adicionado: toda vez que a linha bate com um participante existente (`atualizados
+     += 1`), grava um `RegistroAcesso` (`Acao.ALTERACAO`, detalhe "Cadastro atualizado via
+     importação em lote (participante já existia — CPF/e-mail/telefone bateu)") na Auditoria
+     LGPD — mesmo padrão já usado pra exclusão/aprovação/descarte. Vale só daqui pra frente:
+     as 5 atualizações do lote já processado aconteceriam sem log (a feature não existia
+     ainda no momento em que rodaram) — não criei entrada retroativa porque o campo `quando`
+     do `RegistroAcesso` é `auto_now_add` (sempre "agora"), e uma entrada "falsa" datada de
+     hoje pra um evento que já aconteceu antes distorceria a trilha de auditoria em vez de
+     documentá-la.
+  - Testado: consulta direta no banco (mesma RDS de produção) cruzando as 31 linhas da
+    planilha original contra `Participante`/`Participacao`/`RespostaFormulario` — nenhuma
+    linha ficou sem `Participacao` ou sem resposta salva. `manage.py check` limpo (sem
+    mudança de model nesta rodada, só a chamada nova de `registrar()`).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/views.py` (mudança
+    nova nessa rodada, além das anteriores). Nenhum dado foi alterado no banco nesta
+    rodada — só leitura/conferência.
+- **2026-08-19 ("Segmento" do cadastro/edição de Projeto vira Categoria cadastrada)** —
+  Usuário mostrou a tela de editar o projeto Moments: o campo "Segmento" ainda era a lista
+  fixa de 5 opções (`Saúde/Cosméticos/Alimentação/Banco/Tecnologia/Outro`) do código, mesmo
+  depois de os dois dashboards já terem trocado esse conceito pra `CategoriaFormulario`
+  (rodada anterior "Segmento → Categoria do Perfil") — pediu pra esse campo também usar as
+  categorias cadastradas de verdade.
+  1. **`Projeto.segmento` (CharField + choices fixas) virou `Projeto.categoria` (FK pra
+     `CategoriaFormulario`)** — `projetos/models.py`: removida a classe `Segmento`
+     (TextChoices), campo novo `categoria = ForeignKey("formularios.CategoriaFormulario",
+     null=True, blank=True, on_delete=SET_NULL, related_name="projetos")`. Sem import
+     circular (`projetos` já importa de `formularios` em `forms.py`; o inverso não existe).
+     Renomeado (não só o tipo) porque manter o nome "segmento" apontando pra um valor que
+     agora É uma `CategoriaFormulario` ficaria inconsistente com o resto do sistema, que já
+     chama esse conceito de "categoria" desde a rodada anterior.
+  2. **Migração com preservação de dado** (`projetos/migrations/0011_remove_projeto_segmento_projeto_categoria.py`) —
+     como o tipo de coluna muda de verdade (varchar → FK), não dá pra fazer só um
+     `AlterField`; escrevi manualmente `AddField categoria` → `RunPython` (associa cada
+     projeto com `segmento` preenchido à `CategoriaFormulario` de mesmo nome, via um mapa
+     `SAUDE→"Saúde"`, `ALIMENTACAO→"Alimentação"`, `BANCO→"Banco"`, `TECNOLOGIA→"Tecnologia"`
+     — "COSMETICOS" e "OUTRO" não têm categoria cadastrada equivalente, ficam sem categoria
+     em vez de eu adivinhar uma associação) → `RemoveField segmento`, nessa ordem (o dado
+     velho só some depois de já ter sido lido e copiado). Conferido nos 4 projetos reais do
+     banco: "Moments" (era `ALIMENTACAO`) → categoria "Alimentação"; "Teste Bancos Digitais"
+     (era `BANCO`) → categoria "Banco"; "Captação de Pessoas Instagram" (era `OUTRO`) → sem
+     categoria (não tinha match); "Campanha Tenis Playwright" (já estava em branco) → sem
+     categoria. Nenhum projeto perdeu dado que tinha correspondência real.
+  3. **Formulário e telas** — `ProjetoForm` (`projetos/forms.py`): `"segmento"` →
+     `"categoria"` em `fields`/`labels`; `empty_label = "Sem categoria"` no `__init__`
+     (mesmo texto que `Formulario.categoria` já usa em `formularios/forms.py` — o helper
+     `personalizar_opcoes_vazias` pula `ModelChoiceField` de propósito, então precisa setar
+     na mão). `templates/projetos/form.html`, `lista.html`, `detalhe.html`: trocado
+     `form.segmento`/`get_segmento_display` por `form.categoria`/`categoria.nome`.
+  - Testado: renderizei o `<select>` do campo `categoria` isoladamente (via
+    `ProjetoForm(instance=...)`, sem precisar subir o servidor) pro projeto Moments —
+    aparecem as 9 categorias cadastradas em ordem alfabética, "Alimentação" já vem marcada
+    (`selected`) batendo com o valor migrado. `manage.py check` e `makemigrations --check
+    --dry-run` limpos. Não testei a submissão do formulário via navegador nesta rodada — é
+    um `ModelChoiceField` padrão do Django, mesmo mecanismo já usado em `Formulario.categoria`
+    noutra tela.
+  - **Segue sem commitar.** `git status` agora também inclui `projetos/models.py`,
+    `projetos/forms.py`, `projetos/migrations/0011_remove_projeto_segmento_projeto_categoria.py`
+    (novo), `templates/projetos/form.html`, `templates/projetos/lista.html`,
+    `templates/projetos/detalhe.html`. A migração de dado dos 4 projetos reais (segmento →
+    categoria) já foi aplicada junto com a migração de schema — é a mesma operação, não dá
+    pra separar "código" de "dado" aqui como nas correções anteriores.
+- **2026-08-19 (Profissão do lote: de→para automático pela mais parecida, cadastra nova se
+  não achar nenhuma)** — Pedido do usuário: hoje `profissao` só casava texto **exatamente**
+  igual (case-insensitive) a uma das 67 profissões cadastradas — qualquer variação
+  ("Advogada" em vez de "Advogado(a)", "Medico" sem acento, uma profissão que não existe
+  ainda no cadastro) virava `""` e a linha ficava incompleta, mesmo o dado estando presente.
+  1. **Casamento pela mais parecida (`difflib`)** — `_profissao_por_nome_ou_criar()` (nova,
+     `pessoas/wizard_csv.py`): tenta o nome exato primeiro (comportamento de antes); não
+     achando, usa `difflib.get_close_matches()` contra os nomes das profissões já
+     cadastradas e pega a mais parecida acima de 0.6 de similaridade (escala 0-1) — cobre
+     variação de gênero gramatical ("Advogada"→"Advogado(a)", 0.84), acento faltando
+     ("Medico"→"Médico(a)", 0.67), forma abreviada/composta ("Enfermeira"→"Enfermeiro(a)"
+     0.87, "vendedora"→"Vendedor(a)" 0.9, "Desenvolvedor Full Stack"→"Desenvolvedor(a) de
+     Software" 0.69). Corte de 0.6 escolhido testando essas variações reais — abaixo disso
+     começa a casar coisas sem relação nenhuma só por compartilhar letras.
+  2. **Profissão nova quando não acha nada parecido** — pedido explícito do usuário ("caso
+     não ache um parecido, inserir a profissão na listagem"): abaixo do corte de 0.6,
+     `Profissao.objects.get_or_create(nome__iexact=texto, defaults={"nome": texto})` cadastra
+     o texto da planilha como profissão nova em vez de descartar o dado (testado com
+     "Programador", "Dev", "Motorista de aplicativo" — nenhuma tinha profissão parecida o
+     bastante cadastrada, as três viraram cadastro novo). O mapa nome→PK em memória
+     (`mapa_profissoes`, já existia pra evitar 1 query por célula) é atualizado na hora que
+     cria uma nova — outra linha do mesmo lote com o mesmo texto (ou variação que bate
+     exato) reaproveita a profissão recém-criada em vez de tentar duplicar (`nome` é
+     `unique` no model, `get_or_create` evita o `IntegrityError`).
+  3. **Limitação conhecida, documentada e não escondida**: o casamento é por parecença de
+     texto, não por significado — testei "Analista de TI" e o mais parecido que o `difflib`
+     achou foi "Analista de Redes" (não "Analista de Sistemas / TI", que seria o certo
+     semanticamente, mas ficou com nota de parecença um pouco menor). Acontece quando duas
+     profissões cadastradas têm nomes parecidos entre si e o texto da planilha é ambíguo
+     entre elas — não tem como resolver 100% sem revisão humana; a tela de revisão do
+     wizard já deixa qualquer linha editável antes de confirmar, então dá pra corrigir ali
+     se acontecer.
+  - Testado dentro de uma transação com rollback forçado (`transaction.atomic()` +
+    `transaction.set_rollback(True)`) — sem tocar as 67 profissões reais cadastradas: rodei
+    13 variações de texto (nomes com gênero diferente, sem acento, abreviados, e 3 que não
+    existem no cadastro) contra `_profissao_por_nome_ou_criar()`, conferi cada resultado
+    (10 casaram com a profissão certa, 1 casou com a "vizinha" errada por ambiguidade
+    semântica — o caso já documentado acima —, 3 viraram profissão nova) e, depois do
+    rollback, confirmei que o banco real continua com exatamente 67 profissões (nenhuma das
+    3 novas de teste ficou gravada). `manage.py check` limpo (sem mudança de model — só
+    lógica nova em `wizard_csv.py`, `Profissao` já existia).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
+    (mudança nova nessa rodada, além das anteriores).

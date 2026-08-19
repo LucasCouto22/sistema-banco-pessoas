@@ -51,6 +51,7 @@ def detalhe(request, pk):
             "perfis": perfis,
             "pode_editar": request.user.tem_permissao("projetos.gerenciar"),
             "pode_excluir": request.user.tem_permissao("projetos.excluir"),
+            "pode_associar": request.user.tem_permissao("participacoes.mover_etapa"),
         },
     )
 

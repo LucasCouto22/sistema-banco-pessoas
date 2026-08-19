@@ -214,6 +214,13 @@ tbody tr:hover{background:#FAF9FE}
 .tbl-wrap{overflow-x:auto}
 .td-acoes{display:flex;gap:6px;justify-content:flex-end}
 
+/* Linha de correção/edição do wizard (revisão de importação) — fechada por
+   padrão, abre com a classe `.wiz-aberta` (alternada pelo botão "Editar" em
+   cada linha, sem depender de JS externo além de um toggle simples). Linha
+   com erro já nasce com a classe aplicada pelo servidor. */
+.wiz-linha-correcao{display:none}
+.wiz-linha-correcao.wiz-aberta{display:table-row}
+
 /* ============ TABELAS RESPONSIVAS (viram cards no mobile) ============
    Cada <td> ganha `data-label="Coluna"` (menos a de ações) — o rótulo some
    no desktop e reaparece via `::before` só abaixo de 700px, quando a linha
@@ -236,6 +243,7 @@ tbody tr:hover{background:#FAF9FE}
      não é par rótulo→valor — deixa em bloco normal em vez de espremer no flex. */
   .tbl-wrap tr.wiz-linha-correcao{border:none;padding:0;margin-bottom:0;background:none}
   .tbl-wrap tr.wiz-linha-correcao td{display:block;border-bottom:none;padding:0 0 10px}
+  .wiz-linha-correcao.wiz-aberta{display:block}
 }
 
 .folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,260px));gap:16px;margin-bottom:26px}

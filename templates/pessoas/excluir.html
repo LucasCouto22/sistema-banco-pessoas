@@ -4,8 +4,8 @@
 {% block conteudo %}
 <div class="view-title"><div><h2>Excluir participante</h2></div></div>
 <div class="panel" style="padding:20px 24px;max-width:560px">
-  <p>Tem certeza que deseja excluir <b>{{ participante.nome }}</b> ({{ participante.codigo }})
-  do Banco de Pessoas?</p>
+  <p>Quer mesmo excluir <b>{{ participante.nome }}</b> ({{ participante.codigo }}) do Banco
+  de Pessoas?</p>
   {% if total_participacoes %}
   <div class="lock-note" style="margin-top:12px">
     Este participante tem {{ total_participacoes }} participação(ões) registrada(s) em

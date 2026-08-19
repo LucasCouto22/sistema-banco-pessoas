@@ -132,6 +132,19 @@ class Participante(models.Model):
         APROVADO = "APROVADO", "Aprovado"
         DESCARTADO = "DESCARTADO", "Descartado"
 
+    # Marca de onde o cadastro veio de fato — separado de `origem_recrutador`
+    # (que só diz QUEM leva o crédito pela indicação, não COMO a pessoa
+    # entrou no sistema). Sem isso, todo participante com `origem_recrutador`
+    # preenchido aparecia como "Cadastro público" mesmo quando veio de
+    # importação em lote feita pela equipe. Fica `null` em quem foi criado
+    # antes desta distinção existir — não dá pra reconstruir com certeza a
+    # origem de cadastros antigos.
+    class OrigemCadastro(models.TextChoices):
+        PUBLICO = "PUBLICO", "Cadastro público"
+        IMPORTACAO_LEGADO = "IMPORTACAO_LEGADO", "Participante legado — importação"
+        IMPORTACAO = "IMPORTACAO", "Importação em lote"
+        MANUAL_EQUIPE = "MANUAL_EQUIPE", "Cadastro manual (equipe)"
+
     class FormaPagamento(models.TextChoices):
         PIX = "PIX", "PIX"
         TRANSFERENCIA = "TRANSFERENCIA", "Transferência"
@@ -207,6 +220,7 @@ class Participante(models.Model):
         on_delete=models.SET_NULL,
         related_name="participantes_indicados",
     )
+    origem_cadastro = models.CharField(max_length=20, choices=OrigemCadastro.choices, null=True, blank=True)
     data_ultima_participacao = models.DateField(null=True, blank=True)
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -17,7 +17,7 @@
       {% if proj.cliente %}<span class="badge b-violet">{{ proj.cliente }}{% if proj.marca %} — {{ proj.marca }}{% endif %}</span>{% endif %}
     </div>
     <h4>{{ proj.nome }}</h4>
-    <div class="f-sub">{{ proj.cliente }}{% if proj.marca %} — {{ proj.marca }}{% endif %}{% if proj.metodologia %} · {{ proj.metodologia }}{% endif %}{% if proj.segmento %} · {{ proj.get_segmento_display }}{% endif %}</div>
+    <div class="f-sub">{{ proj.cliente }}{% if proj.marca %} — {{ proj.marca }}{% endif %}{% if proj.metodologia %} · {{ proj.metodologia }}{% endif %}{% if proj.categoria %} · {{ proj.categoria.nome }}{% endif %}</div>
     {% if proj.perfil_resumo %}
     <div class="f-perfil">Perfil: {{ proj.perfil_resumo }}</div>
     {% endif %}

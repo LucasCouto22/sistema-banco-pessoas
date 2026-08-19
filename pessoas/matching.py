@@ -13,11 +13,12 @@ confirmada com o usuário."""
 import re
 from datetime import date
 
+from django.core.exceptions import ValidationError
 from django.db.models import Value
 from django.db.models.functions import Replace
 
 from .models import Participante
-from .validators import normalizar_cpf
+from .validators import normalizar_cpf, normalizar_data_nascimento, validar_cpf
 
 # Data usada quando um lote legado não traz data de nascimento — bem no
 # passado de propósito, pra ficar óbvio num relatório/dashboard que é um
@@ -172,7 +173,11 @@ def preparar_linha_legado(dados):
 
     campos_incompletos = set()
 
-    data_nascimento_texto = (dados.get("data_nascimento") or "").strip()
+    # `normalizar_data_nascimento` já tenta vários formatos (d/m/aa, dd/mm/aaaa,
+    # m/d/aaaa etc.) — a maioria das linhas já chega aqui em ISO (a leitura
+    # da planilha em `wizard_csv.py` já normalizou), mas isso também cobre
+    # texto que chegou de outro jeito (ex.: edição manual na revisão).
+    data_nascimento_texto = normalizar_data_nascimento((dados.get("data_nascimento") or "").strip())
     data_valida = None
     if data_nascimento_texto:
         try:
@@ -189,6 +194,20 @@ def preparar_linha_legado(dados):
         if not (dados.get(campo) or "").strip():
             dados[campo] = placeholder
             campos_incompletos.add(campo)
+        elif campo == "cpf":
+            # CPF presente na planilha mas com dígito verificador errado
+            # (ou qualquer outro jeito de não ser um CPF de verdade) — trata
+            # exatamente como se tivesse vindo em branco. Nunca deixa um CPF
+            # inválido chegar em `encontrar_participante_existente()` (pra
+            # não casar por coincidência com o CPF de outra pessoa) nem ser
+            # gravado no cadastro (pra nunca substituir o CPF de verdade que
+            # um participante já tinha por um valor que não bate com
+            # ninguém).
+            try:
+                validar_cpf(dados[campo])
+            except ValidationError:
+                dados[campo] = placeholder
+                campos_incompletos.add(campo)
 
     return dados, campos_incompletos, None
 

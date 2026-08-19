@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import requer_permissao
+from auditoria.models import RegistroAcesso, registrar
 from formularios.models import RespostaFormulario
 from formularios.respostas import construir_form_resposta
 from projetos.models import Projeto
@@ -148,8 +149,29 @@ def detalhe(request, pk):
             "formularios_do_projeto": formularios_do_projeto,
             "pode_avaliar": pode_avaliar,
             "pode_preencher_respostas": request.user.tem_permissao("respostas.preencher"),
+            "pode_excluir": request.user.tem_permissao("participacoes.excluir"),
         },
     )
+
+
+@login_required
+@requer_permissao("participacoes.excluir")
+def excluir(request, pk):
+    participacao = get_object_or_404(
+        Participacao.objects.select_related("participante", "perfil__projeto"), pk=pk
+    )
+    if request.method == "POST":
+        participante_nome = participacao.participante.nome
+        participante_codigo = participacao.participante.codigo
+        perfil_nome = participacao.perfil.nome
+        participacao.delete()
+        registrar(
+            request.user, participante_codigo, RegistroAcesso.Acao.ALTERACAO,
+            f"Participação de {participante_nome} no perfil {perfil_nome} excluída",
+        )
+        messages.success(request, f"Participação de {participante_nome} excluída.")
+        return redirect("participacoes:lista")
+    return render(request, "participacoes/excluir.html", {"participacao": participacao})
 
 
 @login_required

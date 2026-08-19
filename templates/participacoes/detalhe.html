@@ -10,6 +10,9 @@
     {% if pode_avaliar %}
     <button class="btn btn-ghost" type="button" onclick="QVModal.abrir('mAvaliar')">{% if avaliacao %}Editar avaliação{% else %}Avaliar{% endif %}</button>
     {% endif %}
+    {% if pode_excluir %}
+    <a class="btn btn-ghost" style="border-color:#F7C9C0;color:#B03225" href="{% url 'participacoes:excluir' participacao.pk %}">Excluir</a>
+    {% endif %}
   </div>
 </div>
 <div class="kpis">

@@ -23,8 +23,17 @@
 <form method="post" novalidate>
   {% csrf_token %}
   <div class="panel">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--line)">
+      <label class="check" style="margin:0">
+        <input type="checkbox" id="wizConsentimentoTodos"> Marcar consentimento LGPD de todas as linhas
+      </label>
+    </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th></th><th>Nome</th><th>CPF</th><th>Cidade/UF</th><th>Situação</th><th>Status</th><th>Consentimento LGPD</th></tr></thead>
+      <thead><tr>
+        <th></th><th>Nome</th><th>CPF</th><th>Cidade/UF</th><th>Situação</th><th>Status</th>
+        <th>Consentimento LGPD</th>
+        <th></th>
+      </tr></thead>
       <tbody>
       {% for linha in linhas %}
         <tr>
@@ -49,12 +58,17 @@
             {% if linha.valido %}<input type="checkbox" name="consentimento_{{ linha.indice }}">
             {% else %}<input type="checkbox" name="consentimento_{{ linha.indice }}" {% if linha.consentimento %}checked{% endif %}>{% endif %}
           </td>
+          <td class="td-acoes">
+            <button type="button" class="btn btn-ghost btn-sm" data-toggle-linha="correcao-{{ forloop.counter }}">{% if linha.valido %}Editar{% else %}Fechar{% endif %}</button>
+          </td>
         </tr>
-        {% if not linha.valido %}
-        <tr class="wiz-linha-correcao">
+        <tr class="wiz-linha-correcao{% if not linha.valido %} wiz-aberta{% endif %}" id="correcao-{{ forloop.counter }}">
           <td></td>
-          <td colspan="6">
-            <p class="hint" style="margin-bottom:10px">Corrija os campos abaixo e clique em "Concluir importação" de novo.</p>
+          <td colspan="7">
+            <p class="hint" style="margin-bottom:10px">
+              {% if linha.valido %}Confira ou ajuste os dados desta linha antes de concluir a importação.
+              {% else %}Corrija os campos abaixo e clique em "Concluir importação" de novo.{% endif %}
+            </p>
             <div class="form-row">
               {% for field in linha.form %}
               <div class="field">
@@ -65,9 +79,8 @@
             </div>
           </td>
         </tr>
-        {% endif %}
       {% empty %}
-        <tr><td colspan="7" class="empty">Nenhum participante para revisar.</td></tr>
+        <tr><td colspan="8" class="empty">Nenhum participante para revisar.</td></tr>
       {% endfor %}
       </tbody>
     </table></div>
@@ -81,4 +94,5 @@
 
 {% block scripts %}
 <script src="{% static_v 'js/profissao_especialidade.js' %}" defer></script>
+<script src="{% static_v 'js/wizard_revisao.js' %}" defer></script>
 {% endblock %}

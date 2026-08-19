@@ -47,7 +47,9 @@
       {% elif participante.situacao == "DESCARTADO" %}<span class="badge b-red">{{ participante.get_situacao_display }}</span>
       {% else %}<span class="badge b-amber">{{ participante.get_situacao_display }}</span>{% endif %}
     </td></tr>
-    {% if participante.origem_recrutador %}
+    {% if participante.origem_cadastro %}
+    <tr><td class="cell-sub">Origem</td><td>{{ participante.get_origem_cadastro_display }}{% if participante.origem_recrutador %}, por <b>{{ participante.origem_recrutador|nome_usuario }}</b>{% endif %}</td></tr>
+    {% elif participante.origem_recrutador %}
     <tr><td class="cell-sub">Origem</td><td>Cadastro público, indicado por <b>{{ participante.origem_recrutador|nome_usuario }}</b></td></tr>
     {% endif %}
     <tr><td class="cell-sub">Consentimento LGPD</td><td>

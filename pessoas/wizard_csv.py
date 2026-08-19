@@ -1,10 +1,13 @@
 import csv
 import datetime
+import difflib
 import io
+import re
 
 from openpyxl import load_workbook
 
 from .models import Profissao
+from .validators import normalizar_data_nascimento
 
 CAMPOS_CSV = {
     "nome completo": "nome",
@@ -75,11 +78,21 @@ GENERO_MAP = {
 }
 RACA_MAP = {
     "branca": "BRANCA",
+    "branco": "BRANCA",
+    "branco(a)": "BRANCA",
     "preta": "PRETA",
+    "preto": "PRETA",
+    "preto(a)": "PRETA",
     "parda": "PARDA",
+    "pardo": "PARDA",
+    "pardo(a)": "PARDA",
     "amarela": "AMARELA",
+    "amarelo": "AMARELA",
+    "amarelo(a)": "AMARELA",
     "indigena": "INDIGENA",
     "indígena": "INDIGENA",
+    "indigena(a)": "INDIGENA",
+    "indígena(a)": "INDIGENA",
 }
 ESTADO_CIVIL_MAP = {
     "solteiro": "SOLTEIRO",
@@ -158,6 +171,55 @@ RENDA_MAP = {
     "classe e": "E",
 }
 
+# Fallback pra quando a faixa de renda vem descrita em R$ solto (ex.: "Acima
+# de R$ 10788.56", "Entre R$ 5721.73 e R$ 10788.56") em vez de letra ou
+# "classe X" — não bate com `RENDA_MAP`, então sem isso a faixa inteira era
+# perdida (virava "cadastro incompleto" mesmo com o dado presente na
+# planilha). Individual e familiar usam escalas DIFERENTES pro mesmo código
+# de classe (ver `Participante.FaixaRendaIndividual`/`FaixaRendaFamiliar`) —
+# individual é R$ direto, familiar é múltiplo de salário mínimo — por isso
+# cada campo tem sua própria tabela de limiares, nunca a mesma.
+_FAIXAS_RENDA_INDIVIDUAL_POR_VALOR = [(9738, "A"), (4869, "B"), (1883, "C"), (974, "D")]
+
+# Salário mínimo vigente usado só pra converter a faixa familiar (múltiplos
+# de salário mínimo) em limiares de R$ — não é lido de lugar nenhum porque o
+# sistema não guarda esse valor em nenhum outro ponto; ajustar aqui quando o
+# valor real mudar.
+SALARIO_MINIMO = 1518
+_FAIXAS_RENDA_FAMILIAR_POR_VALOR = [
+    (20 * SALARIO_MINIMO, "A"),
+    (10 * SALARIO_MINIMO, "B"),
+    (4 * SALARIO_MINIMO, "C"),
+    (2 * SALARIO_MINIMO, "D"),
+]
+
+
+def _numeros_do_texto(texto):
+    brutos = re.findall(r"\d[\d.,]*\d|\d", texto)
+    valores = []
+    for bruto in brutos:
+        try:
+            valores.append(float(bruto.replace(",", "")))
+        except ValueError:
+            continue
+    return valores
+
+
+def _mapear_renda_por_valor(texto, faixas):
+    """"Acima de R$ 10788.56" → código conforme `faixas`; "Entre R$ 5721.73 e
+    R$ 10788.56" usa o limite de baixo da faixa — é ele que decide em qual
+    balde ela cai: uma faixa "entre 5721 e 10788" é claramente o balde
+    abaixo de "acima de 10788". Devolve "" se não achar nenhum número no
+    texto."""
+    valores = _numeros_do_texto(texto)
+    if not valores:
+        return ""
+    valor = min(valores)
+    for limite, codigo in faixas:
+        if valor >= limite:
+            return codigo
+    return "E"
+
 CABECALHO_MODELO = [
     "Nome completo",
     "CPF",
@@ -213,6 +275,41 @@ def _mapa_profissoes():
     return {p.nome.lower(): str(p.pk) for p in Profissao.objects.all()}
 
 
+# Abaixo de que nível de parecença (0-1, escala do `difflib`) uma profissão
+# da planilha deixa de "bater" com uma já cadastrada — evita casar coisas
+# muito diferentes só porque compartilham algumas letras (ex.: um texto
+# muito curto tipo "TI" bateria com qualquer profissão que tenha essas duas
+# letras). 0.6 cobre variação de gênero gramatical ("Advogada" → "Advogado
+# (a)"), acento faltando ("Medico" → "Médico(a)") e abreviação parcial
+# ("Enfermeira" → "Enfermeiro(a)") sem casar profissões sem relação nenhuma.
+_CORTE_PROFISSAO_PARECIDA = 0.6
+
+
+def _profissao_por_nome_ou_criar(texto, mapa_profissoes):
+    """Resolve o texto livre de profissão da planilha pro PK de uma
+    `Profissao` cadastrada: bate exato primeiro, senão pega a mais parecida
+    pelo `difflib` (de→para automático, sem precisar de um mapa manual pra
+    cada uma das profissões — a lista cresce/muda pelo cadastro, não dava
+    pra manter isso hardcoded). Não achando nada parecido o bastante,
+    cadastra o texto como profissão nova em vez de descartar o dado —
+    `mapa_profissoes` é atualizado na hora, então outra linha do mesmo lote
+    com o mesmo texto reaproveita a profissão recém-criada em vez de tentar
+    duplicar (o campo `nome` é `unique`)."""
+    texto_norm = (texto or "").strip()
+    if not texto_norm:
+        return ""
+    chave = texto_norm.lower()
+    pk = mapa_profissoes.get(chave)
+    if pk:
+        return pk
+    proximas = difflib.get_close_matches(chave, mapa_profissoes.keys(), n=1, cutoff=_CORTE_PROFISSAO_PARECIDA)
+    if proximas:
+        return mapa_profissoes[proximas[0]]
+    profissao, _criada = Profissao.objects.get_or_create(nome__iexact=texto_norm, defaults={"nome": texto_norm})
+    mapa_profissoes[chave] = str(profissao.pk)
+    return str(profissao.pk)
+
+
 _MAPAS_POR_CAMPO = {
     "genero": GENERO_MAP,
     "raca": RACA_MAP,
@@ -227,7 +324,21 @@ _MAPAS_POR_CAMPO = {
 
 def _normalizar_campo(campo, valor, mapa_profissoes=None):
     if campo == "profissao":
-        return _mapear(valor, mapa_profissoes or {})
+        if mapa_profissoes is None:
+            mapa_profissoes = _mapa_profissoes()
+        return _profissao_por_nome_ou_criar(valor, mapa_profissoes)
+    if campo == "data_nascimento":
+        return normalizar_data_nascimento(valor)
+    if campo in ("renda_individual", "renda_familiar"):
+        codigo = _mapear(valor, RENDA_MAP)
+        if codigo:
+            return codigo
+        faixas = (
+            _FAIXAS_RENDA_INDIVIDUAL_POR_VALOR
+            if campo == "renda_individual"
+            else _FAIXAS_RENDA_FAMILIAR_POR_VALOR
+        )
+        return _mapear_renda_por_valor(valor, faixas)
     mapa = _MAPAS_POR_CAMPO.get(campo)
     if mapa is not None:
         return _mapear(valor, mapa)

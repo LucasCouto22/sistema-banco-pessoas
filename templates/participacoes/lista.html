@@ -101,6 +101,9 @@
             data-comentario="{{ part.avaliacao.comentario|default:'' }}"
           >{% if part.avaliacao %}Editar{% else %}Avaliar{% endif %}</button>
           {% endif %}
+          {% if request.user|tem_permissao:"participacoes.excluir" %}
+          <a class="btn btn-ghost btn-sm" style="border-color:#F7C9C0;color:#B03225" href="{% url 'participacoes:excluir' part.pk %}">Excluir</a>
+          {% endif %}
         </td>
       </tr>
     {% empty %}

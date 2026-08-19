@@ -16,7 +16,7 @@ class ProjetoForm(forms.ModelForm):
             "marca",
             "metodologia",
             "status",
-            "segmento",
+            "categoria",
             "data_inicio",
             "data_fim",
             "incentivo",
@@ -35,7 +35,7 @@ class ProjetoForm(forms.ModelForm):
             "marca": "Marca",
             "metodologia": "Metodologia",
             "status": "Status",
-            "segmento": "Segmento",
+            "categoria": "Categoria",
             "data_inicio": "Início do campo",
             "data_fim": "Fim do campo",
             "incentivo": "Incentivo (R$)",
@@ -47,6 +47,7 @@ class ProjetoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         personalizar_opcoes_vazias(self)
+        self.fields["categoria"].empty_label = "Sem categoria"
 
 
 class PerfilForm(forms.ModelForm):
