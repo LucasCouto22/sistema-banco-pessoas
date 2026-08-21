@@ -3979,3 +3979,59 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     check` limpo (sem mudança de model).
   - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
     (mudança nova nessa rodada).
+- **2026-08-21 ("Visão participantes": Classe social diz qual renda é, painel novo pra
+  renda familiar, Faixa etária sobe pra debaixo de Gênero)** — Usuário mostrou a "Visão
+  participantes" e pediu 3 ajustes no painel da direita: o "Classe social (faixa de renda)"
+  que já existe não dizia se é a renda individual ou familiar do formulário; criar um
+  painel igual pro outro tipo; e mover "Faixa etária" pra ficar logo abaixo de "Gênero".
+  1. **`clsf` novo nos dados do dashboard** — `core/dashviz.py::dados_participantes_dashboard`
+     já mandava `cls` (`Participante.renda_individual`) pro cliente; ganhou `clsf`
+     (`renda_familiar`) do lado, e uma função nova `faixas_renda_familiar_disponiveis()`
+     (espelha `faixas_renda_disponiveis()`, só que em cima de `FaixaRendaFamiliar`).
+     `core/views.py::home` passa isso como `faixas_renda_familiar_json` no contexto — só a
+     tela "Visão participantes" (`home`), não mexi em `dashboard_segmento` (usa
+     `dados_participantes_dashboard` também, mas esse pedido foi só sobre a tela do
+     screenshot; `clsf` no JSON não quebra nada lá porque `dashboard_segmento.js` é um
+     arquivo separado que nem lê essa chave).
+  2. **Painel duplicado + rótulo explícito** — `templates/core/home.html`: "Classe social
+     (faixa de renda)" virou "Classe social (renda individual)"; painel novo idêntico
+     "Classe social (renda familiar)" logo abaixo, com seu próprio container
+     (`id="chClsFam"`). `static/js/dashboard.js`: `CLSF_ORDEM`/`CLSF_LABEL` (espelham
+     `CLS_ORDEM`/`CLS_LABEL`), dimensão de filtro nova `clsf` (clicar numa barra da renda
+     familiar filtra o dashboard inteiro por ela, igual a individual já fazia — chip de
+     filtro mostra "Classe (familiar): ..." pra não confundir com o da individual), e o
+     bloco de render das barras verticais é uma cópia do de `cls`, só trocando o campo.
+  3. **Faixa etária subiu** — mesma coluna direita, ordem no HTML virou Gênero → Faixa
+     etária → Classe social (individual) → Classe social (familiar) — só reordenação de
+     blocos no template, nenhuma mudança de lógica.
+  - Testado com Playwright, autenticado, contra dado real (só leitura): conferida a ordem
+    dos 4 painéis da coluna direita (bate com o pedido); os dois gráficos de classe social
+    renderizam 5 barras cada (A-E) com contagens diferentes entre si — individual
+    concentrado em A/B/C, familiar em C/D/E (consistente com a correção de limiar de renda
+    familiar de uma rodada anterior desta sessão, que já apontava pra essa distribuição
+    diferente entre os dois); clicei numa barra do painel de renda familiar e confirmei que
+    o chip de filtro aparece como "Classe (familiar): A — 20 salários mínimos" (rótulo
+    certo, dimensão certa, sem confundir com o filtro de renda individual); zero erro de
+    console no navegador. `manage.py check` limpo (sem mudança de model).
+  - **Segue sem commitar.** `git status` agora também inclui `core/dashviz.py`,
+    `core/views.py`, `templates/core/home.html`, `static/js/dashboard.js`.
+- **2026-08-21 (Cadastro/edição de Perfil: "Escolha de categorias" some quando o tipo é
+  "Respostas")** — Usuário mostrou a tela de novo perfil e pediu pra esconder o bloco
+  "Escolha de categorias no cadastro público" quando o tipo de perfil for "Respostas" — o
+  próprio texto de ajuda do bloco já avisa que só tem efeito em perfil de Captação.
+  1. **Conferido que já era só cosmético** — `pessoas/views.py::cadastro_publico`
+     (`exige_escolha_categorias = perfil.tipo == Perfil.Tipo.CAPTACAO and ...`) já ignora
+     `qtd_categorias_escolha` pra perfil "Respostas" de qualquer forma — esconder o bloco
+     não muda nenhum comportamento de gravação/validação, só evita mostrar um formulário
+     que não faz nada pra esse tipo de perfil.
+  2. **Toggle por JS, mesmo padrão de `variavel_form.js`** — `templates/projetos/perfil_form.html`:
+     fieldset ganhou `id="bloco-categorias-captacao"`; `static/js/perfil_form.js` (novo)
+     esconde/mostra esse bloco conforme o valor de `#id_tipo` (`change` + estado inicial na
+     carga da página, cobre tanto criar perfil novo quanto abrir um "Respostas" já
+     existente pra editar).
+  - Testado com Playwright, autenticado: tela de novo perfil abre com "Captação" (padrão)
+    e o bloco visível; troquei pra "Respostas" — bloco sequer aparece, o formulário salta
+    direto pra "Formulários do perfil" (screenshot conferido); voltei pra "Captação" — bloco
+    reaparece. `manage.py check` limpo (sem mudança de model/lógica de gravação).
+  - **Segue sem commitar.** `git status` agora também inclui `templates/projetos/perfil_form.html`,
+    `static/js/perfil_form.js` (novo).

@@ -14,6 +14,7 @@ from .dashviz import (
     construir_donut,
     dados_participantes_dashboard,
     faixas_renda_disponiveis,
+    faixas_renda_familiar_disponiveis,
     generos_disponiveis,
 )
 
@@ -38,6 +39,7 @@ def home(request):
             contexto["dash_participantes_json"] = dados_participantes_dashboard(participantes)
             contexto["categorias_json"] = categorias_disponiveis()
             contexto["faixas_renda_json"] = faixas_renda_disponiveis()
+            contexto["faixas_renda_familiar_json"] = faixas_renda_familiar_disponiveis()
             contexto["generos_json"] = generos_disponiveis()
 
             situacao_itens = [

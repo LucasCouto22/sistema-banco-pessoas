@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static_v %}
 {% block titulo %}{{ titulo }} · Qualy Vortice{% endblock %}
 {% block crumbs %}Projetos / {{ projeto.nome }} / <b>{{ titulo }}</b>{% endblock %}
 {% block conteudo %}
@@ -13,7 +14,7 @@
       {% include "core/_campo_form.html" with campo=form.nome %}
       {% include "core/_campo_form.html" with campo=form.tipo %}
     </div>
-    <fieldset>
+    <fieldset id="bloco-categorias-captacao">
       <legend>Escolha de categorias no cadastro público</legend>
       <p class="hint" style="margin-bottom:10px">
         Só tem efeito em perfil de Captação com mais categorias de formulário do que a
@@ -64,4 +65,8 @@
     </div>
   </form>
 </div></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static_v 'js/perfil_form.js' %}" defer></script>
 {% endblock %}

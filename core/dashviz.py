@@ -59,13 +59,23 @@ def generos_disponiveis():
 def faixas_renda_disponiveis():
     """(código, rótulo) de cada faixa de `Participante.FaixaRendaIndividual`,
     na ordem do cadastro (A→E) — a mesma pergunta "Renda individual" do
-    formulário de participante. O gráfico "Classe social" dos dois
-    dashboards usa essa lista pra montar as barras: quantas faixas o
-    formulário tiver, é isso que aparece ali, sem juntar A/B nem D/E num
-    bucket arbitrário como a versão anterior fazia."""
+    formulário de participante. O gráfico "Classe social (renda individual)"
+    da "Visão participantes" usa essa lista pra montar as barras: quantas
+    faixas o formulário tiver, é isso que aparece ali, sem juntar A/B nem
+    D/E num bucket arbitrário como a versão anterior fazia."""
     from pessoas.models import Participante
 
     return list(Participante.FaixaRendaIndividual.choices)
+
+
+def faixas_renda_familiar_disponiveis():
+    """Mesma ideia de `faixas_renda_disponiveis()`, só que pra
+    `Participante.FaixaRendaFamiliar` (a pergunta "Renda familiar" — escala
+    de salários mínimos, diferente da individual mesmo usando os mesmos
+    códigos A-E) — o painel novo "Classe social (renda familiar)"."""
+    from pessoas.models import Participante
+
+    return list(Participante.FaixaRendaFamiliar.choices)
 
 
 def _idade_em(nascimento, hoje):
@@ -105,9 +115,10 @@ def dados_participantes_dashboard(participantes):
     é de verdade (que assuntos ela já respondeu perguntas sobre), não em que
     projeto/segmento comercial ela foi recrutada.
 
-    `cls` é o código bruto de `Participante.FaixaRendaIndividual` (A-E, ou
-    `None` se ainda não preenchida) — o cliente busca o rótulo de cada
-    código em `faixas_renda_disponiveis()` (ver essa função)."""
+    `cls`/`clsf` são os códigos brutos de `Participante.FaixaRendaIndividual`/
+    `FaixaRendaFamiliar` (A-E cada, ou `None` se ainda não preenchida) — o
+    cliente busca o rótulo de cada código em `faixas_renda_disponiveis()`/
+    `faixas_renda_familiar_disponiveis()` (ver essas funções)."""
     from formularios.models import RespostaFormulario
 
     cats_por_participante = {}
@@ -130,6 +141,7 @@ def dados_participantes_dashboard(participantes):
                 "uf": (p.uf or "").strip().upper(),
                 "gen": p.get_genero_display(),
                 "cls": p.renda_individual,
+                "clsf": p.renda_familiar,
                 "fx": _faixa_etaria(p.data_nascimento, hoje) if p.data_nascimento else None,
                 "cid": capitais_por_nome_lower.get((p.cidade or "").strip().lower(), ""),
                 "cats": sorted(cats_por_participante.get(p.id, ())),

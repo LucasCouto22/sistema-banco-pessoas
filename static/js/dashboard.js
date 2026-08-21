@@ -12,6 +12,7 @@
   var dados = JSON.parse(elDados.textContent);
   var elCategorias = document.getElementById("categorias-disponiveis");
   var elFaixasRenda = document.getElementById("faixas-renda-disponiveis");
+  var elFaixasRendaFamiliar = document.getElementById("faixas-renda-familiar-disponiveis");
   var elGeneros = document.getElementById("generos-disponiveis");
 
   var TILES = {
@@ -42,6 +43,12 @@
   var CLS_ORDEM = elFaixasRenda ? JSON.parse(elFaixasRenda.textContent) : [];
   var CLS_LABEL = {};
   CLS_ORDEM.forEach(function (par) { CLS_LABEL[par[0]] = par[1]; });
+  // Mesma ideia, pra "Renda familiar" (`Participante.FaixaRendaFamiliar`) —
+  // painel separado ("Classe social (renda familiar)"), mesmos códigos A-E
+  // do individual mas com rótulo/escala diferente (salários mínimos).
+  var CLSF_ORDEM = elFaixasRendaFamiliar ? JSON.parse(elFaixasRendaFamiliar.textContent) : [];
+  var CLSF_LABEL = {};
+  CLSF_ORDEM.forEach(function (par) { CLSF_LABEL[par[0]] = par[1]; });
   var FX_ORDEM = ["18-24", "25-34", "35-44", "45-54", "55+"];
   // Categorias de formulário cadastradas (Configurações de Formulários ›
   // Categorias) — substituem os antigos "segmentos" fixos do Projeto
@@ -54,8 +61,11 @@
   var VENN_FONT = "'Plus Jakarta Sans',system-ui,sans-serif";
   var VENN_DEEP = "#C4143F", VENN_DARK = "#750A26";
 
-  var filtros = { uf: null, gen: null, cls: null, fx: null, cid: null };
-  var FILTRO_NOME = { uf: "Estado", gen: "Gênero", cls: "Classe", fx: "Faixa etária", cid: "Capital" };
+  var filtros = { uf: null, gen: null, cls: null, clsf: null, fx: null, cid: null };
+  var FILTRO_NOME = {
+    uf: "Estado", gen: "Gênero", cls: "Classe (individual)", clsf: "Classe (familiar)",
+    fx: "Faixa etária", cid: "Capital",
+  };
   var vennSel = SEGMENTOS.filter(function (s) {
     return dados.some(function (p) { return p.cats.indexOf(s) >= 0; });
   }).slice(0, 3);
@@ -108,7 +118,7 @@
       .filter(function (d) { return filtros[d]; })
       .map(function (d) {
         var v = filtros[d];
-        var texto = d === "cls" ? CLS_LABEL[v] || v : v;
+        var texto = d === "cls" ? CLS_LABEL[v] || v : d === "clsf" ? CLSF_LABEL[v] || v : v;
         return '<button class="fchip" onclick="QVDash.toggleF(\'' + d + "','" + v + '\')"><small>' +
           FILTRO_NOME[d] + ":</small> " + esc(texto) + " ✕</button>";
       });
@@ -176,6 +186,17 @@
       return '<button class="vbar ' + (filtros.cls === codigo ? "sel" : "") + '" title="' + esc(rotulo) +
         '" onclick="QVDash.toggleF(\'cls\',\'' + codigo + '\')">' +
         '<span class="ct">' + fmt(n) + '</span><b style="height:' + Math.max(3, (n / maxCls) * 100) + '%"></b><span>' + codigo + "</span></button>";
+    }).join("");
+
+    /* Classe social (renda familiar) — barras verticais, mesmo padrão da individual */
+    var porClsf = contar(filtrados, "clsf");
+    var maxClsf = Math.max.apply(null, [1].concat(CLSF_ORDEM.map(function (par) { return porClsf[par[0]] || 0; })));
+    $("chClsFam").innerHTML = CLSF_ORDEM.map(function (par) {
+      var codigo = par[0], rotulo = par[1];
+      var n = porClsf[codigo] || 0;
+      return '<button class="vbar ' + (filtros.clsf === codigo ? "sel" : "") + '" title="' + esc(rotulo) +
+        '" onclick="QVDash.toggleF(\'clsf\',\'' + codigo + '\')">' +
+        '<span class="ct">' + fmt(n) + '</span><b style="height:' + Math.max(3, (n / maxClsf) * 100) + '%"></b><span>' + codigo + "</span></button>";
     }).join("");
 
     /* Faixa etária — barras verticais */
