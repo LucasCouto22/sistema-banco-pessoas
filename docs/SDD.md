@@ -3946,3 +3946,36 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
   próxima importação. `manage.py check` limpo (sem mudança de model).
   - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
     (mudança nova nessa rodada, além das anteriores).
+- **2026-08-21 (Conserto de raiz pro casamento de texto livre do lote: `_mapear()` agora
+  ignora acento e maiúscula/minúscula sozinho)** — Usuário reportou que "Homem Cisgênero"
+  (com maiúscula) não preenchia Gênero, só "Homem cisgênero" batia — mesma classe de bug
+  já corrigida individualmente pra Raça e Estado civil nesta sessão (variante de
+  acento/gênero gramatical faltando no mapa). Em vez de continuar caçando variante por
+  variante conforme cada uma aparece, corrigi o mecanismo de casamento em si.
+  1. **Causa provável**: `GENERO_MAP` já tinha tanto "homem cisgenero" quanto "homem
+     cisgênero" cadastrados, e `_mapear()` já convertia o texto pra minúsculo antes de
+     comparar — então maiúscula sozinha não devia ser o problema. Reproduzi com a mesma
+     string em forma NFC (acento como 1 caractere composto) e forma NFD (acento como
+     caractere base + marca de combinação separada — o jeito como célula de Excel salva
+     acento dependendo de app/SO de origem): as duas têm a mesma aparência mas são strings
+     Python diferentes, e uma comparação exata de string (`dict.get()`) não bate as duas
+     formas — bem provável que fosse isso, já que o mapa já tinha as duas grafias
+     "corretas" cadastradas e mesmo assim não bateu.
+  2. **`_mapear()` deixou de comparar string exata** — nova função `_remover_acentos()`
+     (`pessoas/wizard_csv.py`, usa `unicodedata.normalize("NFKD", ...)` + filtra as marcas
+     de combinação) resolve as duas formas (NFC e NFD) pro mesmo resultado sem acento.
+     `_mapear()` agora tira acento e caixa tanto do texto digitado quanto de cada chave do
+     mapa na hora de comparar — bate "Homem Cisgênero", "HOMEM CISGENERO", a forma NFD, etc.
+     todas na mesma entrada, sem precisar que o mapa tenha uma chave específica pra cada
+     combinação de acento/caixa. Os mapas (`GENERO_MAP`, `RACA_MAP`, `ESTADO_CIVIL_MAP`,
+     `OCUPACAO_MAP`, `REGIAO_MAP`, `ESCOLARIDADE_MAP`, `RENDA_MAP`) continuam com as duas
+     grafias por clareza de leitura do código, mas deixou de ser **necessário** — esse tipo
+     de bug (uma variante de acento/gênero faltando) não deve se repetir pra nenhum campo
+     que passa por `_mapear()`.
+  - Testado: reproduzido o cenário de bug (mesma string em NFC e NFD) e confirmado que
+    ambas batem certo agora; testado maiúsculo/minúsculo/sem acento pra Gênero, Raça e
+    Estado civil — todos resolvendo pro código certo. Conferido no banco real: 0
+    participantes com `genero` vazio hoje, nada pra corrigir retroativamente. `manage.py
+    check` limpo (sem mudança de model).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
+    (mudança nova nessa rodada).

@@ -3,6 +3,7 @@ import datetime
 import difflib
 import io
 import re
+import unicodedata
 
 from openpyxl import load_workbook
 
@@ -283,8 +284,31 @@ LINHA_EXEMPLO = [
 ]
 
 
+def _remover_acentos(texto):
+    """Tira acento de uma string (NFKD decompõe letra+acento em dois
+    caracteres — a letra base e a marca de combinação; filtrar só a marca,
+    categoria Unicode "Mn", separa o acento da letra). Cobre também o caso
+    de o texto já vir decomposto de fábrica (célula de Excel salva em
+    outro app/SO) — sem isso, "Cisgênero" com o "ê" armazenado como dois
+    codepoints diferentes já não batia nem com a versão acentuada do mapa."""
+    forma_decomposta = unicodedata.normalize("NFKD", texto)
+    return "".join(caractere for caractere in forma_decomposta if not unicodedata.combining(caractere))
+
+
 def _mapear(valor, mapa):
-    return mapa.get((valor or "").strip().lower(), "")
+    """Bate o texto livre contra as chaves do mapa ignorando acento e
+    maiúscula/minúscula — "Homem Cisgênero", "homem cisgenero" e "HOMEM
+    CISGÊNERO" caem todos na mesma chave, sem precisar cadastrar cada
+    combinação de acento/caixa em todo mapa (`GENERO_MAP`, `RACA_MAP`,
+    `ESTADO_CIVIL_MAP` etc. continuam podendo ter as duas formas por
+    clareza, mas deixou de ser obrigatório)."""
+    chave = _remover_acentos((valor or "").strip().lower())
+    if not chave:
+        return ""
+    for chave_mapa, codigo in mapa.items():
+        if _remover_acentos(chave_mapa) == chave:
+            return codigo
+    return ""
 
 
 def _mapa_profissoes():
