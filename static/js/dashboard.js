@@ -14,6 +14,8 @@
   var elFaixasRenda = document.getElementById("faixas-renda-disponiveis");
   var elFaixasRendaFamiliar = document.getElementById("faixas-renda-familiar-disponiveis");
   var elGeneros = document.getElementById("generos-disponiveis");
+  var elUrlPessoa = document.getElementById("url-pessoa-template");
+  var URL_PESSOA_TPL = elUrlPessoa ? elUrlPessoa.dataset.tpl : "";
 
   var TILES = {
     RR: [2, 0], AP: [4, 0],
@@ -60,6 +62,10 @@
   function corSeg(s) { return SEG_PALETA[SEGMENTOS.indexOf(s) % SEG_PALETA.length]; }
   var VENN_FONT = "'Plus Jakarta Sans',system-ui,sans-serif";
   var VENN_DEEP = "#C4143F", VENN_DARK = "#750A26";
+  // Lista usada pelo `renderVenn()` no último redesenho — o modal de
+  // pessoas (`abrirVennModal`) refiltra em cima dela na hora do clique, sem
+  // precisar recalcular nada do zero nem guardar estado à parte.
+  var vennDadosAtual = [];
 
   var filtros = { uf: null, gen: null, cls: null, clsf: null, fx: null, cid: null };
   var FILTRO_NOME = {
@@ -98,7 +104,36 @@
     else if (vennSel.length < 3) vennSel.push(s);
     renderVenn(dadosFiltrados());
   }
-  window.QVDash = { toggleF: toggleF, limparFiltros: limparFiltros, toggleVennSeg: toggleVennSeg };
+  function abrirVennModal(padrao) {
+    var bits = padrao.split("");
+    var pessoas = vennDadosAtual.filter(function (p) {
+      var presente = vennSel.map(function (s) { return p.cats.indexOf(s) >= 0; });
+      if (!presente.some(Boolean)) return false;
+      return presente.map(function (b) { return b ? "1" : "0"; }).join("") === padrao;
+    });
+
+    var presentes = [], ausentes = [];
+    vennSel.forEach(function (s, i) { (bits[i] === "1" ? presentes : ausentes).push(s); });
+    var descricao = "em " + presentes.join(" e ") + (ausentes.length ? " (fora de " + ausentes.join(" e ") + ")" : "");
+    $("vennModalTitulo").textContent = fmt(pessoas.length) + " participante(s) — " + descricao;
+
+    $("vennModalCorpo").innerHTML = pessoas.length
+      ? pessoas.map(function (p) {
+          var href = URL_PESSOA_TPL.replace("/0/", "/" + p.id + "/");
+          return "<tr><td data-label=\"Nome\">" + esc(p.nome) + "</td>" +
+            "<td data-label=\"Estado\">" + esc(p.uf_nome || p.uf || "—") + "</td>" +
+            "<td data-label=\"Idade\">" + (p.idade != null ? p.idade + " anos" : "—") + "</td>" +
+            "<td><a class=\"btn btn-ghost btn-sm\" target=\"_blank\" rel=\"noopener\" href=\"" + href +
+            "\">Ver pessoa</a></td></tr>";
+        }).join("")
+      : "<tr><td colspan=\"4\" class=\"empty\">Nenhum participante nessa combinação.</td></tr>";
+
+    QVModal.abrir("mVennPessoas");
+  }
+
+  window.QVDash = {
+    toggleF: toggleF, limparFiltros: limparFiltros, toggleVennSeg: toggleVennSeg, abrirVennModal: abrirVennModal,
+  };
 
   function render() {
     var filtrados = dadosFiltrados();
@@ -220,6 +255,7 @@
     var box = $("vennBox");
     if (!box) return;
     var dadosVenn = dadosAtuais || dadosFiltrados();
+    vennDadosAtual = dadosVenn;
 
     $("vennPills").innerHTML = SEGMENTOS.map(function (s) {
       return '<button class="seg-tab ' + (vennSel.indexOf(s) >= 0 ? "sel" : "") + '" onclick="QVDash.toggleVennSeg(\'' + s +
@@ -258,10 +294,11 @@
     }
   }
 
-  function vennDot(x, y, n, cor, raio, tam) {
-    return '<circle cx="' + x + '" cy="' + y + '" r="' + raio + '" fill="#fff" fill-opacity=".88"/>' +
+  function vennDot(x, y, n, cor, raio, tam, padrao) {
+    return '<g style="cursor:pointer" onclick="QVDash.abrirVennModal(\'' + padrao + '\')">' +
+      '<circle cx="' + x + '" cy="' + y + '" r="' + raio + '" fill="#fff" fill-opacity=".88"/>' +
       '<text x="' + x + '" y="' + (y + 6) + '" text-anchor="middle" font-family="' + VENN_FONT +
-      '" font-weight="800" font-size="' + tam + '" fill="' + cor + '">' + n + "</text>";
+      '" font-weight="800" font-size="' + tam + '" fill="' + cor + '">' + n + "</text></g>";
   }
 
   function svgVenn2(A, B, onlyA, onlyB, both) {
@@ -273,7 +310,8 @@
       '<circle cx="215" cy="135" r="95" fill="none" stroke="' + cB + '" stroke-width="2"/>' +
       '<text x="95" y="22" text-anchor="middle" font-family="' + VENN_FONT + '" font-weight="800" font-size="13" fill="' + cA + '">' + esc(A) + "</text>" +
       '<text x="255" y="22" text-anchor="middle" font-family="' + VENN_FONT + '" font-weight="800" font-size="13" fill="' + cB + '">' + esc(B) + "</text>" +
-      vennDot(85, 135, onlyA, cA, 19, 17) + vennDot(265, 135, onlyB, cB, 19, 17) + vennDot(175, 135, both, VENN_DEEP, 19, 17) +
+      vennDot(85, 135, onlyA, cA, 19, 17, "10") + vennDot(265, 135, onlyB, cB, 19, 17, "01") +
+      vennDot(175, 135, both, VENN_DEEP, 19, 17, "11") +
       "</svg>";
   }
 
@@ -289,9 +327,11 @@
       '<text x="105" y="24" text-anchor="middle" font-family="' + VENN_FONT + '" font-weight="800" font-size="13" fill="' + cA + '">' + esc(A) + "</text>" +
       '<text x="275" y="24" text-anchor="middle" font-family="' + VENN_FONT + '" font-weight="800" font-size="13" fill="' + cB + '">' + esc(B) + "</text>" +
       '<text x="190" y="312" text-anchor="middle" font-family="' + VENN_FONT + '" font-weight="800" font-size="13" fill="' + cC + '">' + esc(C) + "</text>" +
-      vennDot(100, 108, onlyA, cA, 18, 15) + vennDot(280, 108, onlyB, cB, 18, 15) + vennDot(190, 272, onlyC, cC, 18, 15) +
-      vennDot(190, 92, ab, VENN_DEEP, 18, 15) + vennDot(128, 195, ac, VENN_DEEP, 18, 15) + vennDot(252, 195, bc, VENN_DEEP, 18, 15) +
-      vennDot(190, 168, abc, VENN_DARK, 18, 15) +
+      vennDot(100, 108, onlyA, cA, 18, 15, "100") + vennDot(280, 108, onlyB, cB, 18, 15, "010") +
+      vennDot(190, 272, onlyC, cC, 18, 15, "001") +
+      vennDot(190, 92, ab, VENN_DEEP, 18, 15, "110") + vennDot(128, 195, ac, VENN_DEEP, 18, 15, "101") +
+      vennDot(252, 195, bc, VENN_DEEP, 18, 15, "011") +
+      vennDot(190, 168, abc, VENN_DARK, 18, 15, "111") +
       "</svg>";
   }
 

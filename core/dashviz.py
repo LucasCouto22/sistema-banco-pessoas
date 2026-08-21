@@ -108,6 +108,9 @@ def dados_participantes_dashboard(participantes):
     """Um registro compacto por participante — só os campos que o dashboard
     interativo usa pra filtrar e contar (`uf`, `gen`, `cls`, `fx`, `cid`,
     `cats`), no mesmo formato dos registros de `base1000` no protótipo.
+    `id`/`nome`/`idade`/`uf_nome` existem só pra montar a listagem de pessoas
+    do modal do diagrama de Venn (ver `static/js/dashboard.js::abrirVennModal`)
+    — não são usados em nenhum filtro/contagem.
 
     `cats` (antes `segs`, ligado a `Projeto.Segmento`) agora vem das
     categorias dos formulários que o participante de fato respondeu
@@ -138,11 +141,15 @@ def dados_participantes_dashboard(participantes):
     for p in participantes:
         registros.append(
             {
+                "id": p.id,
+                "nome": p.nome,
                 "uf": (p.uf or "").strip().upper(),
+                "uf_nome": p.get_uf_display(),
                 "gen": p.get_genero_display(),
                 "cls": p.renda_individual,
                 "clsf": p.renda_familiar,
                 "fx": _faixa_etaria(p.data_nascimento, hoje) if p.data_nascimento else None,
+                "idade": _idade_em(p.data_nascimento, hoje) if p.data_nascimento else None,
                 "cid": capitais_por_nome_lower.get((p.cidade or "").strip().lower(), ""),
                 "cats": sorted(cats_por_participante.get(p.id, ())),
                 "prof": str(p.profissao) if p.profissao_id else "",

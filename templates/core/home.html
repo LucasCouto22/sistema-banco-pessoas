@@ -78,6 +78,21 @@
     <p class="chart-note" id="vennFoot" style="text-align:center;margin-top:12px"></p>
   </div>
 </div>
+
+<div class="overlay" id="mVennPessoas">
+  <div class="modal">
+    <div class="modal-head"><h3 id="vennModalTitulo">Participantes</h3>
+      <button class="modal-x" type="button" onclick="QVModal.fechar('mVennPessoas')">×</button></div>
+    <div class="modal-body">
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Nome</th><th>Estado</th><th>Idade</th><th></th></tr></thead>
+        <tbody id="vennModalCorpo"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+<span id="url-pessoa-template" data-tpl="{% url 'pessoas:detalhe' 0 %}" style="display:none"></span>
+
 {{ dash_participantes_json|json_script:"dados-participantes" }}
 {{ categorias_json|json_script:"categorias-disponiveis" }}
 {{ faixas_renda_json|json_script:"faixas-renda-disponiveis" }}
@@ -112,6 +127,7 @@
 
 {% block scripts %}
 {% if dash_participantes_json %}
+<script src="{% static_v 'js/modal.js' %}" defer></script>
 <script src="{% static_v 'js/dashboard.js' %}" defer></script>
 {% endif %}
 {% endblock %}

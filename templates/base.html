@@ -26,7 +26,7 @@
     {% endif %}
 
     {% if request.user|tem_permissao:"participantes.ver" or request.user|tem_permissao:"projetos.ver" or request.user|tem_permissao:"participacoes.ver" %}
-    <details class="nav-group" open>
+    <details class="nav-group" {% if request.resolver_match.app_name == "pessoas" or request.resolver_match.app_name == "projetos" or request.resolver_match.app_name == "participacoes" %}open{% endif %}>
       <summary>Banco de Pessoas <span class="chev">▾</span></summary>
       <div class="nav-sub">
         {% if request.user|tem_permissao:"participantes.ver" %}

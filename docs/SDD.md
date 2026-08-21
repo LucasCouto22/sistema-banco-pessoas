@@ -4035,3 +4035,66 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     reaparece. `manage.py check` limpo (sem mudança de model/lógica de gravação).
   - **Segue sem commitar.** `git status` agora também inclui `templates/projetos/perfil_form.html`,
     `static/js/perfil_form.js` (novo).
+- **2026-08-21 (Diagrama de Venn: cada região vira clicável e abre modal listando as
+  pessoas daquela combinação)** — Usuário pediu, olhando "Sobreposição entre categorias" na
+  "Visão participantes": clicar num número do diagrama abre um modal com Nome/Estado/Idade
+  de cada participante daquela região, e um botão "Ver pessoa" (abre em nova aba) pro
+  cadastro de cada um.
+  1. **Dados novos por participante** — `core/dashviz.py::dados_participantes_dashboard`
+     só mandava campos compactos pro cliente (`uf`, `gen`, `cls`, `fx`, `cid`, `cats`,
+     `prof`) — nada que desse pra montar uma linha de tabela com nome. Acrescentei `id`
+     (pk do `Participante`, pro link "Ver pessoa"), `nome`, `idade` (exata, reaproveitando
+     `_idade_em()` que já existia pra calcular a faixa etária) e `uf_nome`
+     (`get_uf_display()`, nome por extenso do estado em vez da sigla). Mesmo gate de
+     permissão de sempre (`participantes.ver`, que já controla a "Visão participantes"
+     inteira) — não é dado novo exposto a quem não devia ver.
+  2. **Cada "bolha" do SVG virou clicável** — `static/js/dashboard.js::vennDot()` passou a
+     envolver o círculo+número num `<g style="cursor:pointer" onclick="QVDash.abrirVennModal(...)">`,
+     com o padrão de presença/ausência da região (ex.: `"110"` = nas duas primeiras
+     categorias selecionadas, fora da terceira) — mesmo formato de chave que
+     `renderVenn()` já usava internamente pra contar cada região, só que agora também vai
+     pro clique. `vennDadosAtual` (novo, guarda a lista usada no último desenho do Venn)
+     deixa `abrirVennModal()` refiltrar exatamente a mesma base sem recalcular nada do
+     zero.
+  3. **Modal novo** — `templates/core/home.html`: `<div class="overlay" id="mVennPessoas">`
+     com tabela Nome/Estado/Idade + coluna de ação, seguindo o mesmo padrão de modal já
+     usado no "Avaliar" de Participações (`QVModal.abrir`/`fechar`, `static/js/modal.js`
+     incluído agora em `home.html` — não estava lá antes por não ter modal nenhum nessa
+     tela). Cada linha tem um botão "Ver pessoa" (`target="_blank" rel="noopener"`)
+     apontando pro cadastro real do participante — o link é montado a partir de
+     `{% url 'pessoas:detalhe' 0 %}` embutido num `data-tpl` (JS troca o "/0/" final pelo
+     pk de verdade), pra não hardcodear o prefixo da URL no JS. Título do modal descreve a
+     região em português ("26 participante(s) — em Bebidas (fora de Alimentação e Banco)");
+     região sem ninguém mostra "Nenhum participante nessa combinação" em vez de tabela
+     vazia.
+  - Testado com Playwright, autenticado, contra dado real (só leitura): selecionei 3
+    categorias, cliquei na região com a maior contagem (26) e conferi o modal — título
+    certo, 26 linhas, primeira linha com nome/estado/idade corretos, botão "Ver pessoa"
+    com `href="/participantes/157/"` e `target="_blank"`; naveguei direto nessa URL depois
+    e confirmei que é a mesma pessoa (Henrique da Silva Santa Rita) — o link aponta pra
+    quem realmente devia. Zero erro de console. `manage.py check` limpo (sem mudança de
+    model).
+  - **Segue sem commitar.** `git status` agora também inclui `core/dashviz.py`,
+    `templates/core/home.html`, `static/js/dashboard.js`.
+- **2026-08-21 (Menu lateral: "Banco de Pessoas" também minimiza sozinho, igual "Configurações
+  de Formulários" já fazia)** — Usuário reportou (com screenshot mostrando os dois grupos
+  abertos ao mesmo tempo, na tela de Variáveis) que só um lado do acordeão funcionava:
+  entrar em Configurações de Formulários não fechava Banco de Pessoas, mas o contrário já
+  funcionava.
+  1. **Causa**: cada grupo do menu (`templates/base.html`) é um `<details>` nativo do HTML,
+     sem JS — `open` é decidido no servidor, comparando o app da página atual
+     (`request.resolver_match.app_name`) com os apps daquele grupo. "Dashboards" (`core`) e
+     "Configurações de Formulários" (`formularios`) já seguiam essa regra; "Banco de
+     Pessoas" tinha `open` **fixo** no HTML (sem condicional nenhuma) — por isso ficava
+     sempre aberto não importa a página, dando a impressão de que só ele "vencia" o
+     acordeão.
+  2. **Mesma regra nos três** — "Banco de Pessoas" passou a abrir só quando
+     `request.resolver_match.app_name` é `pessoas`, `projetos` ou `participacoes` (os três
+     apps que esse grupo lista) — mesmo padrão dos outros dois grupos, só com `or` a mais
+     porque esse grupo cobre 3 apps em vez de 1.
+  - Testado com Playwright, autenticado, navegando entre as 4 combinações possíveis:
+    Variáveis (só "Configurações de Formulários" aberto), Pessoas (só "Banco de Pessoas"),
+    Dashboard/home (só "Dashboards"), Termos (nenhum dos três — é fora de todos eles) — o
+    estado de cada grupo bateu certo em todas as quatro, nunca dois abertos ao mesmo tempo.
+    `manage.py check` limpo (mudança é só de template, sem lógica de view nem model).
+  - **Segue sem commitar.** `git status` agora também inclui `templates/base.html`.
