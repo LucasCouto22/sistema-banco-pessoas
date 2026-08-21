@@ -36,7 +36,7 @@ VariavelOpcaoFormSet = inlineformset_factory(
     Variavel,
     VariavelOpcao,
     fields=["valor"],
-    extra=3,
+    extra=0,
     can_delete=True,
     widgets={"valor": forms.TextInput(attrs={"placeholder": "Ex.: Diária"})},
 )

@@ -62,8 +62,8 @@ class Participacao(models.Model):
 
     participante = models.ForeignKey(Participante, on_delete=models.CASCADE, related_name="participacoes")
     perfil = models.ForeignKey(Perfil, on_delete=models.CASCADE, related_name="participacoes")
-    etapa = models.CharField(max_length=30, choices=Etapa.choices, default=Etapa.ANALISE_PERFIL)
-    status = models.CharField(max_length=20, choices=Status.choices, blank=True)
+    etapa = models.CharField(max_length=30, choices=Etapa.choices, default=Etapa.ANALISE_PERFIL, db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, blank=True, db_index=True)
     responsavel = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -74,6 +74,14 @@ class Participacao(models.Model):
     observacao = models.TextField(blank=True)
     etapa_atualizada_em = models.DateTimeField(auto_now=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    # Quando a pesquisa foi de fato aplicada com a pessoa — diferente de
+    # `criado_em` (quando o registro entrou no sistema, que pra lote legado
+    # pode ser muito depois da aplicação real). Tem `default=timezone.now`
+    # (não `auto_now_add`) de propósito: importação em lote precisa poder
+    # sobrescrever com a data real vinda da planilha na hora de criar; sem
+    # coluna preenchida, cai nesse mesmo default de "agora" — igual o
+    # comportamento de hoje.
+    data_aplicacao = models.DateTimeField(default=timezone.now, blank=True)
 
     class Meta:
         ordering = ["-criado_em"]

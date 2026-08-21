@@ -3696,3 +3696,240 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     lógica nova em `wizard_csv.py`, `Profissao` já existia).
   - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
     (mudança nova nessa rodada, além das anteriores).
+- **2026-08-20 (Nova coluna no lote: "Data e hora da aplicação" — aceita mês/ano solto e
+  vários formatos)** — Pedido do usuário: planilha de importação passa a ter uma coluna pra
+  registrar quando a pesquisa foi de fato aplicada com a pessoa (não quando o registro foi
+  importado pro sistema) — na maioria das vezes só vem mês/ano (ex.: "jul-2026"), mas pode
+  vir em formatos diferentes; em branco, mantém o comportamento de hoje (data/hora da
+  importação); mês/ano sozinho completa dia e hora com valor coringa.
+  1. **Campo novo em `Participacao`, separado de `criado_em`** — `participacoes/models.py`:
+     `data_aplicacao = DateTimeField(default=timezone.now, blank=True)`. Deliberadamente
+     **não** é o mesmo campo que `criado_em` (`auto_now_add`, sempre o instante real de
+     inserção no banco — continua existindo, intacto, pra quem quiser saber quando o
+     registro entrou no sistema de verdade): `criado_em` é "quando entrou no sistema",
+     `data_aplicacao` é "quando a pesquisa aconteceu de fato" — pra lote legado, os dois
+     podem ser bem diferentes (a pessoa participou há meses, o registro só está sendo
+     regularizado agora). Migração
+     `participacoes/migrations/0007_participacao_data_aplicacao.py`: `AddField` +
+     `RunPython` que preenche `data_aplicacao` das participações já existentes com o próprio
+     `criado_em` delas (melhor estimativa disponível pra quem já existia antes deste campo —
+     confirmado no banco real: todas as participações existentes ficaram com
+     `data_aplicacao == criado_em`, nenhuma virou "agora" pra todo mundo igual).
+  2. **Parser novo pra texto livre de data/hora** (`normalizar_data_aplicacao()`, nova em
+     `pessoas/validators.py`, ao lado de `normalizar_data_nascimento` que já existia) — tenta
+     nessa ordem: data+hora completa → só data → só mês/ano numérico ("07/2026",
+     "2026-07") → mês por nome/abreviação em português + ano ("jul-2026", "julho/2026",
+     "jul de 2026", "Mar-26" — regex `_REGEX_MES_NOME_ANO` + mapa `_MESES_PT` com todos os
+     meses abreviados e por extenso, aceitando com e sem acento). Só mês/ano (o formato mais
+     comum avisado pelo usuário) completa **dia 1 e meia-noite** como valor coringa — não dá
+     pra saber o dia/hora exatos só com mês/ano, então usa o primeiro instante do mês.
+     Não bate com nada conhecido (incluindo texto vazio): devolve `""`, que quem chama trata
+     como "não veio" — sem gerar erro nem travar a linha da planilha.
+  3. **Coluna nova no wizard** — `pessoas/wizard_csv.py`: `CAMPOS_CSV` ganhou várias
+     variações de cabeçalho ("data e hora da aplicação", "data da aplicação", "aplicação",
+     etc., com e sem acento) mapeando pra `data_aplicacao`; `_normalizar_campo()` chama
+     `normalizar_data_aplicacao()` pra esse campo; `CABECALHO_MODELO`/`LINHA_EXEMPLO` (a
+     planilha de exemplo baixável) ganharam a coluna "Data e hora da aplicação" com o
+     exemplo `"jul-2026"` (o formato mais comum, exatamente como o usuário descreveu);
+     `pessoas/views.py::wizard_modelo_csv` adicionou essa coluna na lista que força
+     formato de texto na célula (senão o Excel tentaria converter "jul-2026" pra uma data
+     serial ao abrir o arquivo).
+  4. **Consumo na hora de criar a participação** — `pessoas/views.py::wizard_revisao`: o
+     bloco que já fazia `Participacao.objects.get_or_create(...)` (criação de participação a
+     partir da linha da planilha) monta um `defaults_participacao` com `etapa`/`responsavel`
+     de sempre, e só acrescenta `data_aplicacao` (convertido pra `datetime` ciente de fuso via
+     `timezone.make_aware`) quando a coluna trouxe algo que bateu com o parser. Coluna vazia
+     ou texto que não bateu com nenhum formato: a chave nem entra em `defaults`, então o
+     próprio `default=timezone.now` do campo assume — exatamente "continua como está hoje",
+     pedido explicitamente pelo usuário. Não mexe em nenhum outro caminho de criação de
+     participação (`cadastro_publico`, `participacoes:nova` manual) — esses continuam com o
+     mesmo `timezone.now()` de sempre, sem coluna de planilha nenhuma envolvida.
+  - Testado: 15+ variações de texto (mês abreviado/por extenso com e sem acento, com "de",
+    mês/ano numérico em várias ordens, data completa, data+hora, texto vazio, texto inválido,
+    mês sem ano, mês inválido) contra `normalizar_data_aplicacao()` isoladamente — todas
+    resolveram certo. Depois, ponta a ponta: montei um `.xlsx` sintético com a coluna nova (3
+    linhas — mês/ano, data+hora completa, e vazia) e rodei `ler_xlsx()` de verdade, conferindo
+    os 3 resultados. Por fim, um teste completo dentro de uma transação com rollback forçado
+    (`transaction.atomic()` + `transaction.set_rollback(True)`) — criei projeto/perfil/
+    participante descartáveis, rodei a planilha sintética pelo parser e criei a `Participacao`
+    exatamente como `wizard_revisao` faz, conferindo que `data_aplicacao` ficou "01/07/2026
+    00:00 (America/Sao_Paulo)" (a partir de "jul-2026") enquanto `criado_em` ficou no
+    instante real do teste — os dois campos claramente diferentes, como esperado — e que nada
+    disso persistiu depois do rollback. `manage.py check` e `makemigrations --check --dry-run`
+    limpos.
+  - **Segue sem commitar.** `git status` agora também inclui `participacoes/models.py`,
+    `participacoes/migrations/0007_participacao_data_aplicacao.py` (novo), `pessoas/views.py`,
+    `pessoas/wizard_csv.py`, `pessoas/validators.py`. A migração já rodou (schema + backfill
+    de dado nas participações reais existentes — `data_aplicacao = criado_em`).
+- **2026-08-20 (Botão "Voltar" nas telas de detalhe/visualização)** — Pedido do usuário:
+  "Ver projeto", "Detalhes" da pessoa e outras telas de visualização ganham um botão
+  "Voltar" ao lado de "Editar", que volta pra página anterior de verdade — inclusive com
+  filtro aplicado, se a página anterior tinha um.
+  1. **`history.back()` em vez de link fixo** — `<button type="button" class="btn
+     btn-ghost" onclick="history.back()">‹ Voltar</button>`, adicionado antes do botão
+     "Editar" (fora de qualquer `{% if pode_editar %}` — navegação não é uma ação
+     permissionada) em `templates/pessoas/detalhe.html`, `templates/projetos/detalhe.html`,
+     `templates/projetos/perfil_detalhe.html`, `templates/participacoes/detalhe.html`,
+     `templates/termos/detalhe.html` (esse último não tinha um wrapper `<div style="flex">`
+     pro grupo de botões — adicionei um). Usar o histórico do navegador em vez de montar um
+     `href` fixo (ex.: sempre `pessoas:lista`) é o que resolve "voltar com filtro" de graça —
+     é literalmente a página anterior inteira, query string incluída, sem precisar guardar
+     nem repassar filtro nenhum entre view e template.
+  2. **`templates/formularios/formulario_visualizar.html` já tinha um "‹ Voltar"** — mas era
+     um link fixo pra `formularios:formularios_lista` (sem filtro, sempre a lista "limpa") e
+     vinha depois de "Editar", não antes. Trocado pro mesmo padrão `history.back()` e
+     reposicionado antes de "Editar", pra ficar consistente com as telas novas.
+  - Testado com Playwright, autenticado: fui pra lista de pessoas com filtro de busca
+    aplicado (`/participantes/?q=a`), cliquei em "Detalhes" de um participante, conferi o
+    botão "Voltar" (screenshot: aparece à esquerda de "Editar"/"Excluir", igual pedido),
+    cliquei nele e confirmei que a URL voltou a ser exatamente `/participantes/?q=a` (mesmo
+    filtro, não a lista sem filtro) — comparação exata de URL, não só visual. Também
+    screenshot da tela de detalhe de projeto confirmando o mesmo posicionamento. Todos os
+    templates tocados carregam sem erro de sintaxe (`get_template()` de cada um).
+  - **Segue sem commitar.** `git status` agora também inclui `templates/pessoas/detalhe.html`,
+    `templates/projetos/detalhe.html`, `templates/projetos/perfil_detalhe.html`,
+    `templates/participacoes/detalhe.html`, `templates/termos/detalhe.html`,
+    `templates/formularios/formulario_visualizar.html`.
+- **2026-08-21 (Auditoria dos filtros de lista: telefone sem normalização, busca não
+  cobria telefone/e-mail, índices novos nas colunas pesquisadas)** — Pedido do usuário:
+  conferir por que só o filtro por nome funcionava nas listas, garantir que telefone seja
+  sempre salvo só com dígitos (busca por `LIKE`), colocar índice nas colunas pesquisadas, e
+  testar todos os filtros de todas as páginas.
+  1. **Levantamento de todas as páginas com filtro** — só 3 telas têm filtro de verdade:
+     `pessoas/lista.html` (q, situação, classe social, UF, cadastro incompleto),
+     `participacoes/lista.html` (nome, projeto, etapa, status, nota) e `auditoria/lista.html`
+     (usuário, titular, ação, período). `projetos/lista.html` e as 3 listas de
+     `formularios` (formulários, categorias, variáveis) e `usuarios_lista.html` não têm
+     filtro nenhum hoje — nada quebrado ali, só não existe.
+  2. **Bug real encontrado: busca de Pessoas (`q`) nunca cobriu telefone nem e-mail** —
+     `pessoas/views.py::_participantes_filtrados` só buscava em `nome`/`cpf`/`codigo`
+     (`Q(...) | Q(...) | Q(...)`), apesar do placeholder do campo já prometer "nome, CPF ou
+     código" — nunca incluiu telefone/e-mail, então digitar um telefone ou e-mail na busca
+     sempre voltava vazio (ou, pior, um telefone que por acaso batesse como substring de um
+     CPF/código de outra pessoa). Corrigido: `Q(email__icontains=q)` entrou na busca; pra
+     telefone, só entra `Q(telefone__icontains=q_digitos)` quando o texto digitado tiver
+     pelo menos um dígito (`q_digitos = normalizar_telefone(q)`) — sem essa guarda, buscar só
+     por nome (sem dígito nenhum) bateria com `telefone__icontains=""`, que casa com
+     **qualquer** telefone e devolveria a base inteira (testado e confirmado esse risco antes
+     de proteger). Placeholder do campo (`templates/pessoas/lista.html`) atualizado pra
+     "nome, CPF, código, telefone ou e-mail".
+  3. **Telefone não era normalizado na gravação — só na comparação de duplicidade** —
+     `pessoas/matching.py` já tinha `normalizar_telefone()` (só dígitos), mas só usava pra
+     achar duplicata na hora do upsert (`encontrar_participante_existente`) — o valor
+     **gravado** no banco continuava com a pontuação que a pessoa/planilha trouxe
+     (confirmado nos dados reais: 34 dos 38 telefones cadastrados tinham espaço/parênteses/
+     hífen, só 4 já eram só dígitos). Corrigido: `normalizar_telefone()` mudou de
+     `matching.py` pra `pessoas/validators.py` (módulo compartilhado, ao lado de
+     `normalizar_cpf`/`normalizar_data_*`), `matching.py` agora importa de lá em vez de ter
+     a própria cópia; `ParticipanteForm.clean_telefone()` (novo, `pessoas/forms.py`) aplica
+     a normalização em todo cadastro que passa por formulário (cadastro manual, cadastro
+     público, wizard manual); `pessoas/wizard_csv.py::_normalizar_campo` ganhou o campo
+     `"telefone"` (aplica na leitura da planilha, cobre o lote legado que nunca passa por
+     `ParticipanteForm`). Migração
+     `pessoas/migrations/0012_alter_participante_cadastro_incompleto_and_more.py` inclui um
+     `RunPython` que normaliza todo telefone já cadastrado — conferido no banco real depois:
+     os 38 telefones existentes ficaram 100% só-dígitos (nenhum caractere de pontuação
+     sobrando).
+  4. **Índices novos nas colunas realmente pesquisadas** — `db_index=True` em:
+     `Participante.nome`, `.telefone`, `.email`, `.uf`, `.renda_individual`, `.situacao`,
+     `.cadastro_incompleto` (cpf/código já são `unique=True`, que no Postgres já cria índice
+     sozinho — não precisavam); `Participacao.etapa`, `.status`; `RegistroAcesso.titular`,
+     `.acao`, `.quando` (`usuario` já é FK, que Django indexa automaticamente). Mesma
+     migração de pessoas (índice + normalização de telefone juntos) e duas migrações novas
+     em `participacoes`/`auditoria` só com os índices.
+  - **O que já funcionava e não precisou de conserto** (importante deixar claro — nem tudo
+    que o usuário desconfiava estar quebrado estava): os dropdowns de situação/classe
+    social/UF/cadastro incompleto em Pessoas, e todos os filtros de Participações (nome,
+    projeto, etapa, status, nota/sem_avaliação) e Auditoria (usuário, titular, ação,
+    período) já filtravam certo — conferido um por um contra dado real (ver testes abaixo).
+    O filtro "nome" de Participações continua só por nome (não por telefone/e-mail) porque é
+    isso que o campo já diz que faz (`placeholder="Buscar por nome…"`) — não é um filtro
+    "genérico" quebrado como o `q` de Pessoas era; se o usuário quiser esse também cobrindo
+    telefone/e-mail do participante, é só pedir.
+  - Testado direto contra dado real (só leitura nos testes de filtro que já existiam — a
+    única escrita real foi a migração de normalização, que já é o próprio conserto): (1)
+    busca por telefone com pontuação diferente da salva (`(85) 99994-9633` batendo com
+    `85999949633`) achou exatamente o participante certo, tanto chamando
+    `_participantes_filtrados()` direto quanto pelo navegador via Playwright (autenticado,
+    `/participantes/?q=...`, 1 resultado); busca por pedaço de e-mail achou certo; busca só
+    por nome (sem dígito) continuou achando só quem bate o nome, **não** a base inteira
+    (conferido explicitamente — é a guarda que existe pra evitar a armadilha do
+    `telefone__icontains=""`); dropdowns de situação (`PENDENTE` → 37) e UF (`SP` → 9)
+    testados no navegador de verdade, contadores batendo. (2) Participações: filtro por
+    nome, por projeto, por etapa (`PAGO` → 38 de 39, `ANALISE_PERFIL` não achou o mesmo
+    registro), por status, e "sem avaliação" — todos conferidos contra dado real, todos
+    corretos (não tinha nenhuma `Avaliacao` no banco pra testar o limiar de nota mínima
+    numérico, mas o código é uma comparação direta, risco baixo). (3) Auditoria: usuário,
+    pedaço do titular, ação exata, e intervalo de data (uma data futura corretamente não
+    achou nada) — todos corretos. `manage.py check` e `makemigrations --check --dry-run`
+    limpos.
+  - **Segue sem commitar.** `git status` agora também inclui `auditoria/models.py`,
+    `participacoes/models.py`, `pessoas/forms.py`, `pessoas/matching.py`,
+    `pessoas/models.py`, `pessoas/validators.py`, `pessoas/views.py`, `pessoas/wizard_csv.py`,
+    `templates/pessoas/lista.html`,
+    `auditoria/migrations/0003_alter_registroacesso_acao_and_more.py` (novo),
+    `participacoes/migrations/0008_alter_participacao_etapa_alter_participacao_status.py`
+    (novo), `pessoas/migrations/0012_alter_participante_cadastro_incompleto_and_more.py`
+    (novo, inclui a normalização retroativa dos 38 telefones reais).
+- **2026-08-21 (Opções de resposta de Variável: botão "Adicionar opção" em vez de 3 campos
+  fixos; ordem alfabética com "Outro"/"Outra" sempre por último)** — Usuário mostrou a tela
+  de editar uma variável de múltipla escolha com várias opções e pediu duas mudanças: (1)
+  em vez do formset sempre terminar com 3 campos em branco pra opção nova, um botão
+  "Adicionar opção" que abre um campo novo; (2) opções de tipo lista fechada sempre em
+  ordem alfabética, com "Outro"/"Outra" sempre por último.
+  1. **Formset deixou de nascer com 3 campos em branco** — `VariavelOpcaoFormSet`
+     (`formularios/forms.py`) tinha `extra=3`; virou `extra=0`. Criar uma variável nova (ou
+     editar uma sem adicionar opção) começa com a lista vazia, só o botão.
+  2. **Botão "+ Adicionar opção" (novo)** — `templates/formularios/variavel_form.html`:
+     lista de opções ganhou um container (`id="opcoes-lista"`) pra JS conseguir apontar onde
+     inserir a linha nova, e um `<template id="opcao-form-template">` escondido com
+     `formset.empty_form` (o form vazio do Django, com `__prefix__` no lugar do índice — é o
+     mecanismo padrão do framework pra formset dinâmico, não tem equivalente pronto em JS).
+     `static/js/variavel_opcoes.js` (novo): ao clicar, clona o template, troca `__prefix__`
+     pelo índice atual (lido de `#id_opcoes-TOTAL_FORMS` — o prefixo do formset é `opcoes`,
+     que vem do `related_name` do FK em `VariavelOpcao.variavel`, não o `"form"` padrão que
+     eu tinha assumido de início e corrigi depois de testar), anexa a linha e incrementa
+     `TOTAL_FORMS`. "Remover" continua sendo o mesmo checkbox `DELETE` de sempre, tanto pra
+     linha já salva quanto pra linha recém-adicionada.
+  3. **Ordem alfabética com "Outro"/"Outra" sempre por último** — `ordem`
+     (`VariavelOpcao.ordem`) nunca foi editável por ninguém (não existe UI pra isso); só
+     refletia a ordem de preenchimento/importação original — por isso a tela mostrava
+     "Antarctica, Coca-Cola, Antarctica Pilsen, Pepsi, Brahma..." fora de ordem. Nova função
+     `_reordenar_opcoes_alfabetico()` (`formularios/views.py`), chamada no fim de
+     `_salvar_variavel_com_opcoes()` (toda criação/edição de variável): reordena
+     `variavel.opcoes.all()` por `valor.strip().lower()`, com uma chave `(eh_outro,
+     valor_normalizado)` que empurra qualquer opção cujo valor normalizado seja "outro" ou
+     "outra" pro final, não importa a posição alfabética real — e regrava `ordem` só de quem
+     mudou de posição. Como `variavel.opcoes.all()` já é usado tanto na tela de edição
+     quanto em `formularios/respostas.py::_campo_para_variavel` (as opções que o
+     participante vê de verdade num select/radio/checkbox), essa é a única mudança
+     necessária pra alfabetizar nos dois lugares — nenhuma mudança em `respostas.py`.
+  4. **Migração de dado pra quem já tinha opção cadastrada** —
+     `formularios/migrations/0008_reordena_opcoes_alfabetico.py`: mesma lógica de
+     reordenação, rodada uma vez em todas as `Variavel` existentes (a variável do
+     screenshot do usuário incluída). Sem isso, o conserto só valeria pra quem editasse e
+     salvasse a variável de novo.
+  - Testado: (1) a variável real do screenshot ("Quais marcas de bebidas você costuma
+    consumir atualmente?") — depois da migração, conferido no banco e na tela de edição via
+    Playwright que a ordem ficou "3 Corações, Ambev, Antarctica, Antarctica, Antarctica
+    Pilsen, Antarctica Pilsen, Brahma, Brahma, Coca-Cola, Corona, Heineken, Nespresso,
+    Pepsi, Red Bull, Stella Artois, Outro" — alfabética, Outro por último (as duplicatas
+    "Antarctica"/"Antarctica Pilsen"/"Brahma" já existiam nos dados antes desta mudança —
+    não fazia parte do pedido remover duplicata, só ordenar). (2) Botão "Adicionar opção"
+    testado ao vivo via Playwright, tanto na tela de criar variável nova (0 linhas → 2
+    linhas depois de 2 cliques, `TOTAL_FORMS` batendo) quanto editando a variável real (16
+    → 18 linhas); tela de "Nova variável" com tipo "Seleção múltipla" selecionado mostra só
+    o botão, sem nenhum campo em branco (screenshot conferido). (3) Ciclo completo de
+    salvar+reordenar testado numa variável descartável dentro de uma transação com rollback
+    forçado (`transaction.atomic()` + `transaction.set_rollback(True)`, nunca tocou dado
+    real): submeti opções fora de ordem e com variação de maiúscula (`"Zebra", "outro",
+    "Abacaxi", "Manga", "ABACATE"`) através de `_salvar_variavel_com_opcoes()` de verdade —
+    saiu `ABACATE, Abacaxi, Manga, Zebra, outro` (alfabética case-insensitive, "outro"
+    minúsculo reconhecido e empurrado pro fim mesmo tendo sido submetido em segundo lugar);
+    confirmado que nada da variável de teste sobrou no banco depois do rollback. `manage.py
+    check` e `makemigrations --check --dry-run` limpos.
+  - **Segue sem commitar.** `git status` agora também inclui `formularios/forms.py`,
+    `formularios/views.py`, `templates/formularios/variavel_form.html`,
+    `static/js/variavel_opcoes.js` (novo),
+    `formularios/migrations/0008_reordena_opcoes_alfabetico.py` (novo, já rodou —
+    reordenou toda `VariavelOpcao` já cadastrada no banco real).

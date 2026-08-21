@@ -49,14 +49,36 @@ def _salvar_variavel_com_opcoes(request, form, formset):
         variavel.save()
 
         opcoes = formset.save(commit=False)
-        for indice, opcao in enumerate(opcoes):
+        for opcao in opcoes:
             opcao.variavel = variavel
-            opcao.ordem = indice
             opcao.save()
         for excluida in formset.deleted_objects:
             excluida.delete()
 
+        _reordenar_opcoes_alfabetico(variavel)
+
     return variavel
+
+
+def _reordenar_opcoes_alfabetico(variavel):
+    """Opções de resposta (select/radio/múltipla escolha) sempre em ordem
+    alfabética — "Outro"/"Outra" (case-insensitive, com ou sem espaço nas
+    pontas) sempre por último, mesmo quando isso quebra a ordem alfabética
+    estrita: é a opção de escape do questionário, não uma marca/valor de
+    verdade, então faz sentido ficar sempre separada no fim da lista. Roda
+    a cada salvamento (não só na criação) pra cobrir edição de opção
+    existente que mudou de nome e trocaria de posição."""
+
+    def chave_ordenacao(opcao):
+        valor_normalizado = opcao.valor.strip().lower()
+        eh_outro = valor_normalizado in ("outro", "outra")
+        return (eh_outro, valor_normalizado)
+
+    opcoes_ordenadas = sorted(variavel.opcoes.all(), key=chave_ordenacao)
+    for indice, opcao in enumerate(opcoes_ordenadas):
+        if opcao.ordem != indice:
+            opcao.ordem = indice
+            opcao.save(update_fields=["ordem"])
 
 
 @login_required

@@ -10,7 +10,6 @@ veio preenchido ou não bateu com ninguém. Isso evita fundir por engano duas
 pessoas que só dividem um telefone de família, por exemplo — decisão
 confirmada com o usuário."""
 
-import re
 from datetime import date
 
 from django.core.exceptions import ValidationError
@@ -18,7 +17,7 @@ from django.db.models import Value
 from django.db.models.functions import Replace
 
 from .models import Participante
-from .validators import normalizar_cpf, normalizar_data_nascimento, validar_cpf
+from .validators import normalizar_cpf, normalizar_data_nascimento, normalizar_telefone, validar_cpf
 
 # Data usada quando um lote legado não traz data de nascimento — bem no
 # passado de propósito, pra ficar óbvio num relatório/dashboard que é um
@@ -76,10 +75,6 @@ CAMPOS_ATUALIZAVEIS = [
     "forma_pagamento",
     "chave_pix",
 ]
-
-
-def normalizar_telefone(valor):
-    return re.sub(r"\D", "", valor or "")
 
 
 def _sem_pontuacao(campo):

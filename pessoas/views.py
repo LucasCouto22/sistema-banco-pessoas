@@ -1,4 +1,5 @@
 import io
+from datetime import datetime
 from types import SimpleNamespace
 
 from django.contrib import messages
@@ -46,7 +47,7 @@ from .matching import (
     restaurar_campos_vazios,
 )
 from .models import Participante
-from .validators import normalizar_cpf
+from .validators import normalizar_cpf, normalizar_telefone
 from .wizard_csv import (
     CABECALHO_MODELO,
     LINHA_EXEMPLO,
@@ -112,9 +113,16 @@ def _participantes_filtrados(request):
 
     participantes = Participante.objects.select_related("consentimento_versao")
     if q:
-        participantes = participantes.filter(
-            Q(nome__icontains=q) | Q(cpf__icontains=q) | Q(codigo__icontains=q)
-        )
+        # `telefone` é sempre guardado só com dígitos (`ParticipanteForm.clean_telefone`/
+        # `wizard_csv.py`) — busca por telefone só entra na consulta quando o texto
+        # digitado tiver algum dígito, senão um "q" só de letras (buscando por nome)
+        # bateria com `telefone__icontains=""`, que combina com qualquer telefone e
+        # devolveria a base inteira.
+        condicoes = Q(nome__icontains=q) | Q(cpf__icontains=q) | Q(codigo__icontains=q) | Q(email__icontains=q)
+        q_digitos = normalizar_telefone(q)
+        if q_digitos:
+            condicoes |= Q(telefone__icontains=q_digitos)
+        participantes = participantes.filter(condicoes)
     if situacao:
         participantes = participantes.filter(situacao=situacao)
     if renda_individual:
@@ -536,7 +544,7 @@ def wizard_modelo_csv(request):
     ws.append(linha_exemplo)
     # CPF, CEP e telefone ficam como texto — senão o Excel trata como número
     # e come o zero à esquerda (ex.: CEP "01000-000" viraria "1000-000").
-    for coluna_texto in ("CPF", "CEP", "Telefone", "Data de nascimento"):
+    for coluna_texto in ("CPF", "CEP", "Telefone", "Data de nascimento", "Data e hora da aplicação"):
         col_idx = CABECALHO_MODELO.index(coluna_texto) + 1
         ws.cell(row=2, column=col_idx).number_format = "@"
 
@@ -830,10 +838,23 @@ def wizard_revisao(request):
                 # reimportar um CPF/e-mail que já tem participação não
                 # regride a etapa de quem já avançou mais no funil.
                 etapa_inicial = Participacao.Etapa.PAGO if legado else Participacao.Etapa.ANALISE_PERFIL
+                defaults_participacao = {"etapa": etapa_inicial, "responsavel": request.user}
+                # Coluna "Data e hora da aplicação" da planilha — já veio
+                # normalizada pra ISO em `_normalizar_campo`/
+                # `normalizar_data_aplicacao` (aceita só mês/ano, data
+                # completa, ou data+hora). Vazia (não veio ou não bateu com
+                # nenhum formato conhecido): não entra em `defaults`, então
+                # `Participacao.data_aplicacao` cai no próprio padrão do
+                # model (`timezone.now()`) — igual o comportamento de hoje.
+                data_aplicacao_texto = dados.get("data_aplicacao")
+                if data_aplicacao_texto:
+                    defaults_participacao["data_aplicacao"] = timezone.make_aware(
+                        datetime.fromisoformat(data_aplicacao_texto)
+                    )
                 participacao, _criada = Participacao.objects.get_or_create(
                     participante=participante,
                     perfil=perfil,
-                    defaults={"etapa": etapa_inicial, "responsavel": request.user},
+                    defaults=defaults_participacao,
                 )
                 for formulario, form_dinamico in forms_dinamicos:
                     RespostaFormulario.objects.update_or_create(

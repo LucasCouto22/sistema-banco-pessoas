@@ -7,6 +7,7 @@
   <div><h2>{{ perfil.nome }} {% if perfil.tipo == "RESPOSTAS" %}<span class="badge b-violet">Respostas</span>{% else %}<span class="badge b-blue">Captação</span>{% endif %}</h2>
     <p class="sub">{{ perfil.projeto.nome }}{% for f in perfil.formularios_ordenados %} · {{ f.nome }}{% endfor %}</p></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
     {% if pode_editar %}
     <button type="button" class="btn btn-ghost" data-copiar="{{ perfil.link_cadastro }}">Copiar link de cadastro</button>
     <a class="btn btn-ghost" href="{% url 'projetos:perfil_editar' perfil.pk %}">Editar</a>

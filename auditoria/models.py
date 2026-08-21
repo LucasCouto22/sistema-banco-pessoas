@@ -11,12 +11,12 @@ class RegistroAcesso(models.Model):
         PAGAMENTO = "PAGAMENTO", "Pagamento"
         ALTERACAO = "ALTERACAO", "Alteração"
 
-    quando = models.DateTimeField(auto_now_add=True)
+    quando = models.DateTimeField(auto_now_add=True, db_index=True)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="registros_auditoria"
     )
-    titular = models.CharField(max_length=20, help_text="Código do participante (titular dos dados)")
-    acao = models.CharField(max_length=20, choices=Acao.choices)
+    titular = models.CharField(max_length=20, help_text="Código do participante (titular dos dados)", db_index=True)
+    acao = models.CharField(max_length=20, choices=Acao.choices, db_index=True)
     detalhe = models.CharField(max_length=255, blank=True)
 
     class Meta:

@@ -5,9 +5,12 @@
 {% block conteudo %}
 <div class="view-title">
   <div><h2>{{ termo.nome }}</h2><p class="sub">{{ termo.get_tipo_display }}</p></div>
-  {% if request.user|tem_permissao:"termos.gerenciar" %}
-  <a class="btn btn-primary" href="{% url 'termos:nova_versao' termo.pk %}">＋ Criar nova versão</a>
-  {% endif %}
+  <div style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
+    {% if request.user|tem_permissao:"termos.gerenciar" %}
+    <a class="btn btn-primary" href="{% url 'termos:nova_versao' termo.pk %}">＋ Criar nova versão</a>
+    {% endif %}
+  </div>
 </div>
 
 <div class="termo-grid" style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start">

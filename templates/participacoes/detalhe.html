@@ -7,6 +7,7 @@
   <div><h2>{{ participacao.participante.nome }}</h2>
     <p class="sub">{{ participacao.perfil.projeto.nome }} · {{ participacao.perfil.nome }} — <span class="badge {{ participacao.etapa_badge }}">{{ participacao.get_etapa_display }}</span></p></div>
   <div style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
     {% if pode_avaliar %}
     <button class="btn btn-ghost" type="button" onclick="QVModal.abrir('mAvaliar')">{% if avaliacao %}Editar avaliação{% else %}Avaliar{% endif %}</button>
     {% endif %}

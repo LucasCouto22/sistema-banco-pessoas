@@ -34,21 +34,35 @@
     </fieldset>
     <fieldset id="bloco-opcoes">
       <legend>Opções de resposta</legend>
-      <p class="hint" style="margin-bottom:10px">Só aparece pra tipos de resposta com lista fechada (seleção única, radio, múltipla escolha).</p>
+      <p class="hint" style="margin-bottom:10px">Só aparece pra tipos de resposta com lista fechada (seleção única, radio, múltipla escolha). Salva sempre em ordem alfabética — "Outro"/"Outra" fica por último.</p>
       {{ formset.management_form }}
-      {% for opcao_form in formset %}
-      <div class="form-row" style="grid-template-columns:1fr auto">
-        <div class="field" style="margin-bottom:0">
-          {% if forloop.first %}<label>Opção</label>{% endif %}
-          {{ opcao_form.valor }}
-          {{ opcao_form.id }}
-          {% for erro in opcao_form.valor.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+      <div id="opcoes-lista">
+        {% for opcao_form in formset %}
+        <div class="form-row opcao-row" style="grid-template-columns:1fr auto">
+          <div class="field" style="margin-bottom:0">
+            {% if forloop.first %}<label>Opção</label>{% endif %}
+            {{ opcao_form.valor }}
+            {{ opcao_form.id }}
+            {% for erro in opcao_form.valor.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="check" style="align-self:center;{% if forloop.first %}margin-top:22px{% endif %}">
+            {{ opcao_form.DELETE }}<label for="{{ opcao_form.DELETE.id_for_label }}">Remover</label>
+          </div>
         </div>
-        <div class="check" style="align-self:center;{% if forloop.first %}margin-top:22px{% endif %}">
-          {{ opcao_form.DELETE }}<label for="{{ opcao_form.DELETE.id_for_label }}">Remover</label>
-        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-add-opcao" style="margin-top:10px">+ Adicionar opção</button>
+      <template id="opcao-form-template">
+        <div class="form-row opcao-row" style="grid-template-columns:1fr auto">
+          <div class="field" style="margin-bottom:0">
+            {{ formset.empty_form.valor }}
+            {{ formset.empty_form.id }}
+          </div>
+          <div class="check" style="align-self:center">
+            {{ formset.empty_form.DELETE }}<label for="{{ formset.empty_form.DELETE.id_for_label }}">Remover</label>
+          </div>
+        </div>
+      </template>
     </fieldset>
     <div style="display:flex;justify-content:flex-end;gap:10px">
       <a class="btn btn-ghost" href="{% url 'formularios:variaveis_lista' %}">Cancelar</a>
@@ -61,4 +75,5 @@
 
 {% block scripts %}
 <script src="{% static_v 'js/variavel_form.js' %}" defer></script>
+<script src="{% static_v 'js/variavel_opcoes.js' %}" defer></script>
 {% endblock %}

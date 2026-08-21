@@ -6,6 +6,7 @@
 <div class="view-title">
   <div><h2>{{ projeto.nome }}</h2><p class="sub">{{ projeto.cliente }}{% if projeto.marca %} — {{ projeto.marca }}{% endif %}{% if projeto.metodologia %} · {{ projeto.metodologia }}{% endif %}{% if projeto.categoria %} · {{ projeto.categoria.nome }}{% endif %}</p></div>
   <div style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
     {% if pode_editar %}
     <a class="btn btn-ghost" href="{% url 'projetos:editar' projeto.pk %}">Editar</a>
     {% endif %}

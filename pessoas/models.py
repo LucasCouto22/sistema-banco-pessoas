@@ -150,7 +150,7 @@ class Participante(models.Model):
         TRANSFERENCIA = "TRANSFERENCIA", "Transferência"
 
     codigo = models.CharField(max_length=20, unique=True, editable=False)
-    nome = models.CharField(max_length=150)
+    nome = models.CharField(max_length=150, db_index=True)
     # `null=True` (mas sem `blank=True`) de propósito: os formulários normais
     # continuam exigindo CPF (a obrigatoriedade neles depende de `blank`, não
     # de `null`) — só o import de lote legado, que grava direto no model sem
@@ -167,11 +167,11 @@ class Participante(models.Model):
     # antes dessa mudança — sem precisar de uma migração de dado inventando
     # valor pra gente que nunca respondeu essas perguntas.
     raca = models.CharField(max_length=20, choices=Raca.choices, null=True)
-    telefone = models.CharField(max_length=20)
-    email = models.EmailField()
+    telefone = models.CharField(max_length=20, db_index=True)
+    email = models.EmailField(db_index=True)
     cep = models.CharField(max_length=9)
     bairro = models.CharField(max_length=100)
-    uf = models.CharField(max_length=2, choices=UF.choices)
+    uf = models.CharField(max_length=2, choices=UF.choices, db_index=True)
     cidade = models.CharField(max_length=100)
     regiao = models.CharField(max_length=20, choices=Regiao.choices, null=True)
     escolaridade = models.CharField(max_length=20, choices=Escolaridade.choices)
@@ -186,12 +186,13 @@ class Participante(models.Model):
     # Faixa de renda passa a ser 2 perguntas separadas (a planilha trata como
     # duas colunas distintas, P e Q) — mesmo código de classe (A-E), rótulo
     # diferente pra cada uma.
-    renda_individual = models.CharField(max_length=1, choices=FaixaRendaIndividual.choices, null=True)
+    renda_individual = models.CharField(max_length=1, choices=FaixaRendaIndividual.choices, null=True, db_index=True)
     renda_familiar = models.CharField(max_length=1, choices=FaixaRendaFamiliar.choices, null=True)
-    situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.PENDENTE)
+    situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.PENDENTE, db_index=True)
 
     cadastro_incompleto = models.BooleanField(
         default=False,
+        db_index=True,
         help_text=(
             "Marcado automaticamente quando o cadastro veio de um lote legado sem "
             "telefone, data de nascimento, UF, cidade ou CPF — algum desses campos "

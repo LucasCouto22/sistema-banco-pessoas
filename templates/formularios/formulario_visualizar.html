@@ -7,10 +7,10 @@
   <div><h2>{{ formulario.nome }}</h2>
     <p class="sub">Prévia de como as perguntas aparecem pra quem for responder</p></div>
   <div style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
     {% if request.user|tem_permissao:"formularios.gerenciar" %}
     <a class="btn btn-ghost" href="{% url 'formularios:formulario_editar' formulario.pk %}">Editar</a>
     {% endif %}
-    <a class="btn btn-ghost" href="{% url 'formularios:formularios_lista' %}">‹ Voltar</a>
   </div>
 </div>
 <div class="panel"><div style="padding:20px 22px">

@@ -7,7 +7,7 @@ import re
 from openpyxl import load_workbook
 
 from .models import Profissao
-from .validators import normalizar_data_nascimento
+from .validators import normalizar_data_aplicacao, normalizar_data_nascimento, normalizar_telefone
 
 CAMPOS_CSV = {
     "nome completo": "nome",
@@ -44,6 +44,16 @@ CAMPOS_CSV = {
     "faixa de renda": "renda_individual",
     "renda familiar": "renda_familiar",
     "renda_familiar": "renda_familiar",
+    "data e hora da aplicacao": "data_aplicacao",
+    "data e hora da aplicação": "data_aplicacao",
+    "data da aplicacao": "data_aplicacao",
+    "data da aplicação": "data_aplicacao",
+    "data/hora da aplicacao": "data_aplicacao",
+    "data/hora da aplicação": "data_aplicacao",
+    "data aplicacao": "data_aplicacao",
+    "data aplicação": "data_aplicacao",
+    "aplicacao": "data_aplicacao",
+    "aplicação": "data_aplicacao",
 }
 
 GENERO_MAP = {
@@ -240,6 +250,7 @@ CABECALHO_MODELO = [
     "Estado civil",
     "Renda individual",
     "Renda familiar",
+    "Data e hora da aplicação",
 ]
 
 LINHA_EXEMPLO = [
@@ -262,6 +273,7 @@ LINHA_EXEMPLO = [
     "Solteiro(a)",
     "Classe B",
     "Classe B",
+    "jul-2026",
 ]
 
 
@@ -329,6 +341,10 @@ def _normalizar_campo(campo, valor, mapa_profissoes=None):
         return _profissao_por_nome_ou_criar(valor, mapa_profissoes)
     if campo == "data_nascimento":
         return normalizar_data_nascimento(valor)
+    if campo == "data_aplicacao":
+        return normalizar_data_aplicacao(valor)
+    if campo == "telefone":
+        return normalizar_telefone(valor)
     if campo in ("renda_individual", "renda_familiar"):
         codigo = _mapear(valor, RENDA_MAP)
         if codigo:

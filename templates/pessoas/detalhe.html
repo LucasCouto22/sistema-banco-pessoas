@@ -6,6 +6,7 @@
 <div class="view-title">
   <div><h2>{{ participante.nome }}</h2><p class="sub mono">{{ participante.codigo }}</p></div>
   <div style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost" onclick="history.back()">‹ Voltar</button>
     {% if pode_editar %}
     <a class="btn btn-ghost" href="{% url 'pessoas:editar' participante.pk %}">Editar</a>
     {% endif %}

@@ -5,6 +5,7 @@ from core.form_utils import personalizar_opcoes_vazias
 from projetos.models import Perfil
 
 from .models import Participante, Profissao
+from .validators import normalizar_telefone
 
 
 class SelectProfissao(forms.Select):
@@ -113,6 +114,14 @@ class ParticipanteForm(forms.ModelForm):
         else:
             self.fields["cidade"].widget.choices = [("", "Selecione o estado primeiro")]
         personalizar_opcoes_vazias(self)
+
+    def clean_telefone(self):
+        # Guarda só dígitos — sem isso, a mesma pessoa cadastrada com
+        # "(11) 99999-8888" numa tela e "11999998888" noutra vira dois
+        # jeitos diferentes de representar o mesmo telefone, e a busca por
+        # `icontains` deixa de achar quem foi cadastrado com pontuação
+        # diferente da digitada na busca.
+        return normalizar_telefone(self.cleaned_data.get("telefone"))
 
 
 class ParticipanteWizardForm(ParticipanteForm):
