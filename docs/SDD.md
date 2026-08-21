@@ -3933,3 +3933,16 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     `static/js/variavel_opcoes.js` (novo),
     `formularios/migrations/0008_reordena_opcoes_alfabetico.py` (novo, já rodou —
     reordenou toda `VariavelOpcao` já cadastrada no banco real).
+- **2026-08-21 (Estado civil no lote: forma feminina sem sufixo não era reconhecida)** —
+  Mesma classe de bug já corrigida pra Raça/cor nesta sessão, dessa vez em Estado civil:
+  usuário reportou que "Solteira" não preenchia o campo na importação, só "Solteiro"
+  reconhecia. `ESTADO_CIVIL_MAP` (`pessoas/wizard_csv.py`) tinha a forma masculina e a
+  forma com sufixo "(a)" pra cada estado civil, mas não a forma feminina pura sem sufixo —
+  adicionadas "solteira", "casada", "separada", "divorciada", "viuva"/"viúva" (união
+  estável já não tem variação de gênero). Testado isoladamente via shell com todas as
+  formas (feminino, masculino, com "(a)") — todas mapeando pro código certo agora.
+  Conferido no banco real: 0 participantes atualmente com `estado_civil` vazio, então não
+  havia ninguém real pra corrigir retroativamente desta vez — o conserto vale só pra
+  próxima importação. `manage.py check` limpo (sem mudança de model).
+  - **Segue sem commitar.** `git status` agora também inclui `pessoas/wizard_csv.py`
+    (mudança nova nessa rodada, além das anteriores).
