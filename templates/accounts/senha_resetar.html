@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static_v %}
+{% block titulo %}Esqueci minha senha · Qualy Vortice{% endblock %}
+{% block conteudo_publico %}
+<section id="viewLogin">
+  <div class="login-card">
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
+    <p class="login-sub">Informe o e-mail da sua conta — mandamos um link para você escolher uma
+      senha nova.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.email.id_for_label }}">E-mail</label>
+        {{ form.email }}
+        {% for erro in form.email.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Enviar link de redefinição</button>
+    </form>
+
+    <div class="login-lgpd">
+      <a href="{% url 'accounts:login' %}">‹ Voltar para o login</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

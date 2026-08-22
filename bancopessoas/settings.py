@@ -13,8 +13,18 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Só serve pra desenvolvimento local — lê `.env` (se existir) e joga o
+# conteúdo em `os.environ` antes de qualquer `os.environ.get(...)` abaixo.
+# Esse arquivo é local e **nunca é commitado** (está no `.gitignore`); no
+# Railway (produção) ele nem existe — lá as variáveis vêm de verdade da aba
+# Variables do próprio Railway, e `load_dotenv()` simplesmente não encontra
+# nada pra carregar (não dá erro, só não faz nada).
+load_dotenv(BASE_DIR / '.env')
 
 # Railway define essa variável automaticamente em todo serviço publicado —
 # é o jeito mais simples de saber "isso está rodando em produção ou não"
@@ -73,6 +83,7 @@ INSTALLED_APPS = [
     'auditoria',
     'termos',
     'core',
+    'anymail',
 ]
 
 AUTH_USER_MODEL = 'accounts.Usuario'
@@ -189,11 +200,33 @@ LOGIN_REDIRECT_URL = 'core:home'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 
-# Email
+# Email — Mailgun via django-anymail (https://anymail.dev)
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+#
+# `MAILGUN_API_KEY` nunca fica hardcoded aqui — configura como variável de
+# ambiente (aba Variables no Railway pra produção; `set MAILGUN_API_KEY=...`
+# no PowerShell pra testar localmente). Sem ela definida, cai pro backend de
+# console (imprime o e-mail no terminal em vez de tentar mandar de verdade)
+# — evita que o site inteiro quebre num ambiente novo que ainda não tem
+# Mailgun configurado.
+#
+# O domínio abaixo (`MAILGUN_SENDER_DOMAIN`) é um domínio sandbox do
+# Mailgun — só manda e-mail pros destinatários autorizados manualmente no
+# painel do Mailgun (Sending → Domain settings → Authorized Recipients).
+# Pra mandar pra qualquer pessoa de verdade (produção), troca por um domínio
+# próprio verificado no Mailgun e ajusta `MAILGUN_SENDER_DOMAIN` via
+# variável de ambiente — não precisa mexer aqui.
+if os.environ.get('MAILGUN_API_KEY'):
+    EMAIL_BACKEND = 'anymail.backends.mailgun.EmailBackend'
+    ANYMAIL = {
+        'MAILGUN_API_KEY': os.environ.get('MAILGUN_API_KEY'),
+        'MAILGUN_SENDER_DOMAIN': os.environ.get(
+            'MAILGUN_SENDER_DOMAIN', 'sandbox611a8120974d4ef581a20f96e8609b53.mailgun.org'
+        ),
+    }
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL', 'Qualy Vortice <postmaster@sandbox611a8120974d4ef581a20f96e8609b53.mailgun.org>'
+)

@@ -1,0 +1,12 @@
+Olá, {{ usuario.get_full_name|default:usuario.username }}.
+
+Uma conta foi criada para você no Qualy Vortice, com o nível de acesso "{{ usuario.get_nivel_display }}".
+
+Usuário: {{ usuario.username }}
+
+A senha provisória foi combinada diretamente com quem criou seu acesso. No primeiro login,
+recomendamos trocá-la por uma senha só sua em "Meu perfil" — ou, se preferir, use "Esqueci minha
+senha" na tela de login para escolher uma agora:
+{{ protocol }}://{{ domain }}{% url 'accounts:login' %}
+
+— Qualy Vortice

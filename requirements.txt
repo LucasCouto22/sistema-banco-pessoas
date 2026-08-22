@@ -1,11 +1,14 @@
 asgiref==3.12.1
 Django==6.1
+django-anymail==15.1
 gunicorn==26.0.0
 openpyxl==3.1.5
 packaging==26.3
 psycopg==3.3.4
 psycopg-binary==3.3.4
+python-dotenv==1.2.3
 reportlab==5.0.0
+requests==2.34.2
 sqlparse==0.5.5
 tzdata==2026.3
 whitenoise==6.12.0

@@ -1,0 +1,23 @@
+{% extends "accounts/email/_base_email.html" %}
+{% block titulo %}Redefinir sua senha · Qualy Vortice{% endblock %}
+{% block conteudo %}
+<h2 style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;color:#251A1E;font-size:19px;">Redefinir sua senha</h2>
+<p style="margin:0 0 16px;color:#4A3A40;font-size:14px;line-height:1.6;">
+  Olá, {{ user.get_full_name|default:user.username }}. Recebemos um pedido para redefinir a senha
+  da sua conta (usuário <b>{{ user.username }}</b>) no Qualy Vortice.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto;">
+  <tr>
+    <td style="border-radius:10px;background:#F2295B;">
+      <a href="{{ protocol }}://{{ domain }}{% url 'accounts:senha_resetar_confirmar' uidb64=uid token=token %}"
+         style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        Redefinir senha
+      </a>
+    </td>
+  </tr>
+</table>
+<p style="margin:0;color:#9A8790;font-size:12.5px;line-height:1.6;">
+  Se você não pediu essa redefinição, ignore este e-mail — sua senha continua a mesma. Por
+  segurança, esse link perde a validade depois de alguns dias.
+</p>
+{% endblock %}

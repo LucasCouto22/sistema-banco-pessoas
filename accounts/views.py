@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
@@ -6,9 +8,12 @@ from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from .emails import enviar_email_novo_usuario
 from .forms import PerfilForm, PreferenciaAvisosForm, TrocarSenhaForm, UsuarioCreateForm, UsuarioEditForm
 from .models import AvisoDispensado, NivelPermissao, Permissao, PreferenciaAvisos, TIPOS_AVISO, Usuario
 from .permissions import requer_permissao
+
+logger = logging.getLogger(__name__)
 
 
 class LoginView(auth_views.LoginView):
@@ -18,6 +23,52 @@ class LoginView(auth_views.LoginView):
 
 class LogoutView(auth_views.LogoutView):
     pass
+
+
+class ResetarSenhaView(auth_views.PasswordResetView):
+    """"Esqueci minha senha" — tela pública que pede o e-mail e dispara o
+    link de redefinição. Reaproveita todo o mecanismo do Django
+    (`PasswordResetForm`), só troca os templates (tela + e-mail) pro
+    layout/marca do Qualy Vortice."""
+
+    template_name = "accounts/senha_resetar.html"
+    email_template_name = "accounts/email/senha_resetar.txt"
+    html_email_template_name = "accounts/email/senha_resetar.html"
+    subject_template_name = "accounts/email/senha_resetar_assunto.txt"
+    success_url = reverse_lazy("accounts:senha_resetar_enviado")
+
+    def form_valid(self, form):
+        # `form.save()` (chamado dentro do `form_valid` da view do Django)
+        # manda o e-mail de verdade — se o backend de e-mail recusar (ex.:
+        # domínio sandbox do Mailgun, destinatário fora da lista de
+        # autorizados), isso levantava um erro 500 puro pra quem só queria
+        # redefinir a senha. Trata como falha não-bloqueante: loga o motivo
+        # de verdade (pra quem administra o sistema investigar) e segue pra
+        # tela de "enviado" do mesmo jeito — não revela se o e-mail existe
+        # ou não, mesma lógica de segurança que o Django já usa aqui.
+        try:
+            return super().form_valid(form)
+        except Exception:
+            logger.exception("Falha ao enviar e-mail de redefinição de senha")
+            messages.warning(
+                self.request,
+                "Não consegui confirmar o envio do e-mail agora — se o problema persistir, "
+                "avise um administrador do sistema.",
+            )
+            return redirect(self.success_url)
+
+
+class ResetarSenhaEnviadoView(auth_views.PasswordResetDoneView):
+    template_name = "accounts/senha_resetar_enviado.html"
+
+
+class ResetarSenhaConfirmarView(auth_views.PasswordResetConfirmView):
+    template_name = "accounts/senha_resetar_confirmar.html"
+    success_url = reverse_lazy("accounts:senha_resetar_completo")
+
+
+class ResetarSenhaCompletoView(auth_views.PasswordResetCompleteView):
+    template_name = "accounts/senha_resetar_completo.html"
 
 
 @login_required
@@ -35,6 +86,15 @@ def usuario_novo(request):
         if form.is_valid():
             usuario = form.save()
             messages.success(request, f"Usuário {usuario.username} criado com sucesso.")
+            if usuario.email:
+                if enviar_email_novo_usuario(usuario, request):
+                    messages.info(request, f"E-mail de boas-vindas enviado para {usuario.email}.")
+                else:
+                    messages.warning(
+                        request,
+                        f"Não consegui enviar o e-mail de boas-vindas para {usuario.email} "
+                        "(o usuário já foi criado normalmente).",
+                    )
             return redirect("accounts:usuarios_lista")
     else:
         form = UsuarioCreateForm()

@@ -1,0 +1,27 @@
+{% extends "accounts/email/_base_email.html" %}
+{% block titulo %}Sua conta no Qualy Vortice foi criada{% endblock %}
+{% block conteudo %}
+<h2 style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;color:#251A1E;font-size:19px;">Bem-vindo(a) ao Qualy Vortice</h2>
+<p style="margin:0 0 16px;color:#4A3A40;font-size:14px;line-height:1.6;">
+  Olá, {{ usuario.get_full_name|default:usuario.username }}. Uma conta foi criada para você no
+  Qualy Vortice, com o nível de acesso <b>{{ usuario.get_nivel_display }}</b>.
+</p>
+<p style="margin:0 0 16px;color:#4A3A40;font-size:14px;line-height:1.6;">
+  Usuário: <b>{{ usuario.username }}</b>
+</p>
+<p style="margin:0 0 16px;color:#4A3A40;font-size:14px;line-height:1.6;">
+  A senha provisória foi combinada diretamente com quem criou seu acesso. No primeiro login,
+  recomendamos trocá-la por uma senha só sua em "Meu perfil" — ou, se preferir, use
+  "Esqueci minha senha" na tela de login para escolher uma agora.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto;">
+  <tr>
+    <td style="border-radius:10px;background:#F2295B;">
+      <a href="{{ protocol }}://{{ domain }}{% url 'accounts:login' %}"
+         style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        Entrar no sistema
+      </a>
+    </td>
+  </tr>
+</table>
+{% endblock %}

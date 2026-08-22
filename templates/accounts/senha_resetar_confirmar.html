@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static_v %}
+{% block titulo %}Escolher nova senha · Qualy Vortice{% endblock %}
+{% block conteudo_publico %}
+<section id="viewLogin">
+  <div class="login-card">
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
+
+    {% if validlink %}
+    <p class="login-sub">Escolha a senha nova da sua conta.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="hint">{{ field.help_text|safe }}</p>{% endif %}
+        {% for erro in field.errors %}<p class="erro">{{ erro }}</p>{% endfor %}
+      </div>
+      {% endfor %}
+      <button class="btn btn-primary btn-block" type="submit">Salvar nova senha</button>
+    </form>
+    {% else %}
+    <p class="login-sub">Este link de redefinição não é mais válido — já foi usado, ou expirou.
+      Peça um novo abaixo.</p>
+    <a class="btn btn-primary btn-block" href="{% url 'accounts:senha_resetar' %}">Pedir novo link</a>
+    {% endif %}
+
+    <div class="login-lgpd">
+      <a href="{% url 'accounts:login' %}">‹ Voltar para o login</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

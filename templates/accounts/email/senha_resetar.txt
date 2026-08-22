@@ -1,0 +1,11 @@
+Olá, {{ user.get_full_name|default:user.username }}.
+
+Recebemos um pedido para redefinir a senha da sua conta ({{ user.username }}) no Qualy Vortice.
+
+Clique no link abaixo para escolher uma senha nova:
+{{ protocol }}://{{ domain }}{% url 'accounts:senha_resetar_confirmar' uidb64=uid token=token %}
+
+Se você não pediu essa redefinição, ignore este e-mail — sua senha continua a mesma. Por
+segurança, esse link perde a validade depois de alguns dias.
+
+— Qualy Vortice

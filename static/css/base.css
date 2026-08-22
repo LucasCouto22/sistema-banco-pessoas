@@ -149,6 +149,7 @@ input,select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink)}
 .messages .success{background:var(--green-soft);color:var(--green)}
 .messages .error{background:var(--red-soft);color:#B03225}
 .messages .info{background:var(--blue-soft);color:var(--blue)}
+.messages .warning{background:var(--amber-soft);color:#9A6408}
 
 .status-select{border:none;border-radius:99px;padding:4px 22px 4px 10px;font-size:.71rem;
   font-weight:600;cursor:pointer;appearance:none;-webkit-appearance:none;-moz-appearance:none;

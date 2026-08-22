@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load static_v %}
+{% block titulo %}Verifique seu e-mail · Qualy Vortice{% endblock %}
+{% block conteudo_publico %}
+<section id="viewLogin">
+  <div class="login-card" style="text-align:center">
+    <div class="brand"><img src="{% static_v 'img/imglogo.png' %}" alt="Qualy Vortice" class="brand-logo"></div>
+    <p class="login-sub">Se o e-mail informado tiver uma conta cadastrada, você vai receber um
+      link para escolher uma senha nova em instantes. Confira também a caixa de spam.</p>
+    <a class="btn btn-ghost" href="{% url 'accounts:login' %}">‹ Voltar para o login</a>
+  </div>
+</section>
+{% endblock %}

@@ -126,6 +126,11 @@
 </div>
 {% block scripts %}{% endblock %}
 {% else %}
+{% if messages %}
+<ul class="messages" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;width:90%;max-width:410px">
+  {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+</ul>
+{% endif %}
 {% block conteudo_publico %}{% endblock %}
 {% endif %}
 <div id="flash-erros"></div>

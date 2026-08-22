@@ -7,6 +7,14 @@ app_name = "accounts"
 urlpatterns = [
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
+    path("senha/resetar/", views.ResetarSenhaView.as_view(), name="senha_resetar"),
+    path("senha/resetar/enviado/", views.ResetarSenhaEnviadoView.as_view(), name="senha_resetar_enviado"),
+    path(
+        "senha/resetar/confirmar/<uidb64>/<token>/",
+        views.ResetarSenhaConfirmarView.as_view(),
+        name="senha_resetar_confirmar",
+    ),
+    path("senha/resetar/completo/", views.ResetarSenhaCompletoView.as_view(), name="senha_resetar_completo"),
     path("usuarios/", views.usuarios_lista, name="usuarios_lista"),
     path("usuarios/novo/", views.usuario_novo, name="usuario_novo"),
     path("usuarios/<int:pk>/editar/", views.usuario_editar, name="usuario_editar"),

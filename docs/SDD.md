@@ -4098,3 +4098,235 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
     estado de cada grupo bateu certo em todas as quatro, nunca dois abertos ao mesmo tempo.
     `manage.py check` limpo (mudança é só de template, sem lógica de view nem model).
   - **Segue sem commitar.** `git status` agora também inclui `templates/base.html`.
+- **2026-08-22 (Envio de e-mail configurado — Mailgun via django-anymail)** — Usuário pediu
+  pra configurar envio de e-mail usando Mailgun, colando a API key e o domínio sandbox
+  direto no chat (junto com um script de exemplo em Python usando `requests` puro).
+  1. **Aviso de segurança dado antes de qualquer coisa**: a API key colada no chat é uma
+     credencial real — mesmo sendo de um domínio sandbox (uso limitado, só manda pra
+     destinatário autorizado manualmente), o certo é tratá-la como comprometida a partir do
+     momento que apareceu em texto puro numa conversa. Recomendei ao usuário regenerar essa
+     key no painel do Mailgun (Sending → API Keys) depois de tudo configurado — eu não
+     escrevi o valor dela em nenhum arquivo do projeto (nem local nem versionado); só usei
+     como variável de ambiente **temporária**, direto no comando de teste, sem persistir em
+     disco.
+  2. **`django-anymail` (com backend do Mailgun)** — biblioteca padrão do ecossistema Django
+     pra isso (mapeia `send_mail()`/`EmailMessage` direto pra API HTTP do Mailgun, mesma API
+     que o script `requests` do usuário chamava manualmente). Adicionado a
+     `requirements.txt` (`django-anymail==15.1`, que já traz `requests` — por isso `requests`
+     também entrou explícito no arquivo) e `'anymail'` em `INSTALLED_APPS`
+     (`bancopessoas/settings.py`).
+  3. **Configuração por variável de ambiente, nunca hardcoded** — `bancopessoas/settings.py`
+     tinha um bloco `MAILERS` no fim do arquivo que **não é uma settings de verdade do
+     Django** (o nome certo é `EMAIL_BACKEND` — esse `MAILERS` nunca teve efeito nenhum,
+     sobrou de algum momento anterior sem nunca ter sido ligado a nada). Substituído por: se
+     `MAILGUN_API_KEY` estiver definida no ambiente, `EMAIL_BACKEND` vira
+     `anymail.backends.mailgun.EmailBackend` com `ANYMAIL = {"MAILGUN_API_KEY": ...,
+     "MAILGUN_SENDER_DOMAIN": ...}`; senão, cai pro backend de console (imprime o e-mail no
+     terminal em vez de mandar de verdade) — evita que o site quebre num ambiente que ainda
+     não tem Mailgun configurado (dev local sem a variável setada, por exemplo).
+     `DEFAULT_FROM_EMAIL` segue o mesmo padrão. **Nenhuma chave real está escrita neste
+     arquivo** — só o nome da variável de ambiente que ela precisa vir de
+     (`MAILGUN_API_KEY`), igual já é feito pra `DEBUG`/`ALLOWED_HOSTS` nesse mesmo arquivo.
+     Falta o usuário configurar essa variável de verdade: `MAILGUN_API_KEY` (e
+     opcionalmente `MAILGUN_SENDER_DOMAIN`/`DEFAULT_FROM_EMAIL`, se quiser trocar do domínio
+     sandbox) na aba **Variables** do serviço no Railway (produção) e no ambiente local pra
+     testar (`$env:MAILGUN_API_KEY = "..."` no PowerShell antes de rodar `manage.py`).
+  4. **Comando de teste novo** — `core/management/commands/enviar_email_teste.py`
+     (`python manage.py enviar_email_teste destino@exemplo.com`): manda um e-mail simples
+     pelo backend configurado no momento, avisa explicitamente se caiu no fallback de
+     console (variável não configurada) em vez de simplesmente não enviar nada sem
+     explicação.
+  - **Limitação importante do domínio sandbox** (documentada nos comentários do
+    `settings.py` e no `help` do comando novo): domínio sandbox do Mailgun só manda e-mail
+    pra destinatário cadastrado manualmente como "Authorized Recipient" no painel do
+    Mailgun — não dá pra mandar pra qualquer participante/usuário real do sistema até
+    trocar por um domínio próprio verificado (com os registros DNS do Mailgun configurados)
+    e apontar `MAILGUN_SENDER_DOMAIN` pra ele.
+  - Testado de ponta a ponta: (1) sem `MAILGUN_API_KEY` no ambiente, `manage.py check`
+    limpo e `enviar_email_teste` cai no backend de console (avisa e imprime o e-mail no
+    terminal, não trava); (2) com a API key de verdade passada só como variável de ambiente
+    do processo do teste (nunca salva em arquivo), `enviar_email_teste
+    lucaslopesc2@gmail.com` retornou sucesso — a API do Mailgun aceitou o envio (o backend
+    do `anymail` levanta exceção se a API recusar, e não levantou nenhuma).
+  - **Ainda não construído** (fora do escopo deste pedido, que era só configurar o envio):
+    nenhum fluxo do sistema *usa* e-mail ainda (não existia `send_mail()` nenhum no código
+    antes desta rodada) — isso aqui é só a infraestrutura de envio pronta pra ser chamada.
+    Se o usuário quiser um gatilho específico (ex.: e-mail de renovação de termo, aviso de
+    aprovação/triagem, etc.), é um pedido separado.
+  - **Segue sem commitar.** `git status` agora também inclui `requirements.txt`,
+    `bancopessoas/settings.py`, `core/management/__init__.py` (novo),
+    `core/management/commands/__init__.py` (novo),
+    `core/management/commands/enviar_email_teste.py` (novo). Nenhuma credencial foi
+    commitada nem escrita em disco — a API key só existiu como variável de ambiente
+    temporária durante o teste desta sessão.
+- **2026-08-22 (Chave do Mailgun salva em `.env` local, não versionado)** — Usuário pediu
+  pra salvar a configuração em arquivo, já que vai subir essas alterações pro servidor.
+  1. **`.env` local (fora do Git) + `python-dotenv`** — em vez de escrever a API key direto
+     em `bancopessoas/settings.py` (que ficaria pra sempre no histórico do Git assim que o
+     usuário desse push — pioraria a exposição da chave, que já tinha sido colada em texto
+     puro nesta conversa), criei um arquivo `.env` na raiz do projeto com
+     `MAILGUN_API_KEY`/`MAILGUN_SENDER_DOMAIN` de verdade, e adicionei `.env` ao
+     `.gitignore` (confirmado com `git check-ignore -v .env` que o Git realmente ignora).
+     `bancopessoas/settings.py` ganhou `load_dotenv(BASE_DIR / '.env')` logo no topo (usa
+     `python-dotenv`, novo em `requirements.txt`) — carrega esse arquivo pro
+     `os.environ` antes de qualquer leitura de variável mais abaixo; em produção
+     (Railway) esse arquivo nem existe, então `load_dotenv()` simplesmente não acha nada
+     e não faz diferença nenhuma — as variáveis de lá continuam vindo só da aba Variables
+     do Railway, do jeito que sempre foi.
+  2. **Importante pro usuário saber, já avisado na conversa**: como `.env` está no
+     `.gitignore` de propósito, ele **não vai junto** quando o usuário der `git push`/subir
+     pro Railway — isso é uma escolha deliberada (não dá pra versionar a chave sem
+     comprometer ela de vez). Pra funcionar em produção, o usuário ainda precisa configurar
+     `MAILGUN_API_KEY` (e `MAILGUN_SENDER_DOMAIN`, se quiser) na aba **Variables** do
+     serviço no Railway manualmente — o `.env` local só ajuda a não precisar redigitar a
+     variável toda vez que for testar localmente.
+  - Testado: `manage.py check` limpo e `enviar_email_teste lucaslopesc2@gmail.com` enviado
+    com sucesso **sem** setar variável nenhuma na mão no shell — confirma que o `.env` está
+    sendo lido automaticamente pelo Django agora.
+  - **Segue sem commitar** (e o `.env` em si nunca vai ser commitado, é esse o ponto).
+    `git status` agora também inclui `.gitignore`, `requirements.txt` (mais uma vez, com
+    `python-dotenv`) e `bancopessoas/settings.py` (mais uma vez, com o `load_dotenv()`).
+- **2026-08-22 (Decisão explícita do usuário: `.env` passa a ser versionado)** — Depois do
+  aviso da entrada anterior, o usuário pediu pra reverter: quer o `.env` versionado mesmo,
+  porque o deploy no Railway está configurado pra puxar do GitHub — se a chave não estiver
+  no repositório, o servidor sobe sem `MAILGUN_API_KEY` configurada.
+  1. **`.env` removido do `.gitignore`** — arquivo volta a aparecer como não rastreado
+     (`git status` mostra `?? .env`), pronto pra entrar num commit. Nenhuma outra mudança de
+     código: `load_dotenv()` em `bancopessoas/settings.py` continua igual, só que agora o
+     arquivo que ele lê vai estar no repositório também.
+  2. **Registro do aviso já dado** (pra constar): expliquei duas vezes antes desta decisão
+     que versionar a chave a deixa permanentemente no histórico do Git a partir do primeiro
+     commit — inclusive se for removida depois, continua recuperável nos commits antigos.
+     O usuário decidiu prosseguir mesmo assim, ciente disso; é uma decisão dele sobre a
+     própria infraestrutura (servidor dele, conta Mailgun dele), não uma omissão minha.
+  - **Segue sem commitar** — não criei o commit sozinho mesmo com o pedido de "versionar",
+    porque a regra desta sessão é nunca commitar sem pedido explícito de commit (distinto de
+    "não ignorar o arquivo", que é o que foi pedido e o que fiz). Perguntei ao usuário se
+    quer que eu já crie o commit ou se prefere revisar e commitar por conta própria.
+- **2026-08-22 ("Esqueci a senha" (fluxo completo) + e-mail de conta criada)** — Usuário
+  pediu pra criar o fluxo de "Esqueci a senha" (página + e-mail) no mesmo layout do site, e
+  mandar um e-mail pro usuário novo avisando que a conta dele foi criada.
+  1. **"Esqueci a senha" — reaproveita o mecanismo de auth do Django, só troca
+     template/e-mail** — 4 views novas em `accounts/views.py`, todas subclasses das views
+     prontas do Django (`auth_views.PasswordReset*`), do mesmo jeito que `TrocarSenhaView`
+     já fazia com `PasswordChangeView`: `ResetarSenhaView` (pede o e-mail),
+     `ResetarSenhaEnviadoView` ("verifique seu e-mail"), `ResetarSenhaConfirmarView` (define
+     a senha nova — trata link inválido/expirado via `validlink` do próprio Django),
+     `ResetarSenhaCompletoView` (confirmação final). 4 rotas novas em `accounts/urls.py`
+     (`senha/resetar/`, `.../enviado/`, `.../confirmar/<uidb64>/<token>/`,
+     `.../completo/`) — os nomes dos parâmetros da URL (`uidb64`/`token`) batem com o
+     padrão que o próprio `django.contrib.auth.urls` usa, não é invenção nova. Link
+     "Esqueci minha senha" adicionado em `templates/accounts/login.html`, abaixo do botão
+     de entrar.
+  2. **Templates no mesmo layout do site** — as 4 páginas
+     (`templates/accounts/senha_resetar*.html`) seguem exatamente o padrão já usado em
+     `login.html`/`templates/publico/*.html`: `{% extends "base.html" %}` +
+     `{% block conteudo_publico %}` + `.login-card` (mesmo cartão branco sobre o fundo
+     gradiente preto/rosa, mesma logo, mesma tipografia) — não inventei layout novo, só
+     reaproveitei o que já existe pra tela de login.
+  3. **Template de e-mail com a marca do site** — como e-mail não roda CSS externo nem
+     `class` de verdade (cada cliente de e-mail renderiza diferente, principalmente
+     Outlook), criei `templates/accounts/email/_base_email.html` — layout em `<table>`
+     com estilo inline (padrão da indústria pra e-mail, não uma regressão de acessibilidade
+     "normal" de página web) usando a mesma paleta do site (`#F2295B`/`#0B0B0D`/`#251A1E`
+     etc., tiradas direto de `static/css/base.css`) e o nome "Qualy Vortice" como
+     wordmark (texto estilizado, não `<img>` — imagem externa é bloqueada por padrão em
+     boa parte dos clientes de e-mail, texto é mais confiável). `senha_resetar.html`/`.txt`
+     (e-mail) estendem esse base — passados como `email_template_name`/
+     `html_email_template_name`/`subject_template_name` pro `ResetarSenhaView`, o Django
+     cuida de montar e mandar o e-mail sozinho (mesmo mecanismo de sempre do
+     `PasswordResetForm`).
+  4. **E-mail de "conta criada"** — `accounts/emails.py` (novo módulo) — 
+     `enviar_email_novo_usuario(usuario, request)`, chamada em
+     `accounts/views.py::usuario_novo` logo depois do `form.save()`. *Best effort*: se o
+     envio falhar (Mailgun fora do ar, domínio sandbox recusando destinatário não
+     autorizado etc.), só loga o erro e mostra um aviso amarelo na tela — não desfaz a
+     criação do usuário, que já está salva no banco antes da tentativa de envio. Templates
+     `templates/accounts/email/usuario_criado.{html,txt}` + `_assunto.txt`, mesmo `_base_email.html`.
+     **Decisão deliberada**: o e-mail avisa da criação da conta e do nível de acesso, mas
+     **não manda a senha provisória em texto puro** — instrui a pessoa a usar "Esqueci
+     minha senha" (ou pedir a senha direto a quem criou o acesso) — mandar senha por
+     e-mail é prática desaconselhada mesmo quando quem já sabe a senha é a mesma pessoa que
+     está mandando.
+  - Testado de ponta a ponta com Playwright, usando um usuário descartável criado só pro
+    teste (`teste_reset_senha`, e-mail `lucaslopesc2@gmail.com` — o único destinatário
+    autorizado no domínio sandbox do Mailgun hoje): (1) pediu redefinição pela tela nova,
+    confirmou a tela "verifique seu e-mail"; (2) abriu o link de confirmação (uid/token
+    gerados via shell, mesmo mecanismo que o e-mail de verdade usaria) — formulário de
+    senha nova apareceu; (3) salvou a senha nova, confirmou a tela final; (4) logou com a
+    senha nova de verdade — funcionou. Testado também o e-mail de conta criada: criado um
+    segundo usuário descartável (`teste_email_boas_vindas`, mesmo e-mail autorizado) pela
+    tela de "Novo usuário" — mensagem "E-mail de boas-vindas enviado para
+    lucaslopesc2@gmail.com" apareceu (o Mailgun aceitou o envio de verdade). Os dois
+    usuários de teste foram apagados depois — confirmado que não sobrou nenhum resíduo
+    (`Usuario.objects.count()` voltou pra 6, os 5 de demonstração + o `lucas_couto` real
+    criado numa rodada anterior). `manage.py check` limpo, todos os templates novos
+    carregam sem erro de sintaxe (`get_template()` de cada um).
+  - **Segue sem commitar.** `git status` agora também inclui `accounts/urls.py`,
+    `accounts/views.py`, `accounts/emails.py` (novo), `templates/accounts/login.html`,
+    `templates/accounts/senha_resetar*.html` (novos, 4 arquivos),
+    `templates/accounts/email/` (novo, 5 arquivos: `_base_email.html`,
+    `senha_resetar.{html,txt}`, `senha_resetar_assunto.txt`, `usuario_criado.{html,txt}`,
+    `usuario_criado_assunto.txt`).
+- **2026-08-22 ("Esqueci a senha" quebrava com erro 500 se o e-mail não saísse — causa raiz e
+  correção)** — Usuário colou um traceback real: pediu redefinição de senha pro usuário
+  `lucas_couto` (e-mail `lucaslopescouto@id.uff.br`) e a tela quebrou com erro 500.
+  1. **Causa raiz — não é bug de código, é o mesmo limite do domínio sandbox já avisado
+     antes**: `Mailgun API response 403 (Forbidden): Domain ...mailgun.org is not allowed to
+     send: Free accounts are for test purposes only. Please... add the address to your
+     authorized recipients.` — `lucaslopescouto@id.uff.br` não está na lista de
+     destinatários autorizados do domínio sandbox (só `lucaslopesc2@gmail.com` está,
+     testado nas rodadas anteriores). O `PasswordResetView` padrão do Django não tem
+     tratamento nenhum pra falha de envio — deixa a exceção subir crua até virar erro 500
+     pra quem só queria redefinir a senha.
+  2. **Corrigido: falha de envio virou não-bloqueante** — `ResetarSenhaView.form_valid()`
+     (`accounts/views.py`) agora envolve `super().form_valid(form)` (é aí dentro que o
+     Django manda o e-mail de verdade) num `try/except`: em caso de erro, loga o traceback
+     completo de verdade (`logger.exception`, pra quem administra o sistema conseguir
+     investigar depois) e segue pra tela de "enviado" do mesmo jeito, com um aviso
+     amarelo — não revela se o e-mail existe ou não (mesma lógica de segurança que o
+     Django já usa aqui: sempre mostra a mesma tela, tenha o e-mail conta ou não).
+  3. **Lacuna encontrada de bônus: mensagens do Django não apareciam em nenhuma tela
+     pública** — o bloco `{% if messages %}...{% endif %}` só existia dentro do layout
+     autenticado (`base.html`, dentro do `<div class="content">`) — toda tela pública
+     (`conteudo_publico`: login, cadastro público, agora também "esqueci a senha") nunca
+     mostrava `messages.warning()`/`.info()`/etc., mesmo que a view adicionasse uma. Corrigido
+     em `templates/base.html`: mesmo bloco de mensagens (com posição fixa no topo, já que
+     as telas públicas não têm um "topo de página" fixo como o layout autenticado) também
+     no branch de usuário não-autenticado. Também faltava CSS pra tag `warning`
+     (`.messages .warning`, `static/css/base.css`) — só existiam `.success`/`.error`/`.info`;
+     usado o âmbar já usado em outros avisos do sistema (`--amber-soft`/`#9A6408`).
+  - Testado: como não dá pra forçar a Mailgun recusar sob demanda de forma confiável (o
+    comportamento depende de quem está ou não autorizado no painel, que pode mudar), simulei
+    a falha diretamente via `unittest.mock.patch` no `PasswordResetForm.save()` (o ponto
+    exato onde a exceção real do usuário aconteceu) através do Django test `Client` — sem
+    o patch: confirmei que o cenário genuíno (`lucaslopescouto@id.uff.br` real, sem mock)
+    não reproduziu mais o 500 no teste local (o Mailgun aceitou dessa vez — não dá pra saber
+    se o usuário autorizou o endereço nesse meio-tempo, e não muda a validação: o `try/except`
+    existe pra qualquer motivo de falha, não só esse). Com o patch forçando a exceção:
+    confirmado `status 302` pra `/accounts/senha/resetar/enviado/` (não mais 500), o erro
+    real apareceu no log (`logger.exception`, com o traceback completo do `Exception`
+    forçado), e o HTML da página de "enviado" contém o aviso amarelo. `manage.py check`
+    limpo.
+  - **Segue sem commitar.** `git status` agora também inclui `static/css/base.css`,
+    `templates/base.html` (mudança nova nessa rodada, além das anteriores).
+- **2026-08-22 (Domínio próprio verificado no Mailgun — `qualyvorticepanel.online`, sem
+  mais restrição de destinatário)** — Usuário esclareceu que `qualyvorticepanel.online` é o
+  domínio de verdade, já cadastrado no Mailgun (não o sandbox usado até aqui). Pediu pra
+  usar esse domínio.
+  1. **`.env` atualizado** — `MAILGUN_SENDER_DOMAIN=qualyvorticepanel.online` (era o domínio
+     sandbox) e `DEFAULT_FROM_EMAIL="Qualy Vortice <nao-responda@qualyvorticepanel.online>"`
+     novo (antes usava o remetente do sandbox como padrão do `settings.py` por não ter essa
+     variável definida). Nenhuma mudança em `bancopessoas/settings.py` — ele já lia essas
+     duas variáveis do ambiente desde a configuração inicial do Mailgun, só não tinham
+     valor pro domínio próprio ainda.
+  2. **Confirmado que o domínio já está verificado de verdade no Mailgun** — testei com
+     `enviar_email_teste` pros dois e-mails: `lucaslopesc2@gmail.com` (que já funcionava no
+     sandbox) e, mais importante, `lucaslopescouto@id.uff.br` (o mesmo endereço que gerou o
+     403 "not allowed to send" no domínio sandbox, na rodada anterior) — os dois foram
+     aceitos pelo Mailgun sem erro nenhum. Isso confirma que a restrição de "só destinatário
+     autorizado" (exclusiva de domínio sandbox) não existe mais: o domínio próprio manda
+     pra qualquer destinatário real, sem precisar autorizar um por um no painel do Mailgun.
+  - **Segue sem commitar** (o `.env` está versionado por decisão explícita do usuário numa
+    rodada anterior desta sessão — essa mudança de domínio já está refletida nele; nenhum
+    outro arquivo de código mudou nesta rodada).
