@@ -19,6 +19,7 @@ urlpatterns = [
     path("usuarios/novo/", views.usuario_novo, name="usuario_novo"),
     path("usuarios/<int:pk>/editar/", views.usuario_editar, name="usuario_editar"),
     path("usuarios/<int:pk>/excluir/", views.usuario_excluir, name="usuario_excluir"),
+    path("usuarios/<int:pk>/reenviar-email/", views.usuario_reenviar_email, name="usuario_reenviar_email"),
     path("permissoes/", views.painel_permissoes, name="painel_permissoes"),
     path("perfil/", views.meu_perfil, name="meu_perfil"),
     path("perfil/senha/", views.TrocarSenhaView.as_view(), name="trocar_senha"),

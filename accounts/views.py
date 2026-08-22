@@ -1,10 +1,12 @@
 import logging
+from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -75,7 +77,15 @@ class ResetarSenhaCompletoView(auth_views.PasswordResetCompleteView):
 @requer_permissao("usuarios.gerenciar")
 def usuarios_lista(request):
     usuarios = Usuario.objects.all().order_by("first_name", "username")
-    return render(request, "accounts/usuarios_lista.html", {"usuarios": usuarios})
+    # "Reenviar e-mail" só aparece pra conta criada há menos de 7 dias — depois
+    # disso, o e-mail de boas-vindas original perde o sentido (a pessoa já
+    # deve ter entrado com a senha provisória ou já trocou pela própria).
+    corte_reenvio_email = timezone.now() - timedelta(days=7)
+    return render(
+        request,
+        "accounts/usuarios_lista.html",
+        {"usuarios": usuarios, "corte_reenvio_email": corte_reenvio_email},
+    )
 
 
 @login_required
@@ -129,6 +139,22 @@ def usuario_excluir(request, pk):
         messages.success(request, f"Usuário {nome} excluído.")
         return redirect("accounts:usuarios_lista")
     return render(request, "accounts/usuario_excluir.html", {"usuario": usuario})
+
+
+@login_required
+@requer_permissao("usuarios.gerenciar")
+@require_POST
+def usuario_reenviar_email(request, pk):
+    usuario = get_object_or_404(Usuario, pk=pk)
+    if not usuario.email:
+        messages.error(request, f"{usuario.username} não tem e-mail cadastrado.")
+    elif enviar_email_novo_usuario(usuario, request):
+        messages.success(request, f"E-mail de criação de conta reenviado para {usuario.email}.")
+    else:
+        messages.warning(
+            request, f"Não consegui reenviar o e-mail para {usuario.email} (tente de novo em instantes)."
+        )
+    return redirect("accounts:usuarios_lista")
 
 
 @login_required

@@ -4330,3 +4330,37 @@ triagem, e dashboards analíticos. O que ficou de fora está documentado como ba
   - **Segue sem commitar** (o `.env` está versionado por decisão explícita do usuário numa
     rodada anterior desta sessão — essa mudança de domínio já está refletida nele; nenhum
     outro arquivo de código mudou nesta rodada).
+- **2026-08-22 (Domínio verificado + botão "Reenviar e-mail" pra usuário criado há menos de
+  7 dias)** — Usuário confirmou (com print do aviso do próprio Mailgun) que
+  `qualyvorticepanel.online` foi verificado de verdade — o erro 403 anterior era porque a
+  verificação de DNS ainda não tinha propagado/concluído no momento daquele teste. Pediu
+  então um botão na listagem de usuários pra reenviar o e-mail de criação de conta, visível
+  só quando o cadastro tem menos de 7 dias.
+  1. **`usuarios_lista` ganhou o corte de 7 dias** — `accounts/views.py::usuarios_lista`
+     calcula `corte_reenvio_email = timezone.now() - timedelta(days=7)` e manda pro
+     template; `templates/accounts/usuarios_lista.html` compara direto
+     (`{% if u.date_joined >= corte_reenvio_email %}` — Django template já suporta
+     comparação entre datas no `{% if %}`, não precisou de filtro novo) usando
+     `date_joined` (campo padrão do `AbstractUser`, preenchido automaticamente na criação).
+  2. **Botão novo, mesmo padrão de ação com efeito colateral já usado no sistema** —
+     "Reenviar e-mail" é um `<form method="post">` (não um link `GET`, mesma lógica de
+     "Dispensar aviso"/mudar etapa — ação que manda e-mail de novo não deveria ser
+     disparável só por abrir um link/crawler visitar), com o texto de descrição pedido
+     (`title="Reenvia o email de criação do usuário."`, aparece como tooltip ao passar o
+     mouse). View nova `usuario_reenviar_email` (`accounts/urls.py` +
+     `accounts/views.py`, `@requer_permissao("usuarios.gerenciar")` — mesma permissão que já
+     protege a página inteira — `@require_POST`): chama o mesmo
+     `enviar_email_novo_usuario()` já usado na criação, e avisa na tela se der certo ou não
+     (reaproveita o mesmo helper *best effort* de antes — não trava nada se o Mailgun
+     recusar).
+  - Testado com Playwright, autenticado, contra dado real (só leitura, exceto o próprio
+    reenvio pedido): confirmado que só apareceu o botão nas 2 contas criadas nesta sessão
+    (`lucas_couto` e `karol_crispim`, ambas com menos de 7 dias) — os 5 usuários de
+    demonstração (criados há mais de 7 dias) não mostram o botão. Cliquei em "Reenviar
+    e-mail" pra Karoline Crispim (o e-mail original dela tinha falhado justamente pelo erro
+    de domínio não verificado, então esse reenvio é o cenário real de uso) — mensagem
+    "E-mail de criação de conta reenviado para karolcr54@gmail.com" confirmou envio bem-
+    sucedido pelo Mailgun com o domínio já verificado. `manage.py check` limpo (sem mudança
+    de model).
+  - **Segue sem commitar.** `git status` agora também inclui `accounts/urls.py`,
+    `accounts/views.py`, `templates/accounts/usuarios_lista.html`.
